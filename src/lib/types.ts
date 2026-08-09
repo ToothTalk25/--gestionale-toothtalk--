@@ -160,6 +160,7 @@ export type PacchettoVideoRow = {
   task_id: string;
   descrizione: string | null;
   script: string | null;
+  titolo_youtube: string | null;
   stato: PacchettoStato;
   manifest: ManifestoPacchetto | null;
   manifest_hash: string | null;
@@ -191,7 +192,7 @@ export type ElementoManifesto =
       caricato_at: string;
     }
   | {
-      ruolo: "descrizione" | "script";
+      ruolo: "descrizione" | "script" | "titolo_youtube";
       tipo: "testo";
       sha256: string;
       caratteri: number;

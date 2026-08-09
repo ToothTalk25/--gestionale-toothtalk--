@@ -59,6 +59,9 @@ export default function PacchettoVideo({
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
   const [script, setScript] = useState(pacchetto?.script ?? "");
+  const [titoloYoutube, setTitoloYoutube] = useState(
+    pacchetto?.titolo_youtube ?? "",
+  );
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -77,6 +80,7 @@ export default function PacchettoVideo({
     !!copertina &&
     descrizione.trim() !== "" &&
     script.trim() !== "" &&
+    titoloYoutube.trim() !== "" &&
     (!coinvolgeTerzi || !!liberatoria);
 
   async function assicuraPacchetto(): Promise<string | null> {
@@ -202,9 +206,21 @@ export default function PacchettoVideo({
         />
       </div>
 
+      <div className="mt-4">
+        <Testo
+          titolo="3 · Titolo per YouTube Shorts"
+          nota="segui lo stile editoriale del canale: breve, accattivante"
+          valore={titoloYoutube}
+          onChange={setTitoloYoutube}
+          modificabile={componibile}
+          righe={2}
+          placeholder="Il titolo che comparirà sullo Short di YouTube…"
+        />
+      </div>
+
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Testo
-          titolo="3 · Descrizione da pubblicare"
+          titolo="4 · Descrizione da pubblicare"
           valore={descrizione}
           onChange={setDescrizione}
           modificabile={componibile}
@@ -212,7 +228,7 @@ export default function PacchettoVideo({
           placeholder="La caption esatta che accompagnerà il video…"
         />
         <Testo
-          titolo="4 · Script usato"
+          titolo="5 · Script usato"
           nota="dev'essere ciò che si dice davvero nel video"
           valore={script}
           onChange={setScript}
@@ -225,7 +241,7 @@ export default function PacchettoVideo({
       {coinvolgeTerzi && (
         <div className="mt-4">
           <Slot
-            titolo="5 · Liberatoria privacy/immagine"
+            titolo="6 · Liberatoria privacy/immagine"
             elemento={liberatoria}
             onRimuovi={
               componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
@@ -263,7 +279,11 @@ export default function PacchettoVideo({
             start(async () => {
               setErrore(null);
               setMessaggio(null);
-              const esito = await salvaPacchetto(taskId, { descrizione, script });
+              const esito = await salvaPacchetto(taskId, {
+                descrizione,
+                script,
+                titolo_youtube: titoloYoutube,
+              });
               if (!esito.ok) setErrore(esito.errore);
               else {
                 setMessaggio("Testi salvati.");
@@ -295,6 +315,7 @@ export default function PacchettoVideo({
                     const salva = await salvaPacchetto(taskId, {
                       descrizione,
                       script,
+                      titolo_youtube: titoloYoutube,
                     });
                     if (!salva.ok) return setErrore(salva.errore);
 
@@ -320,6 +341,7 @@ export default function PacchettoVideo({
                   !copertina && "copertina",
                   !descrizione.trim() && "descrizione",
                   !script.trim() && "script",
+                  !titoloYoutube.trim() && "titolo YouTube",
                   coinvolgeTerzi && !liberatoria && "liberatoria",
                 ]
                   .filter(Boolean)
@@ -390,6 +412,7 @@ export default function PacchettoVideo({
                     !copertina && "copertina",
                     !descrizione.trim() && "descrizione",
                     !script.trim() && "script",
+                    !titoloYoutube.trim() && "titolo YouTube",
                     coinvolgeTerzi && !liberatoria && "liberatoria",
                   ]
                     .filter(Boolean)

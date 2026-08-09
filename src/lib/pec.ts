@@ -68,6 +68,7 @@ const etichetta: Record<string, string> = {
   copertina: "Copertina",
   descrizione: "Descrizione da pubblicare",
   script: "Script usato per il video",
+  titolo_youtube: "Titolo per YouTube Shorts",
 };
 
 function esc(s: string) {

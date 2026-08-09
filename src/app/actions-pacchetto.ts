@@ -27,7 +27,7 @@ function errore(msg: string): Esito<never> {
 /** Crea la bozza del pacchetto se non esiste, o ne aggiorna i testi. */
 export async function salvaPacchetto(
   taskId: string,
-  campi: { descrizione?: string; script?: string },
+  campi: { descrizione?: string; script?: string; titolo_youtube?: string },
 ): Promise<Esito<{ pacchettoId: string }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
