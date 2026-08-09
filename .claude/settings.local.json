@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(ls /opt/homebrew/bin/node /usr/local/bin/node ~/.nvm/versions/node 2>&1; echo \"---\"; which brew git python3 2>&1)",
+      "mcp__mcp-registry__search_mcp_registry"
+    ]
+  }
+}

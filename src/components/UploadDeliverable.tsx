@@ -1,0 +1,164 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { sha256File } from "@/lib/hash";
+import { preparaUpload, registraVersione } from "@/app/actions";
+import type { Archivio, DeliverableKind } from "@/lib/types";
+
+type Fase = "idle" | "hash" | "upload" | "registro" | "fatto" | "errore";
+
+/** Chiavi di storage: solo caratteri sicuri, il nome vero resta nel DB. */
+function sanifica(nome: string) {
+  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+}
+
+export default function UploadDeliverable({
+  taskId,
+  kind,
+  isAdmin,
+  locked,
+  esisteOriginale = false,
+  archivio = "lavorazione",
+  etichetta,
+  accept,
+  onCaricato,
+}: {
+  taskId: string;
+  kind: DeliverableKind;
+  isAdmin: boolean;
+  locked: boolean;
+  esisteOriginale?: boolean;
+  archivio?: Archivio;
+  etichetta?: string;
+  accept?: string;
+  onCaricato?: (versionId: string) => void | Promise<void>;
+}) {
+  const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
+  const [fase, setFase] = useState<Fase>("idle");
+  const [progresso, setProgresso] = useState(0);
+  const [messaggio, setMessaggio] = useState<string | null>(null);
+
+  // Chi ha accesso globale deposita sempre versioni derivate: la RLS impedisce di
+  // scrivere un "originale", così non può fabbricare un deposito a nome
+  // del gruppo né sostituire quella vera.
+  const origin = isAdmin ? "admin_edit" : "originale";
+  const bucket = isAdmin ? "revisioni" : archivio === "finale" ? "finali" : "originali";
+
+  const bloccato = !isAdmin && locked;
+
+  async function carica(file: File) {
+    setMessaggio(null);
+    try {
+      setFase("hash");
+      setProgresso(0);
+      const sha = await sha256File(file, setProgresso);
+
+      const prep = await preparaUpload(taskId, kind);
+      if (!prep.ok) throw new Error(prep.errore);
+
+      const path = `${prep.dati.prefix}${crypto.randomUUID()}__${sanifica(file.name)}`;
+
+      setFase("upload");
+      const supabase = supabaseBrowser();
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        // upsert:false è obbligatorio: sui bucket 'originali' e 'finali' non
+        // esiste alcuna policy di UPDATE, quindi un upsert verrebbe respinto.
+        upsert: false,
+        contentType: file.type || "application/octet-stream",
+      });
+      if (error) throw new Error(error.message);
+
+      setFase("registro");
+      const esito = await registraVersione({
+        taskId,
+        deliverableId: prep.dati.deliverableId,
+        origin,
+        archivio,
+        storagePath: path,
+        fileName: file.name,
+        mimeType: file.type || null,
+        sizeBytes: file.size,
+        sha256: sha,
+      });
+      if (!esito.ok) throw new Error(esito.errore);
+
+      setFase("fatto");
+      setMessaggio(
+        origin === "originale"
+          ? `Deposito registrato (v${esito.dati.versionNo}). Impronta ${sha.slice(0, 12)}…`
+          : `Versione editata registrata (v${esito.dati.versionNo}).`,
+      );
+
+      await onCaricato?.(esito.dati.versionId);
+      router.refresh();
+    } catch (e) {
+      setFase("errore");
+      setMessaggio(e instanceof Error ? e.message : "Errore imprevisto");
+    } finally {
+      if (input.current) input.current.value = "";
+    }
+  }
+
+  if (bloccato) {
+    return <span className="text-xs text-slate-400">Caricamento bloccato</span>;
+  }
+
+  const base = etichetta ?? (isAdmin ? "Carica versione editata" : "Carica file");
+  const etichette: Record<Fase, string> = {
+    idle: base,
+    hash: `Calcolo impronta ${Math.round(progresso * 100)}%`,
+    upload: "Caricamento…",
+    registro: "Sigillo in corso…",
+    fatto: "Sostituisci",
+    errore: "Riprova",
+  };
+
+  const occupato = fase === "hash" || fase === "upload" || fase === "registro";
+
+  return (
+    <div className="text-right">
+      <input
+        ref={input}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void carica(f);
+        }}
+      />
+      <button
+        onClick={() => input.current?.click()}
+        disabled={occupato}
+        className={`rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${
+          isAdmin
+            ? "bg-purple-600 text-white"
+            : archivio === "finale"
+              ? "bg-tt-ink text-white"
+              : "bg-tt-blue text-white"
+        }`}
+      >
+        {etichette[fase]}
+      </button>
+
+      {isAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
+        <p className="mt-1 text-xs text-amber-600">
+          Nessun materiale depositato dal gruppo per questa voce.
+        </p>
+      )}
+
+      {messaggio && (
+        <p
+          className={`mt-1 max-w-xs text-xs ${
+            fase === "errore" ? "text-red-600" : "text-slate-500"
+          }`}
+        >
+          {messaggio}
+        </p>
+      )}
+    </div>
+  );
+}

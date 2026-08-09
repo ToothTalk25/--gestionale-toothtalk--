@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/*
+ * Palette ufficiale, estratta dal logo (public/logo-toothtalk.svg):
+ *   #3d9ac4 — blu ToothTalk, colore d'azione (bottoni primari, link, accenti)
+ *   #172837 — inchiostro, il quasi-nero usato per testo e header
+ * tt-blue-* sono tinte derivate dal blu per sfondi tenui (badge, hover, wash).
+ */
+@theme {
+  --color-tt-ink: #172837;
+  --color-tt-blue: #3d9ac4;
+  --color-tt-blue-50: #eef6fa;
+  --color-tt-blue-100: #d7ecf4;
+  --color-tt-blue-600: #2f7ea3;
+  --color-tt-blue-700: #26647f;
+  --color-tt-sand: #f6f8f9;
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-tt-sand);
+  color: var(--color-tt-ink);
+  font-family: var(--font-sans);
+}
+
+/*
+ * Gerarchia tipografica: Poppins non ha "pesi impliciti" come i font di
+ * sistema, quindi la differenza fra titolo e testo va dichiarata esplicita.
+ * Le intestazioni prendono SemiBold e una crenatura leggermente più stretta;
+ * il corpo del testo resta Regular. I componenti possono comunque forzare un
+ * peso diverso con le classi font-medium/font-semibold di Tailwind.
+ */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+label,
+button {
+  font-weight: 500;
+}
+
+/* Stampa: le pagine "certificato" devono uscire pulite dalla stampante. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
