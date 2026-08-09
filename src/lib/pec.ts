@@ -75,18 +75,34 @@ function esc(s: string) {
 }
 
 export function oggettoVerbale(m: ManifestoPacchetto) {
-  return `ToothTalk — Deposito video certificato — ${m.polo.nome} — ${m.task.titolo} — ${m.manifest_hash?.slice(0, 12) ?? ""}`;
+  const corto = m.manifest_hash?.slice(0, 12) ?? "";
+  return `[ToothTalk] ${m.polo.nome} · ${m.task.titolo} — deposito certificato ${corto}`;
 }
 
 export function corpoTesto(m: ManifestoPacchetto, allegati: string[]): string {
   const righe: string[] = [
-    "VERBALE DI DEPOSITO — PACCHETTO VIDEO PUBBLICABILE",
     "",
-    `Gruppo            : ${m.polo.nome}${m.polo.citta ? ` (${m.polo.citta})` : ""}`,
-    `Progetto          : ${m.task.titolo}`,
-    `Sigillato il      : ${m.sigillato_at}`,
-    `Sigillato da      : ${m.sigillato_da.nome ?? ""} <${m.sigillato_da.email}>`,
-    `Impronta manifesto: ${m.manifest_hash ?? "—"}`,
+    "Ciao!",
+    "",
+    `Questo messaggio certifica il deposito di un video realizzato dal gruppo`,
+    `${m.polo.nome}${m.polo.citta ? " (" + m.polo.citta + ")" : ""} per il progetto ToothTalk.`,
+    "",
+    "Il pacchetto è stato completato, rivisto e sigillato: da questo momento",
+    "la PEC gli dà data certa. I file elencati qui sotto esistevano esattamente",
+    "così in questa data, con queste impronte — ed è la tutela di chi ha creato",
+    "il video.",
+    "",
+    "Se domani qualcuno sostenesse che il contenuto era diverso, basterebbe",
+    "ricalcolare l'impronta SHA-256 del file e confrontarla con quella riportata",
+    "qui: se combaciano, la prova è fatta.",
+    "",
+    "────────────────────────────────────────",
+    "",
+    `Gruppo:              ${m.polo.nome}${m.polo.citta ? " (" + m.polo.citta + ")" : ""}`,
+    `Progetto:            ${m.task.titolo}`,
+    `Sigillato il:        ${m.sigillato_at}`,
+    `Sigillato da:        ${m.sigillato_da.nome ?? ""} <${m.sigillato_da.email}>`,
+    `Impronta manifesto:  ${m.manifest_hash ?? "—"}`,
     "",
     "ELEMENTI CERTIFICATI",
     "",
@@ -108,11 +124,28 @@ export function corpoTesto(m: ManifestoPacchetto, allegati: string[]): string {
   }
 
   righe.push(
-    "ALLEGATI: " + (allegati.length ? allegati.join(", ") : "nessuno"),
+    "────────────────────────────────────────",
     "",
-    "Come verificare un file: scaricarlo dall'archivio e calcolarne l'impronta",
-    "con `shasum -a 256 nomefile` (macOS/Linux) o `certutil -hashfile nomefile",
-    "SHA256` (Windows). Deve coincidere con il valore riportato sopra.",
+    "Non devi fare niente adesso: chi ha realizzato il video conserva la",
+    "propria copia. Se un giorno servisse verificare un file, ti basta",
+    "ricalcolarne l'impronta:",
+    "",
+    "  macOS / Linux:  shasum -a 256 nomefile",
+    "  Windows:        certutil -hashfile nomefile SHA256",
+    "",
+    "Deve coincidere con il valore riportato sopra.",
+    "",
+    "Grazie per far parte di ToothTalk — questo messaggio è la vostra garanzia.",
+    "",
+    ...(allegati.length
+      ? [
+          `Allegati: ${allegati.join(", ")}.`,
+          "I file troppo pesanti per la PEC non sono allegati: la loro impronta",
+          "SHA-256, riportata sopra, li identifica comunque con la stessa data certa.",
+        ]
+      : [
+          "Allegati: nessuno.",
+        ]),
     "",
     "Messaggio generato automaticamente dal gestionale ToothTalk.",
   );
@@ -123,7 +156,7 @@ export function corpoTesto(m: ManifestoPacchetto, allegati: string[]): string {
 export function corpoHtml(m: ManifestoPacchetto, allegati: string[]): string {
   const blocchi = m.elementi
     .map((e: ElementoManifesto) => {
-      const testa = `<h3 style="margin:18px 0 4px;font:600 14px system-ui">${esc(
+      const testa = `<h3 style="margin:18px 0 4px;font:600 14px system-ui;color:#0d1b2a">${esc(
         etichetta[e.ruolo] ?? e.ruolo,
       )}</h3>`;
 
@@ -149,31 +182,71 @@ export function corpoHtml(m: ManifestoPacchetto, allegati: string[]): string {
 
   return `<div style="max-width:720px;font:14px/1.6 system-ui;color:#0d1b2a">
 <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
-<h1 style="font-size:20px;margin:4px 0 16px">Verbale di deposito — pacchetto video pubblicabile</h1>
+<h1 style="font-size:20px;margin:4px 0 12px">Deposito certificato · ${esc(m.polo.nome)}</h1>
 
-<table style="font:13px system-ui;border-collapse:collapse">
-<tr><td style="color:#666;padding-right:12px">Gruppo</td><td>${esc(m.polo.nome)}${
+<div style="background:#f0f5ff;border-radius:12px;padding:16px;margin-top:16px;font-size:13px;line-height:1.6;color:#0d1b2a">
+  <p style="margin:0"><strong>Ciao!</strong></p>
+  <p style="margin:8px 0 0">
+    Questo messaggio certifica il deposito di un video realizzato dal gruppo
+    <strong>${esc(m.polo.nome)}${m.polo.citta ? " (" + esc(m.polo.citta) + ")" : ""}</strong>
+    per il progetto ToothTalk.
+  </p>
+  <p style="margin:8px 0 0">
+    Il pacchetto è stato completato, rivisto e sigillato: da questo momento
+    la PEC gli dà <strong>data certa</strong>. I file elencati qui sotto esistevano
+    esattamente così in questa data, con queste impronte — ed è la tutela di
+    chi ha creato il video.
+  </p>
+  <p style="margin:8px 0 0;font-size:12px;color:#555">
+    Se domani qualcuno sostenesse che il contenuto era diverso, basterebbe
+    ricalcolare l'impronta SHA-256 del file e confrontarla con quella riportata
+    qui: se combaciano, la prova è fatta.
+  </p>
+</div>
+
+<table style="font:13px system-ui;border-collapse:collapse;margin:20px 0 0">
+<tr><td style="color:#666;padding-right:16px">Gruppo</td><td>${esc(m.polo.nome)}${
     m.polo.citta ? ` (${esc(m.polo.citta)})` : ""
   }</td></tr>
-<tr><td style="color:#666;padding-right:12px">Progetto</td><td>${esc(m.task.titolo)}</td></tr>
-<tr><td style="color:#666;padding-right:12px">Sigillato il</td><td>${esc(m.sigillato_at)}</td></tr>
-<tr><td style="color:#666;padding-right:12px">Sigillato da</td><td>${esc(
+<tr><td style="color:#666;padding-right:16px">Progetto</td><td>${esc(m.task.titolo)}</td></tr>
+<tr><td style="color:#666;padding-right:16px">Sigillato il</td><td>${esc(m.sigillato_at)}</td></tr>
+<tr><td style="color:#666;padding-right:16px">Sigillato da</td><td>${esc(
     m.sigillato_da.nome ?? "",
   )} &lt;${esc(m.sigillato_da.email)}&gt;</td></tr>
-<tr><td style="color:#666;padding-right:12px">Impronta manifesto</td><td style="font-family:monospace">${esc(
+<tr><td style="color:#666;padding-right:16px">Impronta manifesto</td><td style="font-family:monospace">${esc(
     m.manifest_hash ?? "—",
   )}</td></tr>
 </table>
 
 ${blocchi}
 
+<div style="background:#f6f7f9;border-radius:12px;padding:16px;margin-top:24px;font-size:12px;line-height:1.6;color:#555">
+  <p style="margin:0">
+    <strong>Non devi fare niente adesso:</strong> chi ha realizzato il video
+    conserva la propria copia. Se un giorno servisse verificare un file:
+  </p>
+  <p style="margin:6px 0 0;font-family:monospace;font-size:11px">
+    macOS / Linux:&nbsp;&nbsp;shasum -a 256 nomefile<br>
+    Windows:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;certutil -hashfile nomefile SHA256
+  </p>
+  <p style="margin:6px 0 0">
+    L'impronta deve coincidere con il valore riportato sopra.
+  </p>
+</div>
+
 <p style="font-size:12px;color:#666;margin-top:24px">
-Allegati: ${allegati.length ? esc(allegati.join(", ")) : "nessuno"}.
-I file troppo pesanti per la PEC non sono allegati: la loro impronta SHA-256,
-riportata sopra, li identifica in modo univoco e riceve da questo messaggio la
-stessa data certa.
+  Allegati: ${allegati.length ? esc(allegati.join(", ")) : "nessuno"}.
+  I file troppo pesanti per la PEC non sono allegati: la loro impronta
+  SHA-256, riportata sopra, li identifica comunque con la stessa data certa.
 </p>
-<p style="font-size:12px;color:#888">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
+
+<p style="font-size:13px;color:#0d1b2a;margin-top:20px;font-weight:500">
+  Grazie per far parte di ToothTalk — questo messaggio è la vostra garanzia.
+</p>
+
+<p style="font-size:11px;color:#999;margin-top:12px">
+  Messaggio generato automaticamente dal gestionale ToothTalk.
+</p>
 </div>`;
 }
 
