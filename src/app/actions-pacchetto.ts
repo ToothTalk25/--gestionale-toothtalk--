@@ -351,6 +351,21 @@ export async function inviaPecPacchetto(
     .eq("id", taskId)
     .single<{ polo_id: string }>();
 
+  // I destinatari PEC del gruppo, se il polo ne ha di propri; altrimenti
+  // si usano i PEC_DESTINATARI globali del .env.local.
+  const { data: polo } = await supabase
+    .from("poli")
+    .select("pec_destinatari")
+    .eq("id", task?.polo_id ?? "")
+    .single<{ pec_destinatari: string[] | null }>();
+
+  const destinatari =
+    polo?.pec_destinatari?.length
+      ? polo.pec_destinatari
+      : config.destinatari;
+
+  const configPolo = { ...config, destinatari };
+
   const { data: membri } = await supabase
     .from("memberships")
     .select("profiles!inner(email)")
@@ -365,7 +380,7 @@ export async function inviaPecPacchetto(
 
   try {
     const { messageId } = await spedisciPec({
-      config,
+      config: configPolo,
       oggetto: oggettoVerbale(manifesto),
       testo: corpoTesto(manifesto, nomiAllegati),
       html: corpoHtml(manifesto, nomiAllegati),
@@ -377,7 +392,7 @@ export async function inviaPecPacchetto(
       p_pacchetto: pacchettoId,
       p_stato: "pec_inviata",
       p_message_id: messageId,
-      p_destinatari: config.destinatari,
+      p_destinatari: configPolo.destinatari,
       p_errore: null,
       p_note: esclusi.length ? `Non allegati: ${esclusi.join("; ")}` : null,
     });
@@ -390,7 +405,7 @@ export async function inviaPecPacchetto(
       p_pacchetto: pacchettoId,
       p_stato: "pec_errore",
       p_message_id: null,
-      p_destinatari: config.destinatari,
+      p_destinatari: configPolo.destinatari,
       p_errore: msg,
       p_note: null,
     });
