@@ -46,11 +46,11 @@ export const STATI_MEMBRO: TaskStatus[] = ["da_fare", "consegnato", "in_revision
 export const KIND_LABEL: Record<DeliverableKind, string> = {
   script: "Script di lavorazione",
   video_grezzo: "Video in lavorazione",
-  thumbnail: "Copertina",
+  thumbnail: "Copertina di lavorazione",
   liberatoria: "Liberatoria privacy/immagine",
   audio: "Audio",
   altro: "Altro",
-  descrizione: "Descrizione",
+  descrizione: "Descrizione di lavorazione",
   finale_video: "Video montato (pubblicabile)",
   finale_copertina: "Copertina (pubblicabile)",
   finale_liberatoria: "Liberatoria (pubblicabile)",
