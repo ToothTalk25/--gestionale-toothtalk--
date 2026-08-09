@@ -163,6 +163,47 @@ export async function sigillaPacchetto(
   return { ok: true, dati: { manifestHash: manifesto.manifest_hash ?? "" } };
 }
 
+/**
+ * Il gruppo segnala che il pacchetto è completo e passa la mano a chi ha
+ * accesso globale. Da quel momento la composizione è congelata: la decide il
+ * database, non l'interfaccia.
+ */
+export async function segnalaCompletato(
+  taskId: string,
+  pacchettoId: string,
+): Promise<Esito> {
+  await requireSession();
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase.rpc("segnala_completato", {
+    p_pacchetto: pacchettoId,
+  });
+  if (error) return errore(error.message);
+
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+
+/**
+ * Chi ha accesso globale ha visto il materiale e non lo ritiene pronto:
+ * il pacchetto torna in composizione perché il gruppo lo sistemi.
+ */
+export async function rimandaInComposizione(
+  taskId: string,
+  pacchettoId: string,
+): Promise<Esito> {
+  await requireSession();
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase.rpc("rimanda_in_composizione", {
+    p_pacchetto: pacchettoId,
+  });
+  if (error) return errore(error.message);
+
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+
 export async function annullaPacchetto(
   taskId: string,
   pacchettoId: string,
@@ -195,7 +236,9 @@ export async function inviaPecPacchetto(
   taskId: string,
   pacchettoId: string,
 ): Promise<Esito<{ messageId: string; allegati: string[]; esclusi: string[] }>> {
-  await requireSession();
+  const { isAdmin } = await requireSession();
+  if (!isAdmin)
+    return errore("Solo chi ha accesso globale può spedire il verbale via PEC.");
   const supabase = await supabaseServer();
 
   const { data: pacchetto, error: eP } = await supabase

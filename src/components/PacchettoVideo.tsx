@@ -10,8 +10,10 @@ import {
   annullaPacchetto,
   collegaElemento,
   inviaPecPacchetto,
+  rimandaInComposizione,
   rimuoviElementoPacchetto,
   salvaPacchetto,
+  segnalaCompletato,
   sigillaPacchetto,
 } from "@/app/actions-pacchetto";
 import {
@@ -31,6 +33,7 @@ export type ElementoCaricato = {
 
 const COLORI: Record<PacchettoStato, string> = {
   bozza: "bg-slate-100 text-slate-700",
+  pronto: "bg-violet-100 text-violet-800",
   sigillato: "bg-amber-100 text-amber-800",
   pec_inviata: "bg-blue-100 text-blue-800",
   pec_confermata: "bg-emerald-100 text-emerald-800",
@@ -247,9 +250,9 @@ export default function PacchettoVideo({
 
       {isAdmin && inBozza && (
         <p className="mt-3 text-xs text-slate-400">
-          Il pacchetto lo compone e lo sigilla il gruppo che ha realizzato il
-          video: è il loro deposito. Dopo il sigillo puoi annullarlo, se
-          sbagliato.
+          Il pacchetto lo compone il gruppo che realizza il video: è il loro
+          deposito. Quando lo segnalano come completato, lo rivedi qui e decidi
+          tu: sigillarlo o rimandarlo in composizione.
         </p>
       )}
 
@@ -278,32 +281,37 @@ export default function PacchettoVideo({
       <div className="mt-6 border-t border-slate-100 pt-5">
         {inBozza ? (
           <>
-            <button
-              disabled={!completo || !componibile || pending}
-              onClick={() =>
-                start(async () => {
-                  setErrore(null);
-                  setMessaggio(null);
-                  const id = await assicuraPacchetto();
-                  if (!id) return;
+            {componibile && (
+              <button
+                disabled={!completo || pending}
+                onClick={() =>
+                  start(async () => {
+                    setErrore(null);
+                    setMessaggio(null);
+                    const id = await assicuraPacchetto();
+                    if (!id) return;
 
-                  // Il sigillo legge dal database: salviamo i testi prima.
-                  const salva = await salvaPacchetto(taskId, { descrizione, script });
-                  if (!salva.ok) return setErrore(salva.errore);
+                    // La segnalazione legge dal database: salviamo i testi prima.
+                    const salva = await salvaPacchetto(taskId, {
+                      descrizione,
+                      script,
+                    });
+                    if (!salva.ok) return setErrore(salva.errore);
 
-                  const esito = await sigillaPacchetto(taskId, id);
-                  if (!esito.ok) return setErrore(esito.errore);
+                    const esito = await segnalaCompletato(taskId, id);
+                    if (!esito.ok) return setErrore(esito.errore);
 
-                  setMessaggio(
-                    `Pacchetto sigillato. Impronta manifesto ${esito.dati.manifestHash.slice(0, 16)}…`,
-                  );
-                  router.refresh();
-                })
-              }
-              className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-            >
-              {pending ? "Attendere…" : "Sigilla il pacchetto"}
-            </button>
+                    setMessaggio(
+                      "Pacchetto segnalato come completato: ora è in attesa della revisione.",
+                    );
+                    router.refresh();
+                  })
+                }
+                className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+              >
+                {pending ? "Attendere…" : "Segnala completato"}
+              </button>
+            )}
             {!completo && (
               <p className="mt-2 text-xs text-slate-400">
                 Mancano ancora:{" "}
@@ -320,10 +328,86 @@ export default function PacchettoVideo({
               </p>
             )}
             <p className="mt-2 text-xs text-slate-400">
-              Dopo il sigillo nulla è più modificabile o eliminabile: è il
-              momento in cui il deposito diventa una prova.
+              Quando segnali il completamento il pacchetto passa alla revisione:
+              non sarà più modificabile finché chi ha accesso globale non lo
+              sigilla o lo rimanda in composizione.
             </p>
           </>
+        ) : stato === "pronto" ? (
+          isAdmin ? (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-500">
+                Il gruppo ha segnalato il pacchetto come completato. Rivedi il
+                materiale qui sopra: se è a posto sigilla, altrimenti rimandalo
+                in composizione.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  disabled={!completo || pending}
+                  onClick={() =>
+                    start(async () => {
+                      setErrore(null);
+                      setMessaggio(null);
+                      const esito = await sigillaPacchetto(taskId, pacchetto!.id);
+                      if (!esito.ok) return setErrore(esito.errore);
+                      setMessaggio(
+                        `Pacchetto sigillato. Impronta manifesto ${esito.dati.manifestHash.slice(0, 16)}…`,
+                      );
+                      router.refresh();
+                    })
+                  }
+                  className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {pending ? "Attendere…" : "Sigilla il pacchetto"}
+                </button>
+                <button
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      setErrore(null);
+                      setMessaggio(null);
+                      const esito = await rimandaInComposizione(
+                        taskId,
+                        pacchetto!.id,
+                      );
+                      if (!esito.ok) return setErrore(esito.errore);
+                      setMessaggio(
+                        "Il pacchetto è tornato in composizione: il gruppo può modificarlo.",
+                      );
+                      router.refresh();
+                    })
+                  }
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                >
+                  Rimanda in composizione
+                </button>
+              </div>
+              {!completo && (
+                <p className="text-xs text-slate-400">
+                  Mancano ancora:{" "}
+                  {[
+                    !video && "video",
+                    !copertina && "copertina",
+                    !descrizione.trim() && "descrizione",
+                    !script.trim() && "script",
+                    coinvolgeTerzi && !liberatoria && "liberatoria",
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                  .
+                </p>
+              )}
+              <p className="text-xs text-slate-400">
+                Il sigillo chiude la composizione per sempre: da lì in poi il
+                pacchetto è immutabile e il verbale parte via PEC.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Il pacchetto è in attesa della revisione di chi ha accesso
+              globale.
+            </p>
+          )
         ) : (
           <DettaglioSigillo
             taskId={taskId}
@@ -412,7 +496,7 @@ function DettaglioSigillo({
           Apri il verbale
         </Link>
 
-        {daSpedire && (
+        {daSpedire && isAdmin && (
           <button
             disabled={pending}
             onClick={() =>

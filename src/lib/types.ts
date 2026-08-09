@@ -44,8 +44,8 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 export const STATI_MEMBRO: TaskStatus[] = ["da_fare", "consegnato", "in_revisione"];
 
 export const KIND_LABEL: Record<DeliverableKind, string> = {
-  script: "Script (bozza di lavorazione)",
-  video_grezzo: "Video grezzo",
+  script: "Script di lavorazione",
+  video_grezzo: "Video in lavorazione",
   thumbnail: "Copertina",
   liberatoria: "Liberatoria privacy/immagine",
   audio: "Audio",
@@ -56,14 +56,16 @@ export const KIND_LABEL: Record<DeliverableKind, string> = {
   finale_liberatoria: "Liberatoria (pubblicabile)",
 };
 
-// "script", "audio" e "liberatoria" restano nel tipo (compatibilità con
-// l'enum del database) ma non compaiono più come slot separati qui: lo
-// script duplica il campo "Script di lavorazione" sulla scheda, l'audio non
-// è mai stato un materiale a sé, la liberatoria vive esclusivamente nel
-// pacchetto pubblicabile (compare solo quando il progetto la richiede).
+// "audio" e "liberatoria" restano nel tipo (compatibilità con l'enum del
+// database) ma non compaiono come slot separati qui: l'audio non è mai stato
+// un materiale a sé, la liberatoria vive esclusivamente nel pacchetto
+// pubblicabile (compare solo quando il progetto la richiede). Lo script, in
+// lavorazione, è la bozza di ciò che si dirà nel video: il pacchetto porta
+// invece lo script usato davvero.
 /** Materiali di processo: immutabili una volta consegnati, ma non certificati. */
 export const KIND_LAVORAZIONE: DeliverableKind[] = [
   "video_grezzo",
+  "script",
   "descrizione",
   "thumbnail",
   "altro",
@@ -134,6 +136,7 @@ export type DeliverableVersion = {
 
 export type PacchettoStato =
   | "bozza"
+  | "pronto"
   | "sigillato"
   | "pec_inviata"
   | "pec_confermata"
@@ -142,6 +145,7 @@ export type PacchettoStato =
 
 export const PACCHETTO_LABEL: Record<PacchettoStato, string> = {
   bozza: "In composizione",
+  pronto: "Pronto per la revisione",
   sigillato: "Sigillato — da spedire",
   pec_inviata: "PEC inviata",
   pec_confermata: "PEC consegnata",
@@ -161,6 +165,7 @@ export type PacchettoVideoRow = {
   manifest_hash: string | null;
   sigillato_at: string | null;
   sigillato_da: string | null;
+  pronto_at: string | null;
   pec_destinatari: string[] | null;
   pec_message_id: string | null;
   pec_inviata_at: string | null;
@@ -248,6 +253,18 @@ export type VideoDaRivedere = {
   coinvolge_terzi: boolean;
   richieste_aperte: number;
   ultima_richiesta: string | null;
+};
+
+/** Pacchetti segnalati dal gruppo come completati, in attesa della revisione di chi ha accesso globale. */
+export type PacchettoPronto = {
+  pacchetto_id: string;
+  task_id: string;
+  progetto: string;
+  polo_id: string;
+  gruppo: string;
+  stato: PacchettoStato;
+  pronto_at: string | null;
+  sigillato_at: string | null;
 };
 
 /** Contesto di sessione risolto lato server a ogni richiesta. */

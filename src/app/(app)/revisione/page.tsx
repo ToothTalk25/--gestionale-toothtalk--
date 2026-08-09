@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import RichiesteModifica from "@/components/RichiesteModifica";
 import {
   PACCHETTO_LABEL,
+  type PacchettoPronto,
   type RichiestaModifica,
   type VideoDaRivedere,
 } from "@/lib/types";
@@ -26,7 +27,16 @@ export default async function RevisionePage() {
     .order("sigillato_at", { ascending: false })
     .returns<VideoDaRivedere[]>();
 
+  // Pacchetti segnalati dal gruppo come completati, prima del sigillo: è qui
+  // che chi ha accesso globale decide se sigillare o rimandare in composizione.
+  const { data: pronti } = await supabase
+    .from("v_pacchetti_pronti")
+    .select("*")
+    .order("pronto_at", { ascending: false })
+    .returns<PacchettoPronto[]>();
+
   const lista = video ?? [];
+  const inAttesa = pronti ?? [];
 
   const { data: richieste } = lista.length
     ? await supabase
@@ -65,12 +75,48 @@ export default async function RevisionePage() {
       <header>
         <h1 className="text-2xl font-semibold">Video da rivedere</h1>
         <p className="mt-1 max-w-2xl text-sm text-slate-500">
-          I video completati e sigillati, pronti per la revisione editoriale.
-          Il pacchetto è già stato certificato via PEC e non è modificabile:
-          qui si annotano le correzioni, che restano visibili al gruppo dentro
-          la piattaforma.
+          Qui rivedi i pacchetti in due momenti: quando il gruppo li segnala
+          come completati (decidi tu se sigillarli o rimandarli in
+          composizione) e, dopo la certificazione PEC, per annotare le
+          correzioni che restano visibili al gruppo dentro la piattaforma.
         </p>
       </header>
+
+      {inAttesa.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-lg font-medium">In attesa della tua revisione</h2>
+            <p className="text-sm text-slate-500">
+              I gruppi hanno segnalato questi pacchetti come completati: apri
+              la scheda, rivedi il materiale e decidi se sigillare o rimandare
+              in composizione.
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+            {inAttesa.map((v) => (
+              <li key={v.pacchetto_id}>
+                <Link
+                  href={`/task/${v.task_id}`}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                >
+                  <span className="w-24 shrink-0 text-xs font-medium text-slate-400">
+                    {v.gruppo}
+                  </span>
+                  <span className="flex-1 text-sm font-medium">{v.progetto}</span>
+                  <span className="text-xs text-slate-400">
+                    {v.pronto_at
+                      ? `segnalato il ${new Date(v.pronto_at).toLocaleString("it-IT")}`
+                      : ""}
+                  </span>
+                  <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                    {PACCHETTO_LABEL[v.stato]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Card etichetta="Video sigillati" valore={lista.length} />
