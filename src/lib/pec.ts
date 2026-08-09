@@ -193,6 +193,9 @@ export async function spedisciPec(opts: {
     host: config.host,
     port: config.port,
     secure: config.port === 465,
+    // Su 25/587 la connessione parte in chiaro e si alza a TLS con STARTTLS:
+    // per una PEC il canale deve essere cifrato per forza.
+    requireTLS: config.port !== 465,
     auth: { user: config.user, pass: config.password },
   });
 
