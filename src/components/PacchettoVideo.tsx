@@ -533,6 +533,9 @@ function DettaglioSigillo({
                     `PEC spedita (${esito.dati.messageId}). Allegati: ${esito.dati.allegati.join(", ")}.` +
                       (esito.dati.esclusi.length
                         ? ` Non allegati per dimensione: ${esito.dati.esclusi.join("; ")} — certificati tramite impronta.`
+                        : "") +
+                      (esito.dati.driveUrl
+                        ? ` File copiati su Drive.`
                         : ""),
                   );
               })

@@ -15,6 +15,7 @@ import {
   type Allegato,
 } from "@/lib/pec";
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
+import { esportaPacchettoSuDrive, type FileBuffer } from "@/lib/drive";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -235,7 +236,7 @@ export async function annullaPacchetto(
 export async function inviaPecPacchetto(
   taskId: string,
   pacchettoId: string,
-): Promise<Esito<{ messageId: string; allegati: string[]; esclusi: string[] }>> {
+): Promise<Esito<{ messageId: string; allegati: string[]; esclusi: string[]; driveUrl: string | null }>> {
   const { isAdmin } = await requireSession();
   if (!isAdmin)
     return errore("Solo chi ha accesso globale può spedire il verbale via PEC.");
@@ -397,8 +398,28 @@ export async function inviaPecPacchetto(
       p_note: esclusi.length ? `Non allegati: ${esclusi.join("; ")}` : null,
     });
 
+    // --- esportazione su Google Drive ---------------------------------
+    let driveUrl: string | null = null;
+    try {
+      const driveFiles: FileBuffer[] = allegati.map((a) => ({
+        name: a.filename,
+        content: a.content,
+        mimeType: a.contentType ?? undefined,
+      }));
+      driveUrl = await esportaPacchettoSuDrive({
+        polo: manifesto.polo.nome,
+        progetto: manifesto.task.titolo,
+        files: driveFiles,
+      });
+    } catch {
+      // Drive KO non blocca la PEC: il verbale è già partito.
+    }
+
     revalidatePath(`/task/${taskId}`);
-    return { ok: true, dati: { messageId, allegati: nomiAllegati, esclusi } };
+    return {
+      ok: true,
+      dati: { messageId, allegati: nomiAllegati, esclusi, driveUrl },
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Errore di spedizione";
     await admin.rpc("registra_esito_pec", {
