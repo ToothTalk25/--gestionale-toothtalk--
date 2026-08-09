@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -10,7 +11,32 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errore, setErrore] = useState<string | null>(null);
+  const [messaggio, setMessaggio] = useState<string | null>(null);
   const [inCorso, setInCorso] = useState(false);
+  const [mostraReset, setMostraReset] = useState(false);
+
+  function resettaPassword() {
+    setMostraReset((v) => !v);
+    setErrore(null);
+    setMessaggio(null);
+  }
+
+  async function inviaReset() {
+    setInCorso(true);
+    setErrore(null);
+    setMessaggio(null);
+    const supabase = supabaseBrowser();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/aggiorna-password`,
+    });
+    setInCorso(false);
+    if (error) {
+      setErrore("Impossibile inviare il reset: " + error.message);
+    } else {
+      setMessaggio("Controlla la tua email: ti abbiamo mandato un link per creare una nuova password.");
+      setMostraReset(false);
+    }
+  }
 
   async function accedi(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +97,50 @@ export default function LoginForm() {
         Gli account sono creati in anticipo. Se non riesci ad accedere, chiedi
         un reset della password.
       </p>
+
+      <div className="mt-4 flex items-center justify-between text-xs">
+        <Link href="/registrati" className="text-tt-blue hover:underline">
+          Registrati
+        </Link>
+        <button
+          type="button"
+          onClick={resettaPassword}
+          disabled={inCorso}
+          className="text-slate-400 hover:text-slate-600 disabled:opacity-50"
+        >
+          {mostraReset ? "Annulla" : "Password dimenticata?"}
+        </button>
+      </div>
+
+      {mostraReset && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-slate-500">
+            Inserisci la tua email: riceverai un link per creare una nuova
+            password.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="La tua email"
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+              autoComplete="email"
+            />
+            <button
+              type="button"
+              disabled={inCorso || !email}
+              onClick={inviaReset}
+              className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            >
+              Invia
+            </button>
+          </div>
+          {errore && <p className="text-xs text-red-600">{errore}</p>}
+          {messaggio && <p className="text-xs text-emerald-600">{messaggio}</p>}
+        </div>
+      )}
     </form>
   );
 }

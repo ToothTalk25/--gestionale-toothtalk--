@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,22 @@ export const metadata: Metadata = {
   title: "ToothTalk — Gestionale",
   description:
     "Gestionale interno ToothTalk: spazio di lavoro dei gruppi universitari e archivio dei materiali depositati",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "ToothTalk",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/logo-toothtalk.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d1b2a",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

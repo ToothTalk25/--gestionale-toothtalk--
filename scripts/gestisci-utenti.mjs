@@ -8,7 +8,6 @@
  *   npm run utente -- assegna mario@esempio.it insubria
  *   npm run utente -- rimuovi mario@esempio.it insubria
  *   npm run utente -- promuovi enrico@esempio.it     # -> admin
- *   npm run utente -- password enrico@esempio.it "Nuova1!"   # reimposta la password
  *   npm run utente -- polo "Bologna" bologna Bologna
  */
 
@@ -114,18 +113,6 @@ switch (comando) {
     const { error } = await db.from("profiles").update({ role: "admin" }).eq("email", email);
     controlla({ error });
     console.log(`✓ ${email} ha ora accesso globale a tutti i gruppi`);
-    break;
-  }
-
-  case "password": {
-    const [email, password] = args;
-    if (!email || !password) {
-      console.error("Uso: password <email> <nuovaPassword>");
-      process.exit(1);
-    }
-    const { error } = await db.auth.admin.updateUserById(await idUtente(email), { password });
-    controlla({ error });
-    console.log(`✓ password di ${email} aggiornata`);
     break;
   }
 
