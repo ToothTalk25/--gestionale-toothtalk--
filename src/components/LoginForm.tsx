@@ -93,11 +93,6 @@ export default function LoginForm() {
         {inCorso ? "Accesso…" : "Accedi"}
       </button>
 
-      <p className="mt-4 text-xs text-slate-400">
-        Gli account sono creati in anticipo. Se non riesci ad accedere, chiedi
-        un reset della password.
-      </p>
-
       <div className="mt-4 flex items-center justify-between text-xs">
         <Link href="/registrati" className="text-tt-blue hover:underline">
           Registrati
