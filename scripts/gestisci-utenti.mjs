@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
  * Amministrazione utenti e poli — usa la SERVICE ROLE KEY, quindi bypassa la
- * RLS. Va eseguito solo dalla macchina del Titolare, mai esposto in rete.
+ * RLS. Va eseguito solo in locale, mai esposto in rete.
  *
  *   npm run utente -- lista
  *   npm run utente -- crea mario@esempio.it "PasswordProvvisoria1!" "Mario Rossi"
  *   npm run utente -- assegna mario@esempio.it insubria
  *   npm run utente -- rimuovi mario@esempio.it insubria
  *   npm run utente -- promuovi enrico@esempio.it     # -> admin
+ *   npm run utente -- password enrico@esempio.it "Nuova1!"   # reimposta la password
  *   npm run utente -- polo "Bologna" bologna Bologna
  */
 
@@ -112,7 +113,19 @@ switch (comando) {
     const [email] = args;
     const { error } = await db.from("profiles").update({ role: "admin" }).eq("email", email);
     controlla({ error });
-    console.log(`✓ ${email} è ora Titolare (accesso trasversale a tutti i poli)`);
+    console.log(`✓ ${email} ha ora accesso globale a tutti i gruppi`);
+    break;
+  }
+
+  case "password": {
+    const [email, password] = args;
+    if (!email || !password) {
+      console.error("Uso: password <email> <nuovaPassword>");
+      process.exit(1);
+    }
+    const { error } = await db.auth.admin.updateUserById(await idUtente(email), { password });
+    controlla({ error });
+    console.log(`✓ password di ${email} aggiornata`);
     break;
   }
 
