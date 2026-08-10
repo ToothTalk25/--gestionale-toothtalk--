@@ -88,6 +88,7 @@ export const KIND_LAVORAZIONE: DeliverableKind[] = [
 export type Profile = {
   id: string;
   email: string;
+  pec: string | null;
   full_name: string | null;
   role: UserRole;
   attivo: boolean;

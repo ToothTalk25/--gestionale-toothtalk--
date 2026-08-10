@@ -13,7 +13,7 @@ function errore(msg: string): Esito<never> {
   return { ok: false, errore: msg };
 }
 
-type CampiAnagrafica = Partial<Pick<Profile, "universita">>;
+type CampiAnagrafica = Partial<Pick<Profile, "universita" | "pec">>;
 
 /** Aggiorna i dati anagrafici del proprio profilo. */
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {
@@ -73,6 +73,13 @@ export async function caricaAccordo(
 ): Promise<Esito<{ messageId: string; verifica: EsitoVerificaAccordo }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
+
+  if (!profile.pec) {
+    return errore(
+      "Prima di caricare l'accordo devi inserire la tua PEC nel profilo: è " +
+        "necessaria per ricevere la copia certificata via PEC.",
+    );
+  }
 
   const { error } = await supabase
     .from("profiles")
@@ -162,7 +169,7 @@ export async function caricaAccordo(
           contentType: blob.type || "application/pdf",
         },
       ],
-      copiaConoscenza: [profile.email],
+      copiaConoscenza: [profile.pec],
     });
 
     revalidatePath("/profilo");

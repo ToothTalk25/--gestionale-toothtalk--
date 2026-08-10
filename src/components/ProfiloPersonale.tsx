@@ -24,6 +24,7 @@ export default function ProfiloPersonale({
   const [errore, setErrore] = useState<string | null>(null);
 
   const [universita, setUniversita] = useState(profile.universita ?? "");
+  const [pec, setPec] = useState(profile.pec ?? "");
 
   const fotoInput = useRef<HTMLInputElement>(null);
   const accordoInput = useRef<HTMLInputElement>(null);
@@ -47,6 +48,7 @@ export default function ProfiloPersonale({
     start(async () => {
       const esito = await aggiornaAnagrafica({
         universita: universita || null,
+        pec: pec || null,
       });
       if (!esito.ok) setErrore(esito.errore);
       else {
@@ -108,6 +110,21 @@ export default function ProfiloPersonale({
         <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
           {profile.full_name ?? "—"}
         </p>
+
+        <label className="mt-4 block text-sm font-medium">La tua PEC</label>
+        <input
+          type="email"
+          value={pec}
+          onChange={(e) => setPec(e.target.value)}
+          placeholder="nome@pec.it"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+        {!profile.pec && (
+          <p className="mt-1 text-xs text-amber-700">
+            Obbligatoria: l&apos;accordo e le impronte ti arriveranno via PEC con
+            valore certificato.
+          </p>
+        )}
 
         <label className="mt-4 block text-sm font-medium">Università</label>
         <input

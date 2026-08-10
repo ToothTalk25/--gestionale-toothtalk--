@@ -369,11 +369,15 @@ export async function inviaPecPacchetto(
 
   const { data: membri } = await supabase
     .from("memberships")
-    .select("profiles!inner(email)")
+    .select("profiles!inner(pec)")
     .eq("polo_id", task?.polo_id ?? "")
-    .returns<{ profiles: { email: string } }[]>();
+    .returns<{ profiles: { pec: string | null } }[]>();
 
-  const cc = (membri ?? []).map((m) => m.profiles.email);
+  // Copie certificate: a ogni partecipante sulla sua PEC (PEC-to-PEC =
+  // avvenuta consegna certificata per tutti).
+  const cc = (membri ?? [])
+    .map((m) => m.profiles.pec)
+    .filter((x): x is string => !!x);
 
   // --- spedizione -----------------------------------------------------
   const nomiAllegati = allegati.map((a) => a.filename);

@@ -47,16 +47,21 @@ export async function verificaCodice(
 export async function registraConInvito(input: {
   nome: string;
   email: string;
+  pec: string;
   password: string;
   codice: string;
   consenso: boolean;
 }): Promise<Esito<{ gruppo: string }>> {
   const nome = input.nome.trim();
   const email = input.email.trim().toLowerCase();
+  const pec = input.pec.trim().toLowerCase();
   const codice = input.codice.trim();
 
   if (!nome) return { ok: false, errore: "Inserisci nome e cognome." };
   if (!email) return { ok: false, errore: "Inserisci l'email." };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pec)) {
+    return { ok: false, errore: "Inserisci un indirizzo PEC valido." };
+  }
   if (input.password.length < 8) {
     return { ok: false, errore: "La password deve avere almeno 8 caratteri." };
   }
@@ -88,6 +93,13 @@ export async function registraConInvito(input: {
       };
     }
     return { ok: false, errore: "Creazione account non riuscita." };
+  }
+
+  // La PEC del partecipante, registrata subito nel profilo.
+  try {
+    await admin.from("profiles").update({ pec }).eq("id", creato.user.id);
+  } catch {
+    // Non blocchiamo la creazione: la PEC si può completare dal profilo.
   }
 
   const { error: eInvito } = await admin.rpc("consuma_invito", {

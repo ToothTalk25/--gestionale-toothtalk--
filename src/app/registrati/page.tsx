@@ -7,6 +7,7 @@ import { registraConInvito, verificaCodice } from "@/app/actions-invito";
 export default function RegistratiPage() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  const [pec, setPec] = useState("");
   const [password, setPassword] = useState("");
   const [codice, setCodice] = useState("");
   const [consenso, setConsenso] = useState(false);
@@ -33,7 +34,7 @@ export default function RegistratiPage() {
     setInCorso(true);
     setErrore(null);
 
-    const esito = await registraConInvito({ nome, email, password, codice, consenso });
+    const esito = await registraConInvito({ nome, email, pec, password, codice, consenso });
     setInCorso(false);
 
     if (!esito.ok) {
@@ -119,6 +120,21 @@ export default function RegistratiPage() {
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           autoComplete="email"
         />
+
+        <label className="mt-4 block text-sm font-medium">La tua PEC</label>
+        <input
+          type="email"
+          required
+          value={pec}
+          onChange={(e) => setPec(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          placeholder="nome@pec.it"
+          autoComplete="off"
+        />
+        <p className="mt-1 text-xs text-slate-400">
+          Obbligatoria: l&apos;accordo firmato e le impronte dei materiali ti
+          arriveranno via PEC con valore certificato.
+        </p>
 
         <label className="mt-4 block text-sm font-medium">Password</label>
         <input
