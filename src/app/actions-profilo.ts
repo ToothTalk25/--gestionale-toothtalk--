@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -158,6 +159,10 @@ export async function caricaFoto(storagePath: string): Promise<Esito> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
+  if (!storagePath.startsWith(`${profile.id}/foto/`)) {
+    return errore("Percorso del file non valido.");
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update({ foto_path: storagePath })
@@ -192,10 +197,17 @@ export async function registraConsenso(tipo: "privacy" | "cookie"): Promise<Esit
  */
 export async function caricaAccordo(
   storagePath: string,
-  sha256: string,
+  _sha256Client: string,
 ): Promise<Esito<{ messageId: string; verifica: EsitoVerificaAccordo }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
+
+  // Il path deve stare nello spazio di chi chiama: impedisce di far puntare
+  // il proprio profilo al file di qualcun altro (che comunque l'RLS dello
+  // storage bloccherebbe in lettura, ma qui evitiamo pure di provarci).
+  if (!storagePath.startsWith(`${profile.id}/accordo/`)) {
+    return errore("Percorso del file non valido.");
+  }
 
   if (!profile.pec) {
     return errore(
@@ -203,6 +215,35 @@ export async function caricaAccordo(
         "necessaria per ricevere la copia certificata via PEC.",
     );
   }
+
+  // --- PEC all'accesso globale -----------------------------------------
+  let config;
+  try {
+    config = leggiConfigPec();
+  } catch (e) {
+    return errore(
+      e instanceof Error
+        ? `La PEC non è configurata: ${e.message}`
+        : "La PEC non è configurata.",
+    );
+  }
+
+  const { data: blob, error: eBlob } = await supabase.storage
+    .from("profili")
+    .download(storagePath);
+  if (eBlob || !blob) {
+    return errore("File non leggibile dallo storage.");
+  }
+
+  const nomeFile = storagePath.split("/").pop() ?? "accordo.pdf";
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const nome = profile.full_name ?? profile.email;
+
+  // L'impronta certificata via PEC è quella VERA del file appena scaricato,
+  // ricalcolata qui — mai quella dichiarata dal client. Altrimenti chiunque
+  // potrebbe far certificare un'impronta diversa dal contenuto reale,
+  // svuotando di senso l'intera certificazione.
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
 
   const { error } = await supabase
     .from("profiles")
@@ -213,29 +254,6 @@ export async function caricaAccordo(
     })
     .eq("id", profile.id);
   if (error) return errore(error.message);
-
-  // --- PEC all'accesso globale -----------------------------------------
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(
-      e instanceof Error
-        ? `Accordo salvato, ma la PEC non è configurata: ${e.message}`
-        : "Accordo salvato, ma la PEC non è configurata.",
-    );
-  }
-
-  const { data: blob, error: eBlob } = await supabase.storage
-    .from("profili")
-    .download(storagePath);
-  if (eBlob || !blob) {
-    return errore("Accordo salvato ma PEC non partita: file non leggibile dallo storage.");
-  }
-
-  const nomeFile = storagePath.split("/").pop() ?? "accordo.pdf";
-  const buffer = Buffer.from(await blob.arrayBuffer());
-  const nome = profile.full_name ?? profile.email;
 
   // --- controllo IA sull'accordo (segnalazione, mai blocco) ------------
   const verifica = await verificaAccordoFirmato({
