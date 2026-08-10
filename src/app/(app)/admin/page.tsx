@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import FotoProfilo from "@/components/FotoProfilo";
+import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
 
 type Confronto = {
   deliverable_id: string;
@@ -186,7 +187,8 @@ export default async function AdminPage() {
                 <th className="py-2 pr-4">Partecipante</th>
                 <th className="py-2 pr-4">Università</th>
                 <th className="py-2 pr-4">Foto</th>
-                <th className="py-2">Accordo editoriale</th>
+                <th className="py-2 pr-4">Accordo editoriale</th>
+                <th className="py-2">Azioni</th>
               </tr>
             </thead>
             <tbody>
@@ -240,6 +242,9 @@ export default async function AdminPage() {
                       ) : (
                         <span className="text-xs text-slate-400">Non caricato</span>
                       )}
+                    </td>
+                    <td className="py-2">
+                      <EliminaAccountAdmin userId={p.id} />
                     </td>
                   </tr>
                 ))}

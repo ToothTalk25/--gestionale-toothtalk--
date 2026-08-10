@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/auth";
 import ProfiloPersonale from "@/components/ProfiloPersonale";
+import SezioneEliminazioneAccount from "@/components/SezioneEliminazioneAccount";
 
 export default async function ProfiloPage() {
   const { profile, isAdmin } = await requireSession();
@@ -16,6 +17,8 @@ export default async function ProfiloPage() {
       </header>
 
       <ProfiloPersonale profile={profile} isAdmin={isAdmin} />
+
+      {!isAdmin && <SezioneEliminazioneAccount userId={profile.id} />}
     </div>
   );
 }

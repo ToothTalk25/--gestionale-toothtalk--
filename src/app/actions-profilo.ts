@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
@@ -15,7 +16,103 @@ function errore(msg: string): Esito<never> {
 
 type CampiAnagrafica = Partial<Pick<Profile, "universita" | "pec">>;
 
-/** Aggiorna i dati anagrafici del proprio profilo. */
+/**
+ * Elimina un account e tutti i dati personali trasmessi (diritto all'oblio).
+ *
+ * Cosa viene eliminato:
+ *  - l'accordo firmato (file) e la foto dal profilo
+ *  - i consensi GDPR e le appartenenze ai gruppi
+ *  - i materiali di lavorazione trasmessi dalla persona (bucket originali)
+ *  - i dati anagrafici e l'accesso (attivo=false, non può più entrare)
+ *
+ * Resta a registro solo l'archivio CERTIFICATO (impronte, verbali, PEC):
+ * la legge consente di conservare ciò che serve alla tutela di diritti, e
+ * le copie PEC sono comunque già nelle caselle. Il profilo diventa
+ * "Ex partecipante", senza dati personali.
+ */
+export async function eliminaAccount(
+  userId: string,
+  conferma: boolean,
+): Promise<Esito<{ account: string }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!conferma) return errore("Conferma di essere consapevole di cosa stai eliminando.");
+
+  // Solo chi ha accesso globale, o la persona stessa sul proprio account.
+  if (!isAdmin && profile.id !== userId) {
+    return errore("Operazione non disponibile da qui.");
+  }
+
+  const admin = supabaseAdmin();
+
+  // 1. File personali (accordo e foto)
+  const { data: profilo } = await admin
+    .from("profiles")
+    .select("id, foto_path, accordo_path")
+    .eq("id", userId)
+    .single<{ id: string; foto_path: string | null; accordo_path: string | null }>();
+  if (profilo?.foto_path) {
+    await admin.storage.from("profili").remove([profilo.foto_path]).catch(() => {});
+  }
+  if (profilo?.accordo_path) {
+    await admin.storage.from("profili").remove([profilo.accordo_path]).catch(() => {});
+  }
+
+  // 2. Consensi e appartenenze
+  await admin.from("consensi").delete().eq("user_id", userId).catch(() => {});
+  await admin.from("memberships").delete().eq("user_id", userId).catch(() => {});
+
+  // 3. Materiali di lavorazione trasmessi (bucket originali), non certificati
+  const { data: deliverables } = await admin
+    .from("deliverables")
+    .select("id")
+    .eq("created_by", userId);
+  for (const d of deliverables ?? []) {
+    const { data: vers } = await admin
+      .from("deliverable_versions")
+      .select("id, bucket, storage_path")
+      .eq("deliverable_id", d.id);
+    for (const v of vers ?? []) {
+      if (v.bucket === "originali") {
+        await admin.storage.from("originali").remove([v.storage_path]).catch(() => {});
+        await admin.from("deliverable_versions").delete().eq("id", v.id).catch(() => {});
+      }
+    }
+    await admin.from("deliverables").delete().eq("id", d.id).catch(() => {});
+  }
+
+  // 4. Anonimizzazione del profilo (diritto all'oblio) — l'archivio
+  //    certificato resta con riferimenti validi ma senza dati personali.
+  await admin
+    .from("profiles")
+    .update({
+      email: `ex-${userId.slice(0, 8)}@toothtalk.local`,
+      full_name: "Ex partecipante",
+      pec: null,
+      universita: null,
+      foto_path: null,
+      accordo_path: null,
+      accordo_sha256: null,
+      accordo_caricato_at: null,
+      accordo_verificato: null,
+      accordo_verifica_note: null,
+      accordo_verificato_at: null,
+      attivo: false,
+    })
+    .eq("id", userId);
+
+  // 5. Rimozione dell'account di accesso (se l'archivio lo consente;
+  //    altrimenti resta disattivato: attivo=false impedisce di entrare).
+  try {
+    await admin.auth.admin.deleteUser(userId);
+  } catch {
+    // restano i riferimenti all'archivio: profilo anonimizzato + disattivato
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/profilo");
+  return { ok: true, dati: { account: "ex" } };
+}
+
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();

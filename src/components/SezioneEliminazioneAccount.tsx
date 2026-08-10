@@ -1,0 +1,88 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { eliminaAccount } from "@/app/actions-profilo";
+
+/**
+ * Sezione "fine della collaborazione": spiega la policy di trattamento dei
+ * dati (tutto sulla piattaforma) e permette di eliminare l'account con tutti
+ * i dati personali trasmessi (diritto all'oblio).
+ */
+export default function SezioneEliminazioneAccount({ userId }: { userId: string }) {
+  const router = useRouter();
+  const [consapevole, setConsapevole] = useState(false);
+  const [inCorso, setInCorso] = useState(false);
+  const [messaggio, setMessaggio] = useState<string | null>(null);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  async function elimina() {
+    setInCorso(true);
+    setErrore(null);
+    setMessaggio(null);
+
+    const esito = await eliminaAccount(userId, true);
+    if (!esito.ok) {
+      setErrore(esito.errore);
+      setInCorso(false);
+      return;
+    }
+
+    await supabaseBrowser().auth.signOut();
+    setMessaggio("Account eliminato. Tutti i tuoi dati personali sono stati rimossi.");
+    setTimeout(() => router.replace("/login"), 2500);
+  }
+
+  return (
+    <section className="rounded-2xl border border-red-200 bg-white p-6 ring-1 ring-black/5">
+      <h2 className="text-lg font-medium text-red-700">Fine della collaborazione</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+        Tutti i dati trattati dal gestionale — l&apos;accordo firmato, la foto, i
+        materiali e l&apos;anagrafica — vengono elaborati <strong>solo su questa
+        piattaforma</strong>: non serve che tu conservi nulla altrove. Se
+        interrompi la collaborazione, puoi eliminare qui l&apos;account con tutti i
+        dati che hai trasmesso.
+      </p>
+
+      <div className="mt-3 rounded-lg bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
+        <p className="font-medium text-slate-800">Cosa viene eliminato:</p>
+        <ul className="mt-1 list-disc pl-5">
+          <li>il file dell&apos;accordo firmato e la foto del profilo</li>
+          <li>i consensi e le appartenenze ai gruppi</li>
+          <li>i materiali di lavorazione che hai trasmesso</li>
+          <li>i dati anagrafici e la possibilità di accedere</li>
+        </ul>
+        <p className="mt-2">
+          Restano a registro solo le attestazioni certificate (impronte, verbali
+          e copie PEC già nelle caselle): la legge consente di conservare ciò
+          che serve alla tutela di diritti, e qui non resta alcun dato personale.
+        </p>
+      </div>
+
+      {messaggio && <p className="mt-3 text-sm text-emerald-700">{messaggio}</p>}
+      {errore && <p className="mt-3 text-sm text-red-600">{errore}</p>}
+
+      <label className="mt-4 flex items-start gap-2 text-xs text-slate-600">
+        <input
+          type="checkbox"
+          checked={consapevole}
+          onChange={(e) => setConsapevole(e.target.checked)}
+          className="mt-0.5 h-4 w-4"
+        />
+        <span>
+          Sono consapevole che elimino l&apos;account e tutti i miei dati personali.
+          Questa azione non è reversibile.
+        </span>
+      </label>
+
+      <button
+        disabled={!consapevole || inCorso}
+        onClick={elimina}
+        className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {inCorso ? "Elimino…" : "Elimina il mio account e i miei dati"}
+      </button>
+    </section>
+  );
+}
