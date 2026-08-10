@@ -133,7 +133,7 @@ export default function ProfiloPersonale({
             La foto che ti identifica nel gruppo.
           </p>
 
-          <div className="mt-4 flex h-40 w-40 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
+          <div className="mt-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-2 ring-black/10">
             {fotoPath ? (
               <FotoProfilo path={fotoPath} className="h-full w-full object-cover" alt="Foto profilo" />
             ) : (
