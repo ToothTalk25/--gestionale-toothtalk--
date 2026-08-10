@@ -58,8 +58,18 @@ export async function eliminaAccount(
   }
 
   // 2. Consensi e appartenenze
-  await admin.from("consensi").delete().eq("user_id", userId).catch(() => {});
-  await admin.from("memberships").delete().eq("user_id", userId).catch(() => {});
+  await admin
+    .from("consensi")
+    .delete()
+    .eq("user_id", userId)
+    .then(() => {})
+    .catch(() => {});
+  await admin
+    .from("memberships")
+    .delete()
+    .eq("user_id", userId)
+    .then(() => {})
+    .catch(() => {});
 
   // 3. Materiali di lavorazione trasmessi (bucket originali), non certificati
   const { data: deliverables } = await admin
@@ -73,11 +83,25 @@ export async function eliminaAccount(
       .eq("deliverable_id", d.id);
     for (const v of vers ?? []) {
       if (v.bucket === "originali") {
-        await admin.storage.from("originali").remove([v.storage_path]).catch(() => {});
-        await admin.from("deliverable_versions").delete().eq("id", v.id).catch(() => {});
+        await admin.storage
+          .from("originali")
+          .remove([v.storage_path])
+          .then(() => {})
+          .catch(() => {});
+        await admin
+          .from("deliverable_versions")
+          .delete()
+          .eq("id", v.id)
+          .then(() => {})
+          .catch(() => {});
       }
     }
-    await admin.from("deliverables").delete().eq("id", d.id).catch(() => {});
+    await admin
+      .from("deliverables")
+      .delete()
+      .eq("id", d.id)
+      .then(() => {})
+      .catch(() => {});
   }
 
   // 4. Anonimizzazione del profilo (diritto all'oblio) — l'archivio
