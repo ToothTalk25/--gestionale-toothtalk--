@@ -13,7 +13,7 @@ function errore(msg: string): Esito<never> {
 }
 
 type CampiAnagrafica = Partial<
-  Pick<Profile, "data_nascita" | "luogo_nascita" | "matricola" | "corso_studi" | "universita">
+  Pick<Profile, "data_nascita" | "luogo_nascita" | "universita">
 >;
 
 /** Aggiorna i dati anagrafici del proprio profilo. */

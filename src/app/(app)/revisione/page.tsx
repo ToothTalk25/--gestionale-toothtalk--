@@ -56,13 +56,11 @@ export default async function RevisionePage() {
     ),
   );
 
-  const { data: profili } = autori.size
-    ? await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", [...autori])
-        .returns<{ id: string; full_name: string | null; email: string }[]>()
-    : { data: [] as { id: string; full_name: string | null; email: string }[] };
+  let profili: { id: string; full_name: string | null; email: string }[] = [];
+  if (autori.size) {
+    const res = await supabase.rpc("nomi_visibili", { p_ids: [...autori] });
+    profili = (res.data ?? []) as { id: string; full_name: string | null; email: string }[];
+  }
 
   const nomi = Object.fromEntries(
     (profili ?? []).map((p) => [p.id, p.full_name ?? p.email]),

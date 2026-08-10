@@ -16,7 +16,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, role, attivo, data_nascita, luogo_nascita, matricola, corso_studi, universita, foto_path, accordo_path, accordo_sha256, accordo_caricato_at",
+      "id, email, full_name, role, attivo, data_nascita, luogo_nascita, universita, foto_path, accordo_path, accordo_sha256, accordo_caricato_at",
     )
     .eq("id", auth.user.id)
     .single<Profile>();

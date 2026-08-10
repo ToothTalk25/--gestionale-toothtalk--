@@ -52,7 +52,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, universita, corso_studi, foto_path, accordo_path, accordo_caricato_at",
+        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at",
       )
       .order("role")
       .returns<
@@ -62,7 +62,6 @@ export default async function AdminPage() {
           email: string;
           role: string;
           universita: string | null;
-          corso_studi: string | null;
           foto_path: string | null;
           accordo_path: string | null;
           accordo_caricato_at: string | null;
@@ -185,7 +184,6 @@ export default async function AdminPage() {
                 <th className="py-2 pr-4">Gruppo</th>
                 <th className="py-2 pr-4">Partecipante</th>
                 <th className="py-2 pr-4">Università</th>
-                <th className="py-2 pr-4">Corso</th>
                 <th className="py-2 pr-4">Foto</th>
                 <th className="py-2">Accordo editoriale</th>
               </tr>
@@ -203,7 +201,6 @@ export default async function AdminPage() {
                       <div className="text-xs text-slate-400">{p.email}</div>
                     </td>
                     <td className="py-2 pr-4">{p.universita ?? "—"}</td>
-                    <td className="py-2 pr-4">{p.corso_studi ?? "—"}</td>
                     <td className="py-2 pr-4">
                       {p.foto_path ? (
                         <FotoProfilo path={p.foto_path} className="h-8 w-8 rounded-full object-cover" />

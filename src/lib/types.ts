@@ -79,8 +79,6 @@ export type Profile = {
   attivo: boolean;
   data_nascita: string | null;
   luogo_nascita: string | null;
-  matricola: string | null;
-  corso_studi: string | null;
   universita: string | null;
   foto_path: string | null;
   accordo_path: string | null;

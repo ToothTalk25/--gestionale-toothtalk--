@@ -41,10 +41,21 @@ export default async function PoloPage({
       >(),
     supabase
       .from("memberships")
-      .select("user_id, profiles!inner(full_name, email)")
+      .select("user_id")
       .eq("polo_id", poloId)
-      .returns<{ user_id: string; profiles: { full_name: string | null; email: string } }[]>(),
+      .returns<{ user_id: string }[]>(),
   ]);
+
+  // Solo i nomi, via funzione dedicata: il profilo completo resta personale.
+  const idsMembri = (membri ?? []).map((m) => m.user_id);
+  let nomiMembri: { id: string; full_name: string | null; email: string }[] = [];
+  if (idsMembri.length) {
+    const res = await supabase.rpc("nomi_visibili", { p_ids: idsMembri });
+    nomiMembri = (res.data ?? []) as { id: string; full_name: string | null; email: string }[];
+  }
+  const nomeDi = Object.fromEntries(
+    nomiMembri.map((p) => [p.id, p.full_name ?? p.email]),
+  );
 
   return (
     <div className="space-y-8">
@@ -56,7 +67,9 @@ export default async function PoloPage({
         </p>
         {!!membri?.length && (
           <p className="mt-2 text-xs text-slate-400">
-            {membri.map((m) => m.profiles.full_name ?? m.profiles.email).join(" · ")}
+            {(membri ?? [])
+              .map((m) => nomeDi[m.user_id] ?? "—")
+              .join(" · ")}
           </p>
         )}
       </header>

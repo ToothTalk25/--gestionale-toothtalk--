@@ -25,8 +25,6 @@ export default function ProfiloPersonale({
 
   const [dataNascita, setDataNascita] = useState(profile.data_nascita ?? "");
   const [luogoNascita, setLuogoNascita] = useState(profile.luogo_nascita ?? "");
-  const [matricola, setMatricola] = useState(profile.matricola ?? "");
-  const [corsoStudi, setCorsoStudi] = useState(profile.corso_studi ?? "");
   const [universita, setUniversita] = useState(profile.universita ?? "");
 
   const fotoInput = useRef<HTMLInputElement>(null);
@@ -48,8 +46,6 @@ export default function ProfiloPersonale({
       const esito = await aggiornaAnagrafica({
         data_nascita: dataNascita || null,
         luogo_nascita: luogoNascita || null,
-        matricola: matricola || null,
-        corso_studi: corsoStudi || null,
         universita: universita || null,
       });
       if (!esito.ok) setErrore(esito.errore);
@@ -128,14 +124,6 @@ export default function ProfiloPersonale({
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
 
-        <label className="mt-4 block text-sm font-medium">Matricola</label>
-        <input
-          value={matricola}
-          onChange={(e) => setMatricola(e.target.value)}
-          placeholder="Numero di matricola"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-
         <label className="mt-4 block text-sm font-medium">Università</label>
         <input
           value={universita}
@@ -144,13 +132,10 @@ export default function ProfiloPersonale({
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
 
-        <label className="mt-4 block text-sm font-medium">Corso di studi</label>
-        <input
-          value={corsoStudi}
-          onChange={(e) => setCorsoStudi(e.target.value)}
-          placeholder="Es. Odontoiatria e Protesi Dentaria"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
+        <p className="mt-3 text-xs text-slate-400">
+          Studenti e studentesse di odontoiatria: l'università basta a
+          identificarvi.
+        </p>
 
         <button
           onClick={salvaAnagrafica}
@@ -164,19 +149,22 @@ export default function ProfiloPersonale({
         {/* -------------------------------------------------------- foto */}
         <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
           <h2 className="text-lg font-medium">Foto</h2>
-          {fotoPath ? (
-            <FotoProfilo
-              path={fotoPath}
-              className="h-24 w-24 rounded-full object-cover ring-2 ring-black/10"
-              alt="Foto profilo"
-            />
-          ) : (
-            <p className="mt-3 text-sm text-slate-400">Nessuna foto caricata.</p>
-          )}
+          <p className="mt-1 text-sm text-slate-500">
+            La foto che ti identifica nel gruppo.
+          </p>
+
+          <div className="mt-4 flex h-40 w-40 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
+            {fotoPath ? (
+              <FotoProfilo path={fotoPath} className="h-full w-full object-cover" alt="Foto profilo" />
+            ) : (
+              <span className="text-xs text-slate-400">Nessuna foto</span>
+            )}
+          </div>
+
           <input
             ref={fotoInput}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             onChange={() => caricaFile(fotoInput, "foto")}
           />
@@ -186,6 +174,10 @@ export default function ProfiloPersonale({
           >
             {fotoPath ? "Sostituisci foto" : "Carica foto"}
           </button>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+            Formati accettati: JPG, PNG o WebP. Dimensione massima 5 MB,
+            consigliata quadrata e almeno 400×400 px.
+          </p>
         </section>
 
         {/* ----------------------------------------------------- accordo */}
