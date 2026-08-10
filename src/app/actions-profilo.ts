@@ -121,25 +121,19 @@ export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito>
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
-  // La PEC, se cambia, deve essere quella dell'ateneo del proprio gruppo.
+  // La PEC, se cambia, deve essere una PEC vera — non importa di chi: solo
+  // non può essere una casella di posta gratuita, che una PEC non può
+  // essere per definizione.
   if (campi.pec) {
-    const { data: poli } = await supabase
-      .from("memberships")
-      .select("polo_id")
-      .eq("user_id", profile.id)
-      .returns<{ polo_id: string }[]>();
-    const polo = poli?.[0]?.polo_id;
-    if (!polo) {
-      return errore("Non appartieni a nessun gruppo: impossibile verificare la PEC.");
-    }
     const { data: pecOk } = await supabase.rpc("pec_universitaria_valida", {
-      p_polo: polo,
+      p_polo: null,
       p_pec: campi.pec,
     });
     if (pecOk === false) {
       return errore(
-        "La PEC non appartiene al dominio universitario del tuo gruppo. " +
-          "Usa la PEC rilasciata dal tuo ateneo.",
+        "Questo indirizzo sembra una casella email gratuita, non una PEC. " +
+          "Inserisci una PEC vera: può essere tua, di un familiare o " +
+          "condivisa — non deve necessariamente essere dell'università.",
       );
     }
   }

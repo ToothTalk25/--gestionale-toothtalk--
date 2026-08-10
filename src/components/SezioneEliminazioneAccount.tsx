@@ -6,12 +6,13 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { eliminaAccount } from "@/app/actions-profilo";
 
 /**
- * Sezione "fine della collaborazione": spiega la policy di trattamento dei
- * dati (tutto sulla piattaforma) e permette di eliminare l'account con tutti
- * i dati personali trasmessi (diritto all'oblio).
+ * Sezione "fine della collaborazione": nascosta dietro un piccolo tasto per
+ * non attirare l'attenzione. Solo chi lo apre davvero vede la spiegazione e
+ * i controlli per eliminare l'account.
  */
 export default function SezioneEliminazioneAccount({ userId }: { userId: string }) {
   const router = useRouter();
+  const [aperta, setAperta] = useState(false);
   const [consapevole, setConsapevole] = useState(false);
   const [inCorso, setInCorso] = useState(false);
   const [messaggio, setMessaggio] = useState<string | null>(null);
@@ -34,9 +35,30 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
     setTimeout(() => router.replace("/login"), 2500);
   }
 
+  if (!aperta) {
+    return (
+      <div className="flex justify-end">
+        <button
+          onClick={() => setAperta(true)}
+          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-400 transition hover:border-red-200 hover:text-red-600"
+        >
+          Fine della collaborazione
+        </button>
+      </div>
+    );
+  }
+
   return (
     <section className="rounded-2xl border border-red-200 bg-white p-6 ring-1 ring-black/5">
-      <h2 className="text-lg font-medium text-red-700">Fine della collaborazione</h2>
+      <div className="flex items-start justify-between gap-4">
+        <h2 className="text-lg font-medium text-red-700">Fine della collaborazione</h2>
+        <button
+          onClick={() => setAperta(false)}
+          className="rounded-lg px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
+        >
+          Chiudi ✕
+        </button>
+      </div>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
         Tutti i dati trattati dal gestionale — l&apos;accordo firmato, la foto, i
         materiali e l&apos;anagrafica — vengono elaborati <strong>solo su questa
