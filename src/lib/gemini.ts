@@ -11,7 +11,7 @@ import "server-only";
  * e la prova legale resta nella PEC.
  */
 
-const MODELLO = "gemini-2.5-flash";
+const MODELLO = "gemini-flash-latest";
 
 function apiKey(): string | null {
   return process.env.GEMINI_API_KEY || null;
