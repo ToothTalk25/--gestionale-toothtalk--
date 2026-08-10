@@ -48,16 +48,20 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
       <div className="mt-3 rounded-lg bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
         <p className="font-medium text-slate-800">Cosa viene eliminato:</p>
         <ul className="mt-1 list-disc pl-5">
-          <li>il file dell&apos;accordo firmato e la foto del profilo</li>
+          <li>la foto del profilo</li>
           <li>i consensi e le appartenenze ai gruppi</li>
-          <li>i materiali di lavorazione che hai trasmesso</li>
-          <li>i dati anagrafici e la possibilità di accedere</li>
+          <li>il video grezzo che ti riprende (immagine e voce)</li>
+          <li>i dati di contatto e la possibilità di accedere</li>
         </ul>
-        <p className="mt-2">
-          Restano a registro solo le attestazioni certificate (impronte, verbali
-          e copie PEC già nelle caselle): la legge consente di conservare ciò
-          che serve alla tutela di diritti, e qui non resta alcun dato personale.
-        </p>
+        <p className="mt-2 font-medium text-slate-800">Cosa viene conservato:</p>
+        <ul className="mt-1 list-disc pl-5">
+          <li>
+            l&apos;accordo firmato, che contiene la cessione di proprietà del
+            contenuto — titolo necessario al progetto
+          </li>
+          <li>script, copertina e descrizione (già certificati via PEC)</li>
+          <li>l&apos;archivio certificato e le copie PEC, immutabili per legge</li>
+        </ul>
       </div>
 
       {messaggio && <p className="mt-3 text-sm text-emerald-700">{messaggio}</p>}

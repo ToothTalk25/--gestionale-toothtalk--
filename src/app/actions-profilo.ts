@@ -26,18 +26,18 @@ async function ignora(p: PromiseLike<unknown>): Promise<void> {
 type CampiAnagrafica = Partial<Pick<Profile, "universita" | "pec">>;
 
 /**
- * Elimina un account e tutti i dati personali trasmessi (diritto all'oblio).
+ * Elimina l'account e i dati personali "inutili" alla difesa del progetto.
  *
- * Cosa viene eliminato:
- *  - l'accordo firmato (file) e la foto dal profilo
+ * Viene eliminato:
+ *  - la foto del profilo
  *  - i consensi GDPR e le appartenenze ai gruppi
- *  - i materiali di lavorazione trasmessi dalla persona (bucket originali)
- *  - i dati anagrafici e l'accesso (attivo=false, non può più entrare)
+ *  - il VIDEO GREZZO trasmesso (immagine/voce) dal bucket di lavorazione
+ *  - i dati di contatto e anagrafici, e l'accesso (attivo=false)
  *
- * Resta a registro solo l'archivio CERTIFICATO (impronte, verbali, PEC):
- * la legge consente di conservare ciò che serve alla tutela di diritti, e
- * le copie PEC sono comunque già nelle caselle. Il profilo diventa
- * "Ex partecipante", senza dati personali.
+ * Viene CONSERVATO (tutela legale):
+ *  - l'accordo firmato, con la cessione di proprietà del contenuto
+ *  - script, copertina e descrizione (già certificati via PEC)
+ *  - l'archivio certificato e le copie PEC, immutabili per legge
  */
 export async function eliminaAccount(
   userId: string,
@@ -53,7 +53,7 @@ export async function eliminaAccount(
 
   const admin = supabaseAdmin();
 
-  // 1. File personali (accordo e foto)
+  // 1. Foto del profilo (l'accordo resta: è il titolo della cessione di proprietà)
   const { data: profilo } = await admin
     .from("profiles")
     .select("id, foto_path, accordo_path")
@@ -62,20 +62,20 @@ export async function eliminaAccount(
   if (profilo?.foto_path) {
     await admin.storage.from("profili").remove([profilo.foto_path]).catch(() => {});
   }
-  if (profilo?.accordo_path) {
-    await admin.storage.from("profili").remove([profilo.accordo_path]).catch(() => {});
-  }
 
   // 2. Consensi e appartenenze
   await ignora(admin.from("consensi").delete().eq("user_id", userId));
   await ignora(admin.from("memberships").delete().eq("user_id", userId));
 
-  // 3. Materiali di lavorazione trasmessi (bucket originali), non certificati
+  // 3. Solo il VIDEO GREZZO trasmesso (immagine/voce) viene distrutto.
+  //    Script, copertina e materiali testuali restano: sono già certificati
+  //    via PEC e servono alla difesa del progetto.
   const { data: deliverables } = await admin
     .from("deliverables")
-    .select("id")
+    .select("id, kind")
     .eq("created_by", userId);
   for (const d of deliverables ?? []) {
+    if (d.kind !== "video_grezzo") continue;
     const { data: vers } = await admin
       .from("deliverable_versions")
       .select("id, bucket, storage_path")
@@ -89,8 +89,8 @@ export async function eliminaAccount(
     await ignora(admin.from("deliverables").delete().eq("id", d.id));
   }
 
-  // 4. Anonimizzazione del profilo (diritto all'oblio) — l'archivio
-  //    certificato resta con riferimenti validi ma senza dati personali.
+  // 4. Anonimizzazione dei dati personali del profilo. L'accordo resta
+  //    (cessione di proprietà); foto e contatti vengono rimossi.
   await admin
     .from("profiles")
     .update({
@@ -99,12 +99,6 @@ export async function eliminaAccount(
       pec: null,
       universita: null,
       foto_path: null,
-      accordo_path: null,
-      accordo_sha256: null,
-      accordo_caricato_at: null,
-      accordo_verificato: null,
-      accordo_verifica_note: null,
-      accordo_verificato_at: null,
       attivo: false,
     })
     .eq("id", userId);

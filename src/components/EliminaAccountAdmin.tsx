@@ -12,7 +12,7 @@ export default function EliminaAccountAdmin({ userId }: { userId: string }) {
 
   async function elimina() {
     const ok = window.confirm(
-      "Eliminare questo account e tutti i suoi dati personali (accordo, foto, materiali, consensi)? L'archivio certificato resta in forma anonima. Azione irreversibile.",
+      "Eliminare questo account? Verranno rimossi: foto, dati di contatto, consensi e il video grezzo (immagine/voce). L'accordo firmato (cessione di proprietà), script, copertina e l'archivio certificato PEC restano. Azione irreversibile.",
     );
     if (!ok) return;
 
