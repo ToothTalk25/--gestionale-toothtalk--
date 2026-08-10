@@ -149,39 +149,43 @@ export default function ProfiloPersonale({
       </section>
 
       <div className="space-y-6">
-        {/* -------------------------------------------------------- foto */}
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-          <h2 className="text-lg font-medium">Foto</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            La foto che ti identifica nel gruppo.
-          </p>
+        {/* -------------------------------------------------------- foto
+            Solo per i partecipanti: la foto serve ai compagni di gruppo per
+            riconoscersi. Chi ha accesso globale non ha bisogno di una foto. */}
+        {!isAdmin && (
+          <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+            <h2 className="text-lg font-medium">Foto</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              La foto che ti identifica nel gruppo.
+            </p>
 
-          <div className="mt-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-2 ring-black/10">
-            {fotoPath ? (
-              <FotoProfilo path={fotoPath} className="h-full w-full object-cover" alt="Foto profilo" />
-            ) : (
-              <span className="text-xs text-slate-400">Nessuna foto</span>
-            )}
-          </div>
+            <div className="mt-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-2 ring-black/10">
+              {fotoPath ? (
+                <FotoProfilo path={fotoPath} className="h-full w-full object-cover" alt="Foto profilo" />
+              ) : (
+                <span className="text-xs text-slate-400">Nessuna foto</span>
+              )}
+            </div>
 
-          <input
-            ref={fotoInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={() => caricaFile(fotoInput, "foto")}
-          />
-          <button
-            onClick={() => fotoInput.current?.click()}
-            className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
-          >
-            {fotoPath ? "Sostituisci foto" : "Carica foto"}
-          </button>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-            Formati accettati: JPG, PNG o WebP. Dimensione massima 5 MB,
-            consigliata quadrata e almeno 400×400 px.
-          </p>
-        </section>
+            <input
+              ref={fotoInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={() => caricaFile(fotoInput, "foto")}
+            />
+            <button
+              onClick={() => fotoInput.current?.click()}
+              className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+            >
+              {fotoPath ? "Sostituisci foto" : "Carica foto"}
+            </button>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+              Formati accettati: JPG, PNG o WebP. Dimensione massima 5 MB,
+              consigliata quadrata e almeno 400×400 px.
+            </p>
+          </section>
+        )}
 
         {/* ----------------------------------------------------- accordo
             Solo per i partecipanti: chi ha accesso globale stipula i contratti,
