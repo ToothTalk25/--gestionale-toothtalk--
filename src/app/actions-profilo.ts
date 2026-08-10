@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
+import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
 import type { Profile } from "@/lib/types";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
@@ -52,7 +53,7 @@ export async function caricaFoto(storagePath: string): Promise<Esito> {
 export async function caricaAccordo(
   storagePath: string,
   sha256: string,
-): Promise<Esito<{ messageId: string }>> {
+): Promise<Esito<{ messageId: string; verifica: EsitoVerificaAccordo }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
@@ -88,6 +89,24 @@ export async function caricaAccordo(
   const nomeFile = storagePath.split("/").pop() ?? "accordo.pdf";
   const buffer = Buffer.from(await blob.arrayBuffer());
   const nome = profile.full_name ?? profile.email;
+
+  // --- controllo IA sull'accordo (segnalazione, mai blocco) ------------
+  const verifica = await verificaAccordoFirmato({
+    pdfBase64: buffer.toString("base64"),
+    mimeType: blob.type || "application/pdf",
+  });
+
+  const { error: eVerifica } = await supabase
+    .from("profiles")
+    .update({
+      accordo_verificato: verifica.esito,
+      accordo_verifica_note: verifica.note || null,
+      accordo_verificato_at: new Date().toISOString(),
+    })
+    .eq("id", profile.id);
+  if (eVerifica) {
+    return errore(`Accordo salvato ma esito IA non registrato: ${eVerifica.message}`);
+  }
 
   try {
     const { messageId } = await spedisciPec({
@@ -130,7 +149,7 @@ export async function caricaAccordo(
     });
 
     revalidatePath("/profilo");
-    return { ok: true, dati: { messageId } };
+    return { ok: true, dati: { messageId, verifica } };
   } catch (e) {
     return errore(
       `Accordo salvato ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,

@@ -52,7 +52,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at",
+        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato",
       )
       .order("role")
       .returns<
@@ -65,6 +65,7 @@ export default async function AdminPage() {
           foto_path: string | null;
           accordo_path: string | null;
           accordo_caricato_at: string | null;
+          accordo_verificato: string | null;
         }[]
       >(),
     supabase
@@ -210,11 +211,31 @@ export default async function AdminPage() {
                     </td>
                     <td className="py-2">
                       {p.accordo_path ? (
-                        <span className="text-xs text-emerald-700">
-                          Caricato
+                        <span className="text-xs">
+                          <span className="text-emerald-700">Caricato</span>
                           {p.accordo_caricato_at
-                            ? ` il ${new Date(p.accordo_caricato_at).toLocaleString("it-IT")}`
+                            ? ` · ${new Date(p.accordo_caricato_at).toLocaleDateString("it-IT")}`
                             : ""}
+                          {p.accordo_verificato === "ok" && (
+                            <span className="ml-1 rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-800">
+                              IA ok
+                            </span>
+                          )}
+                          {p.accordo_verificato === "attenzione" && (
+                            <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">
+                              IA: attenzione
+                            </span>
+                          )}
+                          {p.accordo_verificato === "errato" && (
+                            <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-800">
+                              IA: errato
+                            </span>
+                          )}
+                          {p.accordo_verificato === "non_valutato" && (
+                            <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">
+                              IA: non valutato
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400">Non caricato</span>

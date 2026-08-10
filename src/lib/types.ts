@@ -82,6 +82,9 @@ export type Profile = {
   accordo_path: string | null;
   accordo_sha256: string | null;
   accordo_caricato_at: string | null;
+  accordo_verificato: string | null;
+  accordo_verifica_note: string | null;
+  accordo_verificato_at: string | null;
 };
 
 export type Polo = {

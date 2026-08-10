@@ -36,6 +36,10 @@ export default function ProfiloPersonale({
       : null,
   );
   const [pecStato, setPecStato] = useState<string | null>(null);
+  const [verificaStato, setVerificaStato] = useState<{
+    esito: string | null;
+    note: string | null;
+  }>({ esito: profile.accordo_verificato, note: profile.accordo_verifica_note });
 
   function salvaAnagrafica() {
     setErrore(null);
@@ -82,6 +86,7 @@ export default function ProfiloPersonale({
         }
         setAccordoStato(`Caricato il ${new Date().toLocaleString("it-IT")}`);
         setPecStato(`PEC inviata (${esito.dati.messageId})`);
+        setVerificaStato({ esito: esito.dati.verifica.esito, note: esito.dati.verifica.note });
         setMessaggio("Accordo caricato e inviato via PEC con data certa.");
       }
       if (ref.current) ref.current.value = "";
@@ -191,6 +196,29 @@ export default function ProfiloPersonale({
           >
             {accordoStato ? "Sostituisci accordo" : "Carica accordo"}
           </button>
+
+          {verificaStato.esito && (
+            <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs">
+              <p className="font-medium">
+                Controllo IA:{" "}
+                {verificaStato.esito === "ok" && (
+                  <span className="text-emerald-700">accordo valido e firmato ✓</span>
+                )}
+                {verificaStato.esito === "attenzione" && (
+                  <span className="text-amber-700">attenzione — verifica manuale</span>
+                )}
+                {verificaStato.esito === "errato" && (
+                  <span className="text-red-700">sembra non corretto</span>
+                )}
+                {verificaStato.esito === "non_valutato" && (
+                  <span className="text-slate-500">non valutato</span>
+                )}
+              </p>
+              {verificaStato.note && (
+                <p className="mt-1 text-slate-500">{verificaStato.note}</p>
+              )}
+            </div>
+          )}
         </section>
       </div>
 
