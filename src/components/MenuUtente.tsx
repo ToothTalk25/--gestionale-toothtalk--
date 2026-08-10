@@ -71,6 +71,14 @@ export default function MenuUtente({ profile }: { profile: Profile }) {
           className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
         >
           <Link
+            href="/dashboard"
+            onClick={() => setAperto(false)}
+            role="menuitem"
+            className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            Progetti
+          </Link>
+          <Link
             href="/profilo"
             onClick={() => setAperto(false)}
             role="menuitem"

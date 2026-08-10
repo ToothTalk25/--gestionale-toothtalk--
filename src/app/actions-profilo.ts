@@ -12,9 +12,7 @@ function errore(msg: string): Esito<never> {
   return { ok: false, errore: msg };
 }
 
-type CampiAnagrafica = Partial<
-  Pick<Profile, "data_nascita" | "luogo_nascita" | "universita">
->;
+type CampiAnagrafica = Partial<Pick<Profile, "universita">>;
 
 /** Aggiorna i dati anagrafici del proprio profilo. */
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {

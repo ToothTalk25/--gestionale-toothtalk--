@@ -203,7 +203,7 @@ export default async function AdminPage() {
                     <td className="py-2 pr-4">{p.universita ?? "—"}</td>
                     <td className="py-2 pr-4">
                       {p.foto_path ? (
-                        <FotoProfilo path={p.foto_path} className="h-8 w-8 rounded-full object-cover" />
+                        <FotoProfilo path={p.foto_path} className="h-12 w-12 rounded-lg object-cover" />
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}

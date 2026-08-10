@@ -23,8 +23,6 @@ export default function ProfiloPersonale({
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
 
-  const [dataNascita, setDataNascita] = useState(profile.data_nascita ?? "");
-  const [luogoNascita, setLuogoNascita] = useState(profile.luogo_nascita ?? "");
   const [universita, setUniversita] = useState(profile.universita ?? "");
 
   const fotoInput = useRef<HTMLInputElement>(null);
@@ -44,8 +42,6 @@ export default function ProfiloPersonale({
     setMessaggio(null);
     start(async () => {
       const esito = await aggiornaAnagrafica({
-        data_nascita: dataNascita || null,
-        luogo_nascita: luogoNascita || null,
         universita: universita || null,
       });
       if (!esito.ok) setErrore(esito.errore);
@@ -107,22 +103,6 @@ export default function ProfiloPersonale({
         <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
           {profile.full_name ?? "—"}
         </p>
-
-        <label className="mt-4 block text-sm font-medium">Data di nascita</label>
-        <input
-          type="date"
-          value={dataNascita}
-          onChange={(e) => setDataNascita(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-
-        <label className="mt-4 block text-sm font-medium">Luogo di nascita</label>
-        <input
-          value={luogoNascita}
-          onChange={(e) => setLuogoNascita(e.target.value)}
-          placeholder="Es. Messina"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
 
         <label className="mt-4 block text-sm font-medium">Università</label>
         <input
