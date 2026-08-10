@@ -182,9 +182,12 @@ export default function ProfiloPersonale({
           </p>
         </section>
 
-        {/* ----------------------------------------------------- accordo */}
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-          <h2 className="text-lg font-medium">Accordo editoriale</h2>
+        {/* ----------------------------------------------------- accordo
+            Solo per i partecipanti: chi ha accesso globale stipula i contratti,
+            non li carica — la sua PEC è già il mittente delle comunicazioni. */}
+        {!isAdmin && (
+          <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+            <h2 className="text-lg font-medium">Accordo editoriale</h2>
           <p className="mt-1 text-sm text-slate-500">
             Carica il PDF firmato dell'accordo: verrà inviato automaticamente
             via PEC a chi ha accesso globale, con data certa e copia alla tua
@@ -237,6 +240,7 @@ export default function ProfiloPersonale({
             </div>
           )}
         </section>
+        )}
       </div>
 
       {messaggio && <p className="text-sm text-emerald-700 lg:col-span-2">{messaggio}</p>}
