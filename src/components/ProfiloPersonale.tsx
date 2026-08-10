@@ -14,6 +14,7 @@ function sanifica(nome: string) {
 
 export default function ProfiloPersonale({
   profile,
+  isAdmin,
 }: {
   profile: Profile;
   isAdmin: boolean;
