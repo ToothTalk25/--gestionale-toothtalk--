@@ -5,7 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
-import type { Profile } from "@/lib/types";
+import { COOKIE_VERSION, PRIVACY_VERSION, type Profile } from "@/lib/types";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -42,6 +42,23 @@ export async function caricaFoto(storagePath: string): Promise<Esito> {
   if (error) return errore(error.message);
 
   revalidatePath("/profilo");
+  return { ok: true, dati: undefined };
+}
+
+/** Registra il consenso GDPR (privacy o cookie) per l'utente corrente. */
+export async function registraConsenso(tipo: "privacy" | "cookie"): Promise<Esito> {
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+
+  const versione = tipo === "privacy" ? PRIVACY_VERSION : COOKIE_VERSION;
+  const { error } = await supabase.from("consensi").insert({
+    user_id: profile.id,
+    tipo,
+    versione,
+  });
+  if (error) return errore(error.message);
+
+  revalidatePath("/");
   return { ok: true, dati: undefined };
 }
 

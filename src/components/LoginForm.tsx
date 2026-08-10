@@ -136,6 +136,12 @@ export default function LoginForm() {
           {messaggio && <p className="text-xs text-emerald-600">{messaggio}</p>}
         </div>
       )}
+
+      <p className="mt-4 text-center text-xs text-slate-400">
+        <Link href="/privacy" className="hover:text-slate-600">
+          Privacy e cookie policy
+        </Link>
+      </p>
     </form>
   );
 }

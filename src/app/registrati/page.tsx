@@ -9,6 +9,7 @@ export default function RegistratiPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [codice, setCodice] = useState("");
+  const [consenso, setConsenso] = useState(false);
   const [gruppo, setGruppo] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [fatto, setFatto] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function RegistratiPage() {
     setInCorso(true);
     setErrore(null);
 
-    const esito = await registraConInvito({ nome, email, password, codice });
+    const esito = await registraConInvito({ nome, email, password, codice, consenso });
     setInCorso(false);
 
     if (!esito.ok) {
@@ -132,6 +133,27 @@ export default function RegistratiPage() {
         <p className="mt-1 text-xs text-slate-400">Almeno 8 caratteri.</p>
 
         {errore && <p className="mt-3 text-sm text-red-600">{errore}</p>}
+
+        <label className="mt-5 flex items-start gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            required
+            checked={consenso}
+            onChange={(e) => setConsenso(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            Ho letto e accetto l&apos;{" "}
+            <Link href="/privacy" className="text-tt-blue underline">
+              informativa privacy
+            </Link>{" "}
+            e la{" "}
+            <Link href="/privacy#cookie" className="text-tt-blue underline">
+              cookie policy
+            </Link>{" "}
+            (GDPR).
+          </span>
+        </label>
 
         <button
           type="submit"

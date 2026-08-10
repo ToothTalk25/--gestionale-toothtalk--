@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/auth";
 import MenuUtente from "@/components/MenuUtente";
+import BannerConsenso from "@/components/BannerConsenso";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, poli, isAdmin } = await requireSession();
@@ -43,6 +44,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+
+      <footer className="border-t border-slate-100 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 text-xs text-slate-400">
+          <span>ToothTalk — progetto di divulgazione odontoiatrica</span>
+          <Link href="/privacy" className="hover:text-slate-600">
+            Privacy e cookie
+          </Link>
+        </div>
+      </footer>
+
+      <BannerConsenso />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
+import { COOKIE_VERSION, PRIVACY_VERSION } from "@/lib/types";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -48,6 +49,7 @@ export async function registraConInvito(input: {
   email: string;
   password: string;
   codice: string;
+  consenso: boolean;
 }): Promise<Esito<{ gruppo: string }>> {
   const nome = input.nome.trim();
   const email = input.email.trim().toLowerCase();
@@ -57,6 +59,12 @@ export async function registraConInvito(input: {
   if (!email) return { ok: false, errore: "Inserisci l'email." };
   if (input.password.length < 8) {
     return { ok: false, errore: "La password deve avere almeno 8 caratteri." };
+  }
+  if (!input.consenso) {
+    return {
+      ok: false,
+      errore: "Per registrarti devi accettare l'informativa privacy e la cookie policy.",
+    };
   }
 
   const verifica = await verificaCodice(codice);
@@ -94,6 +102,17 @@ export async function registraConInvito(input: {
       ok: false,
       errore: `Registrazione annullata: ${eInvito.message}`,
     };
+  }
+
+  // Consenso GDPR dimostrabile: chi, quando, quale versione.
+  try {
+    await admin.from("consensi").insert([
+      { user_id: creato.user.id, tipo: "privacy", versione: PRIVACY_VERSION },
+      { user_id: creato.user.id, tipo: "cookie", versione: COOKIE_VERSION },
+    ]);
+  } catch {
+    // Se la registrazione del consenso fallisce non blocchiamo l'account:
+    // il banner chiederà il consenso al primo accesso.
   }
 
   return { ok: true, dati: { gruppo: verifica.dati.gruppo } };
