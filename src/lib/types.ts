@@ -199,6 +199,21 @@ export type PacchettoVideoRow = {
   created_at: string;
 };
 
+/** Stato della copia su Google Drive di un pacchetto sigillato. */
+export type EsportazioneDriveStato = "da_fare" | "in_corso" | "fatto" | "errore";
+
+export type EsportazioneDriveRow = {
+  id: string;
+  pacchetto_id: string;
+  stato: EsportazioneDriveStato;
+  cartella_drive_id: string | null;
+  cartella_drive_url: string | null;
+  tentativi: number;
+  ultimo_errore: string | null;
+  creato_at: string;
+  aggiornato_at: string;
+};
+
 export type ElementoManifesto =
   | {
       ruolo: RuoloElemento;

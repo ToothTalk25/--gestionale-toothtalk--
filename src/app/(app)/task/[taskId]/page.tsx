@@ -14,6 +14,7 @@ import {
   KIND_LAVORAZIONE,
   type Deliverable,
   type DeliverableVersion,
+  type EsportazioneDriveRow,
   type PacchettoVideoRow,
   type RichiestaModifica,
   type Task,
@@ -115,6 +116,15 @@ export default async function TaskPage({
     ruolo: e.ruolo,
     ...e.deliverable_versions,
   }));
+
+  // Stato della copia su Google Drive (RLS: accesso globale o membri del gruppo).
+  const { data: esportazione } = pacchetto
+    ? await supabase
+        .from("esportazioni_drive")
+        .select("*")
+        .eq("pacchetto_id", pacchetto.id)
+        .maybeSingle<EsportazioneDriveRow>()
+    : { data: null };
 
   const { data: storico } = await supabase
     .from("task_status_history")
@@ -250,6 +260,7 @@ export default async function TaskPage({
         isAdmin={isAdmin}
         locked={task.locked}
         coinvolgeTerzi={task.coinvolge_terzi}
+        esportazione={esportazione ?? null}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

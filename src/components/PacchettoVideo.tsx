@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import UploadDeliverable from "@/components/UploadDeliverable";
+import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
 import { impostaCoinvolgeTerzi } from "@/app/actions";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/app/actions-pacchetto";
 import {
   PACCHETTO_LABEL,
+  type EsportazioneDriveRow,
   type PacchettoStato,
   type PacchettoVideoRow,
   type RuoloElemento,
@@ -48,6 +50,7 @@ export default function PacchettoVideo({
   isAdmin,
   locked,
   coinvolgeTerzi,
+  esportazione,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -55,6 +58,7 @@ export default function PacchettoVideo({
   isAdmin: boolean;
   locked: boolean;
   coinvolgeTerzi: boolean;
+  esportazione: EsportazioneDriveRow | null;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -440,6 +444,7 @@ export default function PacchettoVideo({
             start={start}
             setErrore={setErrore}
             setMessaggio={setMessaggio}
+            esportazione={esportazione}
           />
         )}
       </div>
@@ -458,6 +463,7 @@ function DettaglioSigillo({
   start,
   setErrore,
   setMessaggio,
+  esportazione,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow;
@@ -466,6 +472,7 @@ function DettaglioSigillo({
   start: (fn: () => Promise<void>) => void;
   setErrore: (s: string | null) => void;
   setMessaggio: (s: string | null) => void;
+  esportazione: EsportazioneDriveRow | null;
 }) {
   const [motivo, setMotivo] = useState("");
   const daSpedire = pacchetto.stato === "sigillato" || pacchetto.stato === "pec_errore";
@@ -498,6 +505,8 @@ function DettaglioSigillo({
           </>
         )}
       </dl>
+
+      <EsportazioneDrive pacchettoId={pacchetto.id} riga={esportazione} />
 
       {pacchetto.pec_ricevuta_note && (
         <p className="text-xs text-amber-700">{pacchetto.pec_ricevuta_note}</p>
@@ -534,9 +543,7 @@ function DettaglioSigillo({
                       (esito.dati.esclusi.length
                         ? ` Non allegati per dimensione: ${esito.dati.esclusi.join("; ")} — certificati tramite impronta.`
                         : "") +
-                      (esito.dati.driveUrl
-                        ? ` File copiati su Drive.`
-                        : ""),
+                      ` La copia su Drive parte in automatico: l'esito compare nel badge qui sotto.`,
                   );
               })
             }

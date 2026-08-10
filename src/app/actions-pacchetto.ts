@@ -15,7 +15,6 @@ import {
   type Allegato,
 } from "@/lib/pec";
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
-import { esportaPacchettoSuDrive, type FileBuffer } from "@/lib/drive";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -236,7 +235,7 @@ export async function annullaPacchetto(
 export async function inviaPecPacchetto(
   taskId: string,
   pacchettoId: string,
-): Promise<Esito<{ messageId: string; allegati: string[]; esclusi: string[]; driveUrl: string | null }>> {
+): Promise<Esito<{ messageId: string; allegati: string[]; esclusi: string[] }>> {
   const { isAdmin } = await requireSession();
   if (!isAdmin)
     return errore("Solo chi ha accesso globale può spedire il verbale via PEC.");
@@ -402,27 +401,14 @@ export async function inviaPecPacchetto(
       p_note: esclusi.length ? `Non allegati: ${esclusi.join("; ")}` : null,
     });
 
-    // --- esportazione su Google Drive ---------------------------------
-    let driveUrl: string | null = null;
-    try {
-      const driveFiles: FileBuffer[] = allegati.map((a) => ({
-        name: a.filename,
-        content: a.content,
-        mimeType: a.contentType ?? undefined,
-      }));
-      driveUrl = await esportaPacchettoSuDrive({
-        polo: manifesto.polo.nome,
-        progetto: manifesto.task.titolo,
-        files: driveFiles,
-      });
-    } catch {
-      // Drive KO non blocca la PEC: il verbale è già partito.
-    }
+    // La copia su Drive NON parte più da qui: il trigger del database ha
+    // appena messo la riga esportazioni_drive a 'da_fare' (dentro
+    // registra_esito_pec) e la Edge Function fa il resto in background.
 
     revalidatePath(`/task/${taskId}`);
     return {
       ok: true,
-      dati: { messageId, allegati: nomiAllegati, esclusi, driveUrl },
+      dati: { messageId, allegati: nomiAllegati, esclusi },
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Errore di spedizione";
@@ -460,5 +446,21 @@ export async function confermaRicevutaPec(
   if (error) return errore(error.message);
 
   revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+
+/** Chiede (o richiede di nuovo) la copia su Drive di un pacchetto. */
+export async function richiediEsportazioneDrive(
+  pacchettoId: string,
+): Promise<Esito> {
+  await requireSession();
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase.rpc("richiedi_esportazione_drive", {
+    p_pacchetto: pacchettoId,
+  });
+  if (error) return errore(error.message);
+
+  revalidatePath(`/task/[taskId]`, "page");
   return { ok: true, dati: undefined };
 }
