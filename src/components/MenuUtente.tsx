@@ -48,9 +48,9 @@ export default function MenuUtente({ profile }: { profile: Profile }) {
         className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1 text-sm hover:bg-slate-50"
       >
         {profile.foto_path ? (
-          <FotoProfilo path={profile.foto_path} className="h-10 w-10 rounded-full object-cover" alt="" />
+          <FotoProfilo path={profile.foto_path} className="h-6 w-6 rounded-full object-cover" alt="" />
         ) : (
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-tt-blue text-xs font-semibold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-tt-blue text-[10px] font-semibold text-white">
             {iniziali}
           </span>
         )}
