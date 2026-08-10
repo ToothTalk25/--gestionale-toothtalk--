@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             (es. "Registro globale"), non da un titolo scritto addosso alla persona.
           */}
           <div className="ml-auto flex items-center">
-            <MenuUtente profile={profile} />
+            <MenuUtente profile={profile} isAdmin={isAdmin} />
           </div>
         </div>
       </header>

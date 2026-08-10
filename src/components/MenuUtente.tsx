@@ -11,7 +11,7 @@ import FotoProfilo from "@/components/FotoProfilo";
  * Menu utente nell'intestazione: avatar (foto o iniziali) + nome.
  * Aprendo la tendina: "Profilo" (pagina /profilo) ed "Esci".
  */
-export default function MenuUtente({ profile }: { profile: Profile }) {
+export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isAdmin: boolean }) {
   const router = useRouter();
   const [aperto, setAperto] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -78,14 +78,19 @@ export default function MenuUtente({ profile }: { profile: Profile }) {
           >
             Progetti
           </Link>
-          <Link
-            href="/profilo"
-            onClick={() => setAperto(false)}
-            role="menuitem"
-            className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Profilo
-          </Link>
+          {/* La voce "Profilo" è solo per i partecipanti: chi ha accesso
+              globale non ha un profilo da compilare (stipula i contratti,
+              la sua PEC è già il mittente delle comunicazioni). */}
+          {!isAdmin && (
+            <Link
+              href="/profilo"
+              onClick={() => setAperto(false)}
+              role="menuitem"
+              className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Profilo
+            </Link>
+          )}
           <button
             onClick={esci}
             role="menuitem"

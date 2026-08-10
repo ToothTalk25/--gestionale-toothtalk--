@@ -1,9 +1,14 @@
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import ProfiloPersonale from "@/components/ProfiloPersonale";
 import SezioneEliminazioneAccount from "@/components/SezioneEliminazioneAccount";
 
 export default async function ProfiloPage() {
   const { profile, isAdmin } = await requireSession();
+
+  // Chi ha accesso globale non ha un profilo da compilare: stipula i contratti
+  // e la sua PEC è già il mittente delle comunicazioni. Nessun dato da gestire.
+  if (isAdmin) redirect("/dashboard");
 
   return (
     <div className="space-y-6">
