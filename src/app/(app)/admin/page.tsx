@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
-import { KIND_LABEL, type DeliverableKind } from "@/lib/types";
+import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
+import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 
 type Confronto = {
   deliverable_id: string;
@@ -27,7 +28,8 @@ export default async function AdminPage() {
   await requireAdmin();
   const supabase = await supabaseServer();
 
-  const [{ data: audit }, { data: confronti }, { data: profili }] = await Promise.all([
+  const [{ data: audit }, { data: confronti }, { data: profili }, { data: poli }, { data: inviti }] =
+    await Promise.all([
     supabase
       .from("audit_log")
       .select("id, at, action, entity_type, entity_id, actor, meta")
@@ -45,6 +47,17 @@ export default async function AdminPage() {
       .select("id, full_name, email, role")
       .order("role")
       .returns<{ id: string; full_name: string | null; email: string; role: string }[]>(),
+    supabase
+      .from("poli")
+      .select("id, nome, slug, citta, attivo")
+      .eq("attivo", true)
+      .order("nome")
+      .returns<Polo[]>(),
+    supabase
+      .from("v_inviti")
+      .select("*")
+      .order("gruppo")
+      .returns<RigaInvito[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -56,10 +69,13 @@ export default async function AdminPage() {
       <header>
         <h1 className="text-2xl font-semibold">Registro globale</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Vista trasversale su tutti i poli. Il registro è append-only: nessuna
-          voce può essere modificata o cancellata, nemmeno da questa pagina.
+          Vista trasversale su tutti i gruppi. Il registro è append-only:
+          nessuna voce può essere modificata o cancellata, nemmeno da questa
+          pagina.
         </p>
       </header>
+
+      <GestioneInviti poli={poli ?? []} inviti={inviti ?? []} />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
         <h2 className="text-lg font-medium">Originale vs versione finale</h2>
