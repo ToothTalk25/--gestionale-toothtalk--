@@ -8,3 +8,10 @@ build/
 next-env.d.ts
 .DS_Store
 .vercel
+
+# Credenziali: la chiave del Service Account Google dà accesso al Drive
+# condiviso. Non deve mai finire in un repository, nemmeno privato.
+supabase/google-key.json
+*google-key*.json
+*service-account*.json
+*credentials*.json
