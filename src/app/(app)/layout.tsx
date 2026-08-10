@@ -48,7 +48,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <footer className="border-t border-slate-100 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 text-xs text-slate-400">
-          <span>ToothTalk — progetto di divulgazione odontoiatrica</span>
+          <span>
+            ToothTalk<sup className="ml-0.5 align-super text-[8px]">™</sup> —
+            progetto di divulgazione odontoiatrica
+          </span>
           <Link href="/privacy" className="hover:text-slate-600">
             Privacy e cookie
           </Link>

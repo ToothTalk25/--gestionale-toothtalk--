@@ -13,7 +13,8 @@ export default function PrivacyPage() {
         <div>
           <h2 className="text-base font-medium text-slate-900">Titolare del trattamento</h2>
           <p className="mt-1">
-            ToothTalk, progetto di divulgazione odontoiatrica, rappresentato dal
+            ToothTalk<sup className="align-super text-[10px]">™</sup>,
+            progetto di divulgazione odontoiatrica, rappresentato dal
             referente del progetto. Contatto: attraverso il gestionale o l&apos;account
             email del progetto.
           </p>
