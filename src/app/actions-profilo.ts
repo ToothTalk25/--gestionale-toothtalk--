@@ -14,6 +14,15 @@ function errore(msg: string): Esito<never> {
   return { ok: false, errore: msg };
 }
 
+/** Esegue una promise ignorando gli errori (per le cancellazioni best-effort). */
+async function ignora(p: PromiseLike<unknown>): Promise<void> {
+  try {
+    await p;
+  } catch {
+    // cancellazione best-effort: se fallisce, non blocca il resto
+  }
+}
+
 type CampiAnagrafica = Partial<Pick<Profile, "universita" | "pec">>;
 
 /**
@@ -58,18 +67,8 @@ export async function eliminaAccount(
   }
 
   // 2. Consensi e appartenenze
-  await admin
-    .from("consensi")
-    .delete()
-    .eq("user_id", userId)
-    .then(() => {})
-    .catch(() => {});
-  await admin
-    .from("memberships")
-    .delete()
-    .eq("user_id", userId)
-    .then(() => {})
-    .catch(() => {});
+  await ignora(admin.from("consensi").delete().eq("user_id", userId));
+  await ignora(admin.from("memberships").delete().eq("user_id", userId));
 
   // 3. Materiali di lavorazione trasmessi (bucket originali), non certificati
   const { data: deliverables } = await admin
@@ -83,25 +82,11 @@ export async function eliminaAccount(
       .eq("deliverable_id", d.id);
     for (const v of vers ?? []) {
       if (v.bucket === "originali") {
-        await admin.storage
-          .from("originali")
-          .remove([v.storage_path])
-          .then(() => {})
-          .catch(() => {});
-        await admin
-          .from("deliverable_versions")
-          .delete()
-          .eq("id", v.id)
-          .then(() => {})
-          .catch(() => {});
+        await ignora(admin.storage.from("originali").remove([v.storage_path]));
+        await ignora(admin.from("deliverable_versions").delete().eq("id", v.id));
       }
     }
-    await admin
-      .from("deliverables")
-      .delete()
-      .eq("id", d.id)
-      .then(() => {})
-      .catch(() => {});
+    await ignora(admin.from("deliverables").delete().eq("id", d.id));
   }
 
   // 4. Anonimizzazione del profilo (diritto all'oblio) — l'archivio
