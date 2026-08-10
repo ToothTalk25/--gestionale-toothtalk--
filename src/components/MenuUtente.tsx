@@ -70,26 +70,28 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           role="menu"
           className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
         >
-          <Link
-            href="/dashboard"
-            onClick={() => setAperto(false)}
-            role="menuitem"
-            className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Progetti
-          </Link>
-          {/* La voce "Profilo" è solo per i partecipanti: chi ha accesso
-              globale non ha un profilo da compilare (stipula i contratti,
-              la sua PEC è già il mittente delle comunicazioni). */}
+          {/* Le voci "Progetti" e "Profilo" sono per i partecipanti. Chi ha
+              accesso globale naviga dai gruppi in alto e dal Registro: il suo
+              menu serve solo a uscire. */}
           {!isAdmin && (
-            <Link
-              href="/profilo"
-              onClick={() => setAperto(false)}
-              role="menuitem"
-              className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              Profilo
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                onClick={() => setAperto(false)}
+                role="menuitem"
+                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Progetti
+              </Link>
+              <Link
+                href="/profilo"
+                onClick={() => setAperto(false)}
+                role="menuitem"
+                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Profilo
+              </Link>
+            </>
           )}
           <button
             onClick={esci}
