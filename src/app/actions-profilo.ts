@@ -20,6 +20,29 @@ export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito>
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
+  // La PEC, se cambia, deve essere quella dell'ateneo del proprio gruppo.
+  if (campi.pec) {
+    const { data: poli } = await supabase
+      .from("memberships")
+      .select("polo_id")
+      .eq("user_id", profile.id)
+      .returns<{ polo_id: string }[]>();
+    const polo = poli?.[0]?.polo_id;
+    if (!polo) {
+      return errore("Non appartieni a nessun gruppo: impossibile verificare la PEC.");
+    }
+    const { data: pecOk } = await supabase.rpc("pec_universitaria_valida", {
+      p_polo: polo,
+      p_pec: campi.pec,
+    });
+    if (pecOk === false) {
+      return errore(
+        "La PEC non appartiene al dominio universitario del tuo gruppo. " +
+          "Usa la PEC rilasciata dal tuo ateneo.",
+      );
+    }
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update(campi)

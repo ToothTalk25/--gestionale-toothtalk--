@@ -15,7 +15,7 @@ type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
  */
 export async function verificaCodice(
   codice: string,
-): Promise<Esito<{ gruppo: string }>> {
+): Promise<Esito<{ gruppo: string; polo_id: string }>> {
   if (!codice.trim()) return { ok: false, errore: "Inserisci il codice." };
 
   const supabase = await supabaseServer();
@@ -30,7 +30,10 @@ export async function verificaCodice(
     return { ok: false, errore: riga?.motivo ?? "Codice non riconosciuto" };
   }
 
-  return { ok: true, dati: { gruppo: riga.polo_nome } };
+  return {
+    ok: true,
+    dati: { gruppo: riga.polo_nome, polo_id: riga.polo_id as string },
+  };
 }
 
 /**
@@ -75,7 +78,20 @@ export async function registraConInvito(input: {
   const verifica = await verificaCodice(codice);
   if (!verifica.ok) return verifica;
 
+  // La PEC deve essere quella dell'ateneo del gruppo.
   const admin = supabaseAdmin();
+  const { data: pecOk } = await admin.rpc("pec_universitaria_valida", {
+    p_polo: verifica.dati.polo_id,
+    p_pec: pec,
+  });
+  if (pecOk === false) {
+    return {
+      ok: false,
+      errore:
+        "La PEC non appartiene al dominio universitario del gruppo. Usa la " +
+        "PEC rilasciata dal tuo ateneo (es. nome.cognome@studenti.unime.it).",
+    };
+  }
 
   const { data: creato, error: eCrea } = await admin.auth.admin.createUser({
     email,
