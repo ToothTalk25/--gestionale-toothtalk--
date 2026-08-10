@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/auth";
-import LogoutButton from "@/components/LogoutButton";
+import MenuUtente from "@/components/MenuUtente";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, poli, isAdmin } = await requireSession();
@@ -19,9 +19,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {p.nome}
               </Link>
             ))}
-            <Link href="/profilo" className="hover:text-tt-ink">
-              Profilo
-            </Link>
             {isAdmin && (
               <>
                 <Link href="/revisione" className="font-medium text-tt-blue">
@@ -39,9 +36,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             accesso globale e chi no si vede dalle voci di menu disponibili
             (es. "Registro globale"), non da un titolo scritto addosso alla persona.
           */}
-          <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="text-slate-500">{profile.full_name ?? profile.email}</span>
-            <LogoutButton />
+          <div className="ml-auto flex items-center">
+            <MenuUtente profile={profile} />
           </div>
         </div>
       </header>
