@@ -19,6 +19,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {p.nome}
               </Link>
             ))}
+            <Link href="/profilo" className="hover:text-tt-ink">
+              Profilo
+            </Link>
             {isAdmin && (
               <>
                 <Link href="/revisione" className="font-medium text-tt-blue">

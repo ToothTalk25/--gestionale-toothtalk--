@@ -77,6 +77,15 @@ export type Profile = {
   full_name: string | null;
   role: UserRole;
   attivo: boolean;
+  data_nascita: string | null;
+  luogo_nascita: string | null;
+  matricola: string | null;
+  corso_studi: string | null;
+  universita: string | null;
+  foto_path: string | null;
+  accordo_path: string | null;
+  accordo_sha256: string | null;
+  accordo_caricato_at: string | null;
 };
 
 export type Polo = {

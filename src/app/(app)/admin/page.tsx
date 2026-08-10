@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
+import FotoProfilo from "@/components/FotoProfilo";
 
 type Confronto = {
   deliverable_id: string;
@@ -28,8 +29,14 @@ export default async function AdminPage() {
   await requireAdmin();
   const supabase = await supabaseServer();
 
-  const [{ data: audit }, { data: confronti }, { data: profili }, { data: poli }, { data: inviti }] =
-    await Promise.all([
+  const [
+    { data: audit },
+    { data: confronti },
+    { data: profili },
+    { data: poli },
+    { data: inviti },
+    { data: membri },
+  ] = await Promise.all([
     supabase
       .from("audit_log")
       .select("id, at, action, entity_type, entity_id, actor, meta")
@@ -44,9 +51,23 @@ export default async function AdminPage() {
       .returns<Confronto[]>(),
     supabase
       .from("profiles")
-      .select("id, full_name, email, role")
+      .select(
+        "id, full_name, email, role, universita, corso_studi, foto_path, accordo_path, accordo_caricato_at",
+      )
       .order("role")
-      .returns<{ id: string; full_name: string | null; email: string; role: string }[]>(),
+      .returns<
+        {
+          id: string;
+          full_name: string | null;
+          email: string;
+          role: string;
+          universita: string | null;
+          corso_studi: string | null;
+          foto_path: string | null;
+          accordo_path: string | null;
+          accordo_caricato_at: string | null;
+        }[]
+      >(),
     supabase
       .from("poli")
       .select("id, nome, slug, citta, attivo")
@@ -58,11 +79,20 @@ export default async function AdminPage() {
       .select("*")
       .order("gruppo")
       .returns<RigaInvito[]>(),
+    supabase
+      .from("memberships")
+      .select("user_id, poli!inner(nome)")
+      .returns<{ user_id: string; poli: { nome: string } }[]>(),
   ]);
 
   const nomi = Object.fromEntries(
     (profili ?? []).map((p) => [p.id, p.full_name ?? p.email]),
   );
+
+  const poliDi: Record<string, string[]> = {};
+  for (const m of membri ?? []) {
+    (poliDi[m.user_id] ??= []).push(m.poli.nome);
+  }
 
   return (
     <div className="space-y-8">
@@ -143,18 +173,61 @@ export default async function AdminPage() {
       </section>
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-        <h2 className="text-lg font-medium">Utenti</h2>
-        <ul className="mt-3 text-sm">
-          {(profili ?? []).map((p) => (
-            <li key={p.id} className="border-b border-slate-50 py-1">
-              {p.full_name ?? "—"}{" "}
-              <span className="text-slate-400">{p.email}</span>{" "}
-              <span className="text-xs text-slate-400">
-                {p.role === "admin" ? "accesso globale" : "membro polo"}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <h2 className="text-lg font-medium">Registro partecipanti per sede</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Anagrafica e accordo editoriale dei partecipanti, raggruppati per
+          gruppo.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-slate-400">
+              <tr>
+                <th className="py-2 pr-4">Gruppo</th>
+                <th className="py-2 pr-4">Partecipante</th>
+                <th className="py-2 pr-4">Università</th>
+                <th className="py-2 pr-4">Corso</th>
+                <th className="py-2 pr-4">Foto</th>
+                <th className="py-2">Accordo editoriale</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(profili ?? [])
+                .filter((p) => p.role !== "admin")
+                .map((p) => (
+                  <tr key={p.id} className="border-t border-slate-100">
+                    <td className="py-2 pr-4 text-xs text-slate-500">
+                      {poliDi[p.id]?.join(", ") || "—"}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {p.full_name ?? "—"}
+                      <div className="text-xs text-slate-400">{p.email}</div>
+                    </td>
+                    <td className="py-2 pr-4">{p.universita ?? "—"}</td>
+                    <td className="py-2 pr-4">{p.corso_studi ?? "—"}</td>
+                    <td className="py-2 pr-4">
+                      {p.foto_path ? (
+                        <FotoProfilo path={p.foto_path} className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="py-2">
+                      {p.accordo_path ? (
+                        <span className="text-xs text-emerald-700">
+                          Caricato
+                          {p.accordo_caricato_at
+                            ? ` il ${new Date(p.accordo_caricato_at).toLocaleString("it-IT")}`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">Non caricato</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
         <p className="mt-3 text-xs text-slate-400">
           Creazione utenti e assegnazione ai poli:{" "}
           <code className="rounded bg-slate-100 px-1">npm run utente</code>
