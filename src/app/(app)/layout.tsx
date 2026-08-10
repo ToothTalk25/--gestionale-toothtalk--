@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth";
 import MenuUtente from "@/components/MenuUtente";
 import BannerConsenso from "@/components/BannerConsenso";
+import NavLink from "@/components/NavLink";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, poli, isAdmin } = await requireSession();
@@ -16,18 +17,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           <nav className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
             {poli.map((p) => (
-              <Link key={p.id} href={`/polo/${p.id}`} className="hover:text-tt-ink">
+              <NavLink key={p.id} href={`/polo/${p.id}`} activePrefix={`/polo/${p.id}`}>
                 {p.nome}
-              </Link>
+              </NavLink>
             ))}
             {isAdmin && (
               <>
-                <Link href="/revisione" className="font-medium text-tt-blue">
+                <NavLink href="/revisione" activePrefix="/revisione">
                   Video da rivedere
-                </Link>
-                <Link href="/admin" className="hover:text-tt-ink">
+                </NavLink>
+                <NavLink href="/admin" activePrefix="/admin">
                   Registro
-                </Link>
+                </NavLink>
               </>
             )}
           </nav>
