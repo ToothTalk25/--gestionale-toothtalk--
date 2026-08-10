@@ -1,0 +1,128 @@
+# .clinerules — ToothTalk Gestionale
+
+## Prima di tutto
+Leggere **`CONTESTO.md`**: contiene le decisioni di progetto e i vincoli. Diverse
+scelte che sembrano complicazioni sono deliberate, e cambiarle senza sapere il
+motivo rompe la ragion d'essere del progetto.
+
+Questo file contiene le regole *operative*; il *perché* sta in CONTESTO.md.
+
+## Stack
+- Next.js 16 (App Router, React 19, TypeScript 5.7) + Tailwind CSS 4.
+  Nota: la convenzione `middleware.ts` in Next 16 si chiama `src/proxy.ts`.
+- Supabase (Postgres + Auth + Storage). Client `@supabase/ssr` e
+  `@supabase/supabase-js`.
+- `src/lib/supabase/` espone 3 client: `client.ts` (browser), `server.ts` (SSR),
+  `admin.ts` (service_role, solo server).
+- Server Actions: `src/app/actions.ts`, `actions-pacchetto.ts`,
+  `actions-revisione.ts`, `actions-invito.ts`.
+- Gestione utenti CLI: `npm run utente` (scripts/gestisci-utenti.mjs).
+- Migrazioni: `npm run migra` (scripts/migra.mjs).
+
+## Regole vincolanti, in ordine di priorità
+
+1. **Terminologia.** Nessuna parola visibile deve evocare un rapporto di lavoro
+   subordinato o parasubordinato: mai "titolare", "team", "collaboratore",
+   "consegna" come prestazione dovuta, "task", "incarico". Usare: accesso
+   globale, gruppo, partecipante, deposito, progetto. Vale **anche per i
+   messaggi d'errore dentro le migrazioni SQL**, perché l'applicazione li
+   inoltra all'utente parola per parola. Tabella completa in CONTESTO.md.
+
+2. **Mai scrivere direttamente sul database.** Ogni modifica (schema, RLS, dati,
+   enum, storage) va scritta come file SQL in `supabase/migrations/` con
+   numerazione progressiva. Scritto il file, **fermarsi**: l'applicazione la
+   decide chi sta lavorando, con `npm run migra -- NNNN`.
+
+3. **Non modificare le migrazioni già applicate** (da `0001` in poi): file e
+   database divergerebbero. Per cambiare qualcosa si aggiunge un file nuovo.
+
+4. **Ogni nuova tabella** deve avere `alter table ... enable row level security`
+   e almeno una policy esplicita. L'assenza di policy significa divieto totale:
+   è il comportamento voluto, non una dimenticanza.
+
+5. **Non toccare `src/proxy.ts` o `src/lib/auth.ts`** senza spiegare prima il
+   rischio: sono il confine di autenticazione. Errori lì significano sessioni
+   esposte o utenti bloccati fuori.
+
+6. **Leggere un file per intero prima di modificarlo.** Niente assunzioni su
+   contenuto o naming.
+
+7. **Non creare file nuovi se si può estendere uno esistente** con la stessa
+   responsabilità.
+
+## Le due zone, da non confondere
+- **Lavorazione** (bucket `originali`): girato grezzo e bozze. Liberamente
+  modificabile ed **eliminabile**. Nessun valore probatorio.
+- **Video completo** (bucket `finali`): dal sigillo in poi **immutabile per
+  chiunque**, protetto da tre difese ridondanti (trigger, chiave esterna,
+  congelamento della composizione). Non indebolirle.
+
+## Schema dati (schema `public`, RLS ovunque)
+
+| Tabella | FK principali |
+|---------|---------------|
+| `poli` | — (gruppi piatti, nessuna gerarchia possibile) |
+| `profiles` | `id → auth.users(id)` |
+| `memberships` | `user_id → profiles.id`, `polo_id → poli.id`; PK `(user_id, polo_id)`, **nessun ruolo interno** |
+| `tasks` | `polo_id`, `created_by`, `formato_id` |
+| `deliverables` | `task_id`, `created_by` |
+| `deliverable_versions` | `deliverable_id`, `uploaded_by`; catena `record_hash` |
+| `task_status_history` | `task_id`, `actor` |
+| `audit_log` | `polo_id`, `actor` |
+| `pacchetti_video` | `task_id`, `created_by`, `sigillato_da` |
+| `pacchetto_elementi` | `pacchetto_id`, `version_id`; PK `(pacchetto_id, ruolo)` |
+| `formati` | — |
+| `richieste_modifica` | `task_id`, `pacchetto_id`, `creata_da`, `risolta_da` |
+| `inviti` | `polo_id`, `creato_da` — codici di ingresso, uno per gruppo |
+| `inviti_utilizzi` | `invito_id`, `user_id` — chi è entrato con quale codice |
+
+Invarianti: le versioni nel bucket `finali` agganciate a un pacchetto sigillato
+sono immutabili; ogni versione è concatenata alla precedente via `record_hash`.
+
+## Enum
+- `user_role`: `admin`, `member`
+- `task_status`: `da_fare`, `consegnato`, `in_revisione`, `modificato_admin`,
+  `approvato`, `pubblicato`, `respinto` (le etichette mostrate sono in
+  `STATUS_LABEL`, e sono diverse dai valori interni)
+- `deliverable_kind`: `script`, `video_grezzo`, `thumbnail`, `liberatoria`,
+  `audio`, `altro`, `descrizione`, `finale_video`, `finale_copertina`,
+  `finale_liberatoria`
+- `version_origin`: `originale`, `admin_edit`
+- `pacchetto_stato`: `bozza`, `pronto`, `sigillato`, `pec_inviata`,
+  `pec_confermata`, `pec_errore`, `annullato`
+- `ruolo_elemento`: `video`, `copertina`, `liberatoria`
+- `ambito_richiesta`: `video`, `copertina`, `descrizione`, `script`, `generale`
+- `richiesta_stato`: `aperta`, `risolta`
+
+Nuovi valori di enum richiedono una **migrazione dedicata e isolata** (vedi
+`0005`, `0010`, `0012`, `0022`): Postgres vieta di usare un valore nella stessa
+transazione in cui è stato creato.
+
+## Segreti
+`.env.local` e le chiavi del Service Account Google non vanno mai committate né
+stampate. `SUPABASE_SERVICE_ROLE_KEY` bypassa la RLS: si usa solo lato server e
+solo dove è indispensabile (esito PEC, consumo dei codici di invito, creazione
+account su invito).
+
+## Convenzioni
+
+SQL:
+- File `NNNN_<descrizione>.sql`, DDL idempotente (`create table if not exists`,
+  enum dentro `do $$ ... exception when duplicate_object then null; end $$;`).
+- Policy `<tabella>_<azione>`, con `drop policy if exists` prima di ogni create.
+- Helper RLS `SECURITY DEFINER` con `set search_path = public`.
+- Intestazione con banner `-- ===...` e commenti in italiano che spiegano il
+  *perché*, non il *cosa*.
+
+TypeScript:
+- Tipi in `src/lib/types.ts`, PascalCase; le colonne restano `snake_case`.
+- Costanti di etichetta in `SCREAMING_SNAKE` (`STATUS_LABEL`, `KIND_LABEL`).
+- Componenti in `src/components/`, PascalCase.
+- Rotte protette sotto `src/app/(app)/`; pubbliche: `login`, `registrati`,
+  `aggiorna-password`.
+- Commenti e stringhe di interfaccia in italiano.
+
+## Verifica
+Dopo modifiche a permessi o stati, controllare con `npx tsc --noEmit` e
+`npx next build`. Per le garanzie di immutabilità esiste
+`supabase/tests/verifica_permessi.sql`.
