@@ -66,19 +66,24 @@ export default function AzioniProgetto({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      {inModifica ? (
+        <input
+          value={nuovoTitolo}
+          onChange={(e) => setNuovoTitolo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") salvaTitolo();
+            if (e.key === "Escape") setInModifica(false);
+          }}
+          autoFocus
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-2xl font-semibold"
+        />
+      ) : (
+        <h1 className="text-2xl font-semibold">{titolo}</h1>
+      )}
+
       {inModifica ? (
         <>
-          <input
-            value={nuovoTitolo}
-            onChange={(e) => setNuovoTitolo(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") salvaTitolo();
-              if (e.key === "Escape") setInModifica(false);
-            }}
-            autoFocus
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xl font-semibold"
-          />
           <button
             onClick={salvaTitolo}
             disabled={pending}

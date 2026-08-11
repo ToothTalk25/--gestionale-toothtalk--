@@ -147,15 +147,12 @@ export default async function TaskPage({
                 {polo?.nome}
               </Link>
             </p>
-            <h1 className="mt-1 text-2xl font-semibold">{task.titolo}</h1>
-            <div className="mt-1">
-              <AzioniProgetto
-                taskId={task.id}
-                titolo={task.titolo}
-                poloId={task.polo_id}
-                isAdmin={isAdmin}
-              />
-            </div>
+            <AzioniProgetto
+              taskId={task.id}
+              titolo={task.titolo}
+              poloId={task.polo_id}
+              isAdmin={isAdmin}
+            />
             <p className="mt-1 text-xs text-slate-400">
               {task.scadenza
                 ? `Scadenza ${new Date(task.scadenza).toLocaleDateString("it-IT")} · `
