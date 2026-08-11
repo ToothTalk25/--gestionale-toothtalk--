@@ -191,4 +191,74 @@ export async function caricaLiberatoriaPubblica(
   }
 
   return { ok: true };
+
+/** Firma la liberatoria online: il contatto inserisce nome e firma, il sistema genera il documento e lo archivia. */
+export async function firmaLiberatoriaOnline(
+  token: string,
+  nome: string,
+  firma: string,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  const admin = supabaseAdmin();
+
+  const { data: richiesta, error: eTok } = await admin
+    .rpc("verifica_token_liberatoria", { p_token: token });
+  if (eTok || !richiesta?.length) return errore("Token non valido o scaduto.");
+  const { task_id } = richiesta[0] as { task_id: string };
+
+  const data = new Date().toISOString().slice(0, 10);
+  const testo =
+    `LIBERATORIA PRIVACY / IMMAGINE\n` +
+    `Progetto: ToothTalk\n` +
+    `Data: ${data}\n\n` +
+    `Il/La sottoscritto/a: ${nome}\n` +
+    `DICHIARA di acconsentire alla ripresa e alla pubblicazione della\n` +
+    `propria immagine e voce nel video del progetto ToothTalk, secondo\n` +
+    `l'informativa privacy consultabile sul sito del progetto.\n\n` +
+    `Firma: ${firma}\n\n` +
+    `Documento generato e certificato digitalmente dal sistema ToothTalk.`;
+
+  const { randomUUID } = await import("node:crypto");
+  const buffer = Buffer.from(testo, "utf8");
+  const sha256 = (await import("node:crypto")).createHash("sha256").update(buffer).digest("hex");
+  const fileName = `liberatoria_${nome.replace(/\s+/g, "_").slice(0, 50)}.txt`;
+  const storagePath = `${task_id}/finale_liberatoria/${randomUUID()}__${fileName}`;
+
+  const { data: del } = await admin.from("deliverables").select("id")
+    .eq("task_id", task_id).eq("kind", "finale_liberatoria").single<{ id: string }>();
+  let deliverableId: string;
+  if (!del) {
+    const { data: nuovo, error: eDel } = await admin.from("deliverables")
+      .insert({ task_id, kind: "finale_liberatoria", created_by: null })
+      .select("id").single<{ id: string }>();
+    if (eDel || !nuovo) return errore("Impossibile creare lo slot di upload.");
+    deliverableId = nuovo.id;
+  } else { deliverableId = del.id; }
+
+  const { data: profilo } = await admin.from("profiles").select("id")
+    .eq("role", "admin").eq("attivo", true).limit(1).single<{ id: string }>();
+  if (!profilo) return errore("Nessun admin trovato.");
+
+  const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
+    contentType: "text/plain; charset=utf-8", upsert: false,
+  });
+  if (eUpload) return errore("Upload fallito: " + eUpload.message);
+
+  const { data: versione, error: eVers } = await admin.from("deliverable_versions").insert({
+    deliverable_id: deliverableId, origin: "originale", bucket: "finali",
+    storage_path: storagePath, file_name: fileName, mime_type: "text/plain; charset=utf-8",
+    size_bytes: buffer.byteLength, sha256, uploaded_by: profilo.id,
+  }).select("id").single<{ id: string }>();
+  if (eVers) {
+    await admin.storage.from("finali").remove([storagePath]).catch(() => {});
+    return errore("Registrazione fallita: " + eVers.message);
+  }
+
+  const { error: eReg } = await admin.rpc("registra_upload_liberatoria", {
+    p_token: token, p_version: versione.id,
+  });
+  if (eReg) return errore("Token non valido o gia usato: " + eReg.message);
+
+  return { ok: true };
+}
+
 }
