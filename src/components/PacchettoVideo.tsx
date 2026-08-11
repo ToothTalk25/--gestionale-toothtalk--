@@ -7,7 +7,7 @@ import UploadDeliverable from "@/components/UploadDeliverable";
 import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
 import { impostaCoinvolgeTerzi } from "@/app/actions";
-import { aggiornaContattoEsterno, inviaRichiestaLiberatoria } from "@/app/actions-liberatoria";
+import { aggiornaContattoEsterno, aggiornaContattoPec, inviaRichiestaLiberatoria } from "@/app/actions-liberatoria";
 import {
   annullaPacchetto,
   collegaElemento,
@@ -55,6 +55,7 @@ export default function PacchettoVideo({
   esportazione,
   formato,
   contattoEsternoEmail,
+  contattoEsternoPec,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -65,6 +66,7 @@ export default function PacchettoVideo({
   esportazione: EsportazioneDriveRow | null;
   formato: Formato | null;
   contattoEsternoEmail: string | null;
+  contattoEsternoPec: string | null;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -76,6 +78,7 @@ export default function PacchettoVideo({
   const [errore, setErrore] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [contattoEmail, setContattoEmail] = useState(contattoEsternoEmail ?? "");
+  const [contattoPec, setContattoPec] = useState(contattoEsternoPec ?? "");
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
@@ -214,7 +217,33 @@ export default function PacchettoVideo({
             />
           </div>
 
-          {isAdmin && contattoEmail.trim() && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              PEC del contatto (opzionale — se presente, l'invito parte via PEC)
+            </label>
+            <input
+              type="email"
+              value={contattoPec}
+              disabled={!componibile}
+              onChange={(e) => setContattoPec(e.target.value)}
+              onBlur={() => {
+                if (contattoPec.trim() !== (contattoEsternoPec ?? "")) {
+                  start(async () => {
+                    const esito = await aggiornaContattoPec(
+                      taskId,
+                      contattoPec.trim() || null,
+                    );
+                    if (!esito.ok) setErrore(esito.errore);
+                    else router.refresh();
+                  });
+                }
+              }}
+              placeholder="es. dottore@pec.it"
+              className="mt-1 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+
+          {isAdmin && (contattoEmail.trim() || contattoPec.trim()) && (
             <div className="flex items-center gap-2">
               <button
                 disabled={pending}
@@ -224,10 +253,14 @@ export default function PacchettoVideo({
                     setMessaggio(null);
                     const esito = await inviaRichiestaLiberatoria(
                       taskId,
-                      contattoEmail.trim(),
+                      (contattoPec.trim() || contattoEmail.trim()),
                     );
                     if (!esito.ok) setErrore(esito.errore);
-                    else setMessaggio("Link di upload inviato a " + contattoEmail.trim());
+                    else setMessaggio(
+                      "Link inviato" +
+                        (contattoPec.trim() ? " via PEC" : "") +
+                        " a " + (contattoPec.trim() || contattoEmail.trim()),
+                    );
                   })
                 }
                 className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"

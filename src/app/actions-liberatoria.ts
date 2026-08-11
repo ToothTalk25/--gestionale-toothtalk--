@@ -11,45 +11,49 @@ function errore(msg: string): { ok: false; errore: string } {
 
 // ------------------------------------------------------------------ email
 
-async function inviaEmailLink(destinatario: string, token: string): Promise<void> {
+async function inviaEmailLink(destinatario: string, token: string, usaPec: boolean): Promise<void> {
   const link = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/carica-liberatoria?token=${token}`;
 
-  // Se le credenziali non sono configurate, il link va copiato a mano
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    console.log("--------------------------------------------------");
-    console.log("Email non configurata (MAIL_USER/MAIL_PASS mancanti).");
-    console.log("Copia questo link e invialo manualmente:");
-    console.log("");
-    console.log("  Destinatario: " + destinatario);
-    console.log("  Link: " + link);
-    console.log("--------------------------------------------------");
+    console.log("Email non configurata. Link da inviare manualmente a " + destinatario + ": " + link);
     return;
   }
 
-  // nodemailer con Gmail SMTP
   const nodemailer = await import("nodemailer");
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-  });
 
-  await transporter.sendMail({
-    from: process.env.MAIL_USER,
-    to: destinatario,
-    subject: "Liberatoria — ToothTalk",
-    text:
-      `Salve,\n\n` +
-      `Lei compare in un video del progetto ToothTalk. Per favore, ` +
-      `scarichi il modulo di liberatoria, lo firmi e lo carichi a questo link:\n\n` +
-      `${link}\n\n` +
-      `Il link è valido 7 giorni. Grazie.\n\n` +
-      `— ToothTalk`,
-  });
+  if (usaPec) {
+    // Via PEC: mittente toothtalk@pec.it, SMTP Aruba
+    const pecConf = process.env.PEC_USER && process.env.PEC_PASSWORD;
+    if (!pecConf) { console.log("PEC non configurata, link: " + link); return; }
+    const transporter = nodemailer.createTransport({
+      host: process.env.PEC_HOST || "smtps.pec.aruba.it",
+      port: Number(process.env.PEC_PORT || 465),
+      secure: true,
+      auth: { user: process.env.PEC_USER, pass: process.env.PEC_PASSWORD },
+    });
+    await transporter.sendMail({
+      from: process.env.PEC_MITTENTE || process.env.PEC_USER,
+      to: destinatario,
+      subject: "Liberatoria — ToothTalk",
+      text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
+        `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
+        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk`,
+    });
+  } else {
+    // Via Gmail
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com", port: 587, secure: false,
+      auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+    });
+    await transporter.sendMail({
+      from: process.env.MAIL_USER,
+      to: destinatario,
+      subject: "Liberatoria — ToothTalk",
+      text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
+        `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
+        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk`,
+    });
+  }
 }
 
 // ------------------------------------------------------------------ azioni
@@ -63,6 +67,21 @@ export async function aggiornaContattoEsterno(
   const { error } = await supabase
     .from("tasks")
     .update({ contatto_esterno_email })
+    .eq("id", taskId);
+  if (error) return errore(error.message);
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true };
+}
+
+/** Aggiorna la PEC del contatto esterno per la liberatoria. */
+export async function aggiornaContattoPec(
+  taskId: string,
+  contatto_esterno_pec: string | null,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ contatto_esterno_pec })
     .eq("id", taskId);
   if (error) return errore(error.message);
   revalidatePath(`/task/${taskId}`);
@@ -90,8 +109,14 @@ export async function inviaRichiestaLiberatoria(
 
   if (error) return errore(error.message);
 
-  // Invia l'email con il link (o lo stampa in console se MAIL_* non configurati)
-  await inviaEmailLink(contatto_email, data.token);
+  // Se il contatto ha una PEC, la usiamo come destinatario e instradiamo via PEC.
+  const { data: task } = await (await supabaseServer()).from("tasks")
+    .select("contatto_esterno_pec").eq("id", taskId).single<{ contatto_esterno_pec: string | null }>();
+  const pec = task?.contatto_esterno_pec?.trim();
+  const usaPec = !!pec;
+  const destinatario = pec || contatto_email;
+
+  await inviaEmailLink(destinatario, data.token, usaPec);
 
   revalidatePath(`/task/${taskId}`);
   return { ok: true, token: data.token };

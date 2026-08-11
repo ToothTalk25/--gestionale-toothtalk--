@@ -291,6 +291,7 @@ export default async function TaskPage({
         esportazione={esportazione ?? null}
         formato={task.formati ?? null}
         contattoEsternoEmail={task.contatto_esterno_email ?? null}
+        contattoEsternoPec={task.contatto_esterno_pec ?? null}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
