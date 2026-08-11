@@ -107,6 +107,41 @@ export async function eliminaProgetto(taskId: string): Promise<Esito> {
 }
 
 /**
+ * Rimuove il file fisico dallo storage Supabase mantenendo la riga
+ * e l'impronta SHA256 (prova legale). Solo per file del bucket finali
+ * di pacchetti già certificati via PEC.
+ */
+export async function archiviaFileFinale(
+  taskId: string,
+  versionId: string,
+): Promise<Esito> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Solo chi ha accesso globale può archiviare un file.");
+
+  const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  const { data: versione, error: eL } = await supabase
+    .from("deliverable_versions")
+    .select("storage_path, bucket, archiviato_esterno")
+    .eq("id", versionId)
+    .single<{ storage_path: string; bucket: string; archiviato_esterno: boolean }>();
+
+  if (eL || !versione) return errore("File non trovato.");
+  if (versione.archiviato_esterno) return errore("Gia archiviato.");
+
+  const { error: eA } = await supabase.rpc("archivia_file_finale", {
+    p_version: versionId,
+  });
+  if (eA) return fallita(eA, "Archiviazione non consentita");
+
+  await admin.storage.from(versione.bucket).remove([versione.storage_path]).catch(() => {});
+
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+
+/**
  * Il gruppo dichiara se il video mostra una persona esterna al progetto
  * (es. un'intervista). Se sì, la liberatoria diventa obbligatoria nel
  * pacchetto pubblicabile: lo verifica sigilla_pacchetto() nel database,

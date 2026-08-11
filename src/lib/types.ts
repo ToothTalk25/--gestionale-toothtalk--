@@ -170,6 +170,7 @@ export type DeliverableVersion = {
   uploaded_by: string;
   uploaded_at: string;
   sealed_at: string | null;
+  archiviato_esterno: boolean;
   note: string | null;
 };
 
