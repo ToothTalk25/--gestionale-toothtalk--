@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 md:px-8">
           <Link href="/dashboard" className="shrink-0">
             <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-6 w-auto" />

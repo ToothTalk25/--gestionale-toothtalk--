@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
 import NewTaskForm from "@/components/NewTaskForm";
+import AzioniProgettoRiga from "@/components/AzioniProgettoRiga";
 import type { Formato, Polo, TaskStatus } from "@/lib/types";
 
 export default async function PoloPage({
@@ -103,6 +104,13 @@ export default async function PoloPage({
                     <span className="text-xs text-slate-400">
                       scad. {new Date(t.scadenza).toLocaleDateString("it-IT")}
                     </span>
+                  )}
+                  {t.status === "da_fare" && (
+                    <AzioniProgettoRiga
+                      taskId={t.id}
+                      titolo={t.titolo}
+                      poloId={poloId}
+                    />
                   )}
                   <StatusBadge status={t.status} />
                 </Link>

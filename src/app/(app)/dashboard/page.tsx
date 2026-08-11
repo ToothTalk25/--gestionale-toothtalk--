@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
+import AzioniProgettoRiga from "@/components/AzioniProgettoRiga";
 import type { TaskStatus } from "@/lib/types";
 
 type Riga = {
@@ -92,6 +93,13 @@ export default async function DashboardPage() {
                   <span className="text-xs text-slate-400">
                     {t.n_consegne_originali} file
                   </span>
+                  {t.status === "da_fare" && (
+                    <AzioniProgettoRiga
+                      taskId={t.id}
+                      titolo={t.titolo}
+                      poloId={t.polo_id}
+                    />
+                  )}
                   <StatusBadge status={t.status} />
                 </Link>
               </li>
