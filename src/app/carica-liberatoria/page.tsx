@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { firmaLiberatoriaOnline } from "@/app/actions-liberatoria";
 
 export default function CaricaLiberatoriaPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-sm px-4 py-20 text-center"><p className="text-sm text-slate-600">Caricamento…</p></div>}>
+      <CaricaLiberatoriaForm />
+    </Suspense>
+  );
+}
+
+function CaricaLiberatoriaForm() {
   const params = useSearchParams();
   const token = params.get("token");
   const [nome, setNome] = useState("");
