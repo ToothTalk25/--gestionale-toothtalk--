@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin, ordinaPoli } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import FotoProfilo from "@/components/FotoProfilo";
@@ -14,6 +15,16 @@ type Confronto = {
   originale_sigillata_il: string | null;
   finale_file: string | null;
   modificata_da_admin: boolean;
+};
+
+type Consenso = {
+  id: string;
+  user_id: string;
+  tipo: string;
+  versione: string;
+  accettato_at: string;
+  storage_path: string | null;
+  sha256: string | null;
 };
 
 type Audit = {
@@ -37,6 +48,7 @@ export default async function AdminPage() {
     { data: poli },
     { data: inviti },
     { data: membri },
+    { data: consensi },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -84,6 +96,11 @@ export default async function AdminPage() {
       .from("memberships")
       .select("user_id, poli!inner(nome)")
       .returns<{ user_id: string; poli: { nome: string } }[]>(),
+    supabase
+      .from("consensi")
+      .select("id, user_id, tipo, versione, accettato_at, storage_path, sha256")
+      .order("accettato_at", { ascending: false })
+      .returns<Consenso[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -255,6 +272,55 @@ export default async function AdminPage() {
           Creazione utenti e assegnazione ai poli:{" "}
           <code className="rounded bg-slate-100 px-1">npm run utente</code>
         </p>
+      </section>
+
+      {/* ---------- Consensi GDPR ---------- */}
+      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Consensi GDPR</h2>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+            {(consensi ?? []).length} ricevute
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">
+          Ogni accettazione genera una ricevuta HTML firmata (SHA256) conservata in storage per audit.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-slate-400">
+              <tr>
+                <th className="py-2 pr-4">Utente</th>
+                <th className="py-2 pr-4">Tipo</th>
+                <th className="py-2 pr-4">Versione</th>
+                <th className="py-2 pr-4">Accettato il</th>
+                <th className="py-2">SHA256</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(consensi ?? []).map((c) => (
+                <tr key={c.id} className="border-t border-slate-100">
+                  <td className="py-2 pr-4 text-xs">{nomi[c.user_id] ?? c.user_id.slice(0, 8)}</td>
+                  <td className="py-2 pr-4">
+                    <span className={
+                      c.tipo === "privacy"
+                        ? "rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700"
+                        : "rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700"
+                    }>
+                      {c.tipo === "privacy" ? "Privacy" : "Cookie"}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4 text-xs text-slate-500">{c.versione}</td>
+                  <td className="py-2 pr-4 text-xs text-slate-500">
+                    {new Date(c.accettato_at).toLocaleString("it-IT")}
+                  </td>
+                  <td className="py-2 text-xs font-mono text-slate-400">
+                    {c.sha256 ? c.sha256.slice(0, 16) + "…" : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );
