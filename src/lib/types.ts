@@ -26,6 +26,7 @@ export type TaskStatus =
 export type DeliverableKind =
   | "script"
   | "video_grezzo"
+  | "immagini_montaggio"
   | "thumbnail"
   | "liberatoria"
   | "audio"
@@ -60,6 +61,7 @@ export const STATI_MEMBRO: TaskStatus[] = ["da_fare", "consegnato", "in_revision
 export const KIND_LABEL: Record<DeliverableKind, string> = {
   script: "Script di lavorazione",
   video_grezzo: "Video in lavorazione",
+  immagini_montaggio: "Immagini montaggio video",
   thumbnail: "Copertina di lavorazione",
   liberatoria: "Liberatoria privacy/immagine",
   audio: "Audio",
@@ -79,6 +81,7 @@ export const KIND_LABEL: Record<DeliverableKind, string> = {
 /** Materiali di processo: immutabili una volta consegnati, ma non certificati. */
 export const KIND_LAVORAZIONE: DeliverableKind[] = [
   "video_grezzo",
+  "immagini_montaggio",
   "script",
   "descrizione",
   "thumbnail",
@@ -108,6 +111,7 @@ export type Polo = {
   slug: string;
   citta: string | null;
   attivo: boolean;
+  drive_immagini_montaggio_folder_id: string | null;
 };
 
 export type Task = {
@@ -122,6 +126,7 @@ export type Task = {
   locked: boolean;
   coinvolge_terzi: boolean;
   formato_id: string | null;
+  numero_video: number | null;
   published_url: string | null;
   created_by: string | null;
   created_at: string;

@@ -58,7 +58,7 @@ export async function creaTask(formData: FormData): Promise<Esito<{ id: string }
 
 export async function aggiornaTesti(
   taskId: string,
-  campi: { titolo?: string; script?: string | null; note_admin?: string | null },
+  campi: { titolo?: string; script?: string | null; note_admin?: string | null; numero_video?: number | null },
 ): Promise<Esito> {
   const supabase = await supabaseServer();
   const { error } = await supabase.from("tasks").update(campi).eq("id", taskId);
