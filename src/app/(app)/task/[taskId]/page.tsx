@@ -290,6 +290,7 @@ export default async function TaskPage({
         coinvolgeTerzi={task.coinvolge_terzi}
         esportazione={esportazione ?? null}
         formato={task.formati ?? null}
+        contattoEsternoEmail={task.contatto_esterno_email ?? null}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

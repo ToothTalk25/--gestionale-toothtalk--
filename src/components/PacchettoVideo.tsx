@@ -7,6 +7,7 @@ import UploadDeliverable from "@/components/UploadDeliverable";
 import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
 import { impostaCoinvolgeTerzi } from "@/app/actions";
+import { aggiornaContattoEsterno, inviaRichiestaLiberatoria } from "@/app/actions-liberatoria";
 import {
   annullaPacchetto,
   collegaElemento,
@@ -53,6 +54,7 @@ export default function PacchettoVideo({
   coinvolgeTerzi,
   esportazione,
   formato,
+  contattoEsternoEmail,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -62,6 +64,7 @@ export default function PacchettoVideo({
   coinvolgeTerzi: boolean;
   esportazione: EsportazioneDriveRow | null;
   formato: Formato | null;
+  contattoEsternoEmail: string | null;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -72,6 +75,7 @@ export default function PacchettoVideo({
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [contattoEmail, setContattoEmail] = useState(contattoEsternoEmail ?? "");
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
@@ -173,12 +177,67 @@ export default function PacchettoVideo({
         <span>
           <span className="font-medium">Il video mostra una persona esterna al progetto</span>
           <span className="block text-xs text-slate-500">
-            Es. un&apos;intervista. Se selezionato, la liberatoria diventa un
-            elemento obbligatorio qui sotto e blocca il sigillo finché non
-            viene caricata.
+            Es. un&apos;intervista o un passante. Se selezionato, la liberatoria
+            diventa obbligatoria. Inserisci sotto l&apos;email del contatto: chi
+            ha accesso globale invierà un link sicuro per caricare il modulo
+            firmato.
           </span>
         </span>
       </label>
+
+      {coinvolgeTerzi && (
+        <div className="mt-3 space-y-3 rounded-xl border border-slate-200 p-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600">
+              Email del contatto per la liberatoria
+            </label>
+            <input
+              type="email"
+              value={contattoEmail}
+              disabled={!componibile}
+              onChange={(e) => setContattoEmail(e.target.value)}
+              onBlur={() => {
+                if (contattoEmail.trim() !== (contattoEsternoEmail ?? "")) {
+                  start(async () => {
+                    setErrore(null);
+                    const esito = await aggiornaContattoEsterno(
+                      taskId,
+                      contattoEmail.trim() || null,
+                    );
+                    if (!esito.ok) setErrore(esito.errore);
+                    else router.refresh();
+                  });
+                }
+              }}
+              placeholder="es. studio@email.it"
+              className="mt-1 w-full max-w-sm rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </div>
+
+          {isAdmin && contattoEmail.trim() && (
+            <div className="flex items-center gap-2">
+              <button
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    setErrore(null);
+                    setMessaggio(null);
+                    const esito = await inviaRichiestaLiberatoria(
+                      taskId,
+                      contattoEmail.trim(),
+                    );
+                    if (!esito.ok) setErrore(esito.errore);
+                    else setMessaggio("Link di upload inviato a " + contattoEmail.trim());
+                  })
+                }
+                className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              >
+                Invia link per la liberatoria
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ---------------------------------------------------- elementi */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -258,27 +317,36 @@ export default function PacchettoVideo({
 
       {coinvolgeTerzi && (
         <div className="mt-4">
-          <Slot
-            titolo="6 · Liberatoria privacy/immagine"
-            elemento={liberatoria}
-            onRimuovi={
-              componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
-            }
-            azione={
-              componibile ? (
-                <UploadDeliverable
-                  taskId={taskId}
-                  kind="finale_liberatoria"
-                  archivio="finale"
-                  isAdmin={false}
-                  locked={locked}
-                  etichetta={liberatoria ? "Sostituisci" : "Carica liberatoria"}
-                  accept="application/pdf,image/*"
-                  onCaricato={(v) => dopoUpload("liberatoria", v)}
-                />
-              ) : null
-            }
-          />
+          {isAdmin ? (
+            <Slot
+              titolo="6 · Liberatoria privacy/immagine"
+              elemento={liberatoria}
+              onRimuovi={
+                componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
+              }
+              azione={
+                componibile ? (
+                  <UploadDeliverable
+                    taskId={taskId}
+                    kind="finale_liberatoria"
+                    archivio="finale"
+                    isAdmin={false}
+                    locked={locked}
+                    etichetta={liberatoria ? "Sostituisci" : "Carica liberatoria"}
+                    accept="application/pdf,image/*"
+                    onCaricato={(v) => dopoUpload("liberatoria", v)}
+                  />
+                ) : null
+              }
+            />
+          ) : (
+            <div className="rounded-xl border border-slate-200 p-3">
+              <h3 className="text-sm font-medium">6 · Liberatoria privacy/immagine</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {liberatoria ? "Presente ✓ — il file non è visibile qui per motivi di privacy." : "Assente"}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

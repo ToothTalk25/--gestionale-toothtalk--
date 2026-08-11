@@ -125,6 +125,7 @@ export type Task = {
   scadenza: string | null;
   locked: boolean;
   coinvolge_terzi: boolean;
+  contatto_esterno_email: string | null;
   formato_id: string | null;
   numero_video: number | null;
   published_url: string | null;
