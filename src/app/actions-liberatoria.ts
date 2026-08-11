@@ -324,3 +324,132 @@ async function inviaConfermaFirma(destinatario: string, nome: string, sha256: st
   });
 }
 
+// ------------------------------------------------------------------ OTP
+
+/** Invia un codice OTP di 6 cifre all'email del contatto. */
+export async function richiediOtpLiberatoria(
+  token: string,
+  nome: string,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  const admin = supabaseAdmin();
+
+  const { data: richiesta, error: eTok } = await admin
+    .rpc("verifica_token_liberatoria", { p_token: token });
+  if (eTok || !richiesta?.length) return errore("Token non valido o scaduto.");
+
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const { createHash } = await import("node:crypto");
+  const otpHash = createHash("sha256").update(otp).digest("hex");
+
+  const { error: eUp } = await admin.from("richieste_liberatoria")
+    .update({ otp_hash: otpHash, otp_generato_at: new Date().toISOString() })
+    .eq("token", token);
+  if (eUp) return errore("Impossibile registrare il codice.");
+
+  const contattoEmail = richiesta[0].contatto_email as string;
+  try { await inviaEmailOtp(contattoEmail, nome, otp); } catch { /* best-effort */ }
+
+  return { ok: true };
+}
+
+/** Verifica l'OTP, genera il documento firmato e archivia tutto. */
+export async function firmaConOtpLiberatoria(
+  token: string,
+  nome: string,
+  otp: string,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  const admin = supabaseAdmin();
+
+  const { data: richiesta, error: eTok } = await admin
+    .from("richieste_liberatoria")
+    .select("task_id, contatto_email, otp_hash, otp_generato_at")
+    .eq("token", token).eq("stato", "inviata")
+    .single<{ task_id: string; contatto_email: string; otp_hash: string | null; otp_generato_at: string | null }>();
+
+  if (eTok || !richiesta) return errore("Token non valido o scaduto.");
+  if (!richiesta.otp_hash) return errore("Nessun codice OTP richiesto.");
+
+  const generato = new Date(richiesta.otp_generato_at!).getTime();
+  if (Date.now() - generato > 10 * 60 * 1000) return errore("Codice scaduto. Richiedine uno nuovo.");
+
+  const { createHash } = await import("node:crypto");
+  const otpHash = createHash("sha256").update(otp).digest("hex");
+  if (otpHash !== richiesta.otp_hash) return errore("Codice non valido.");
+
+  const taskId = richiesta.task_id;
+  const data = new Date().toISOString().slice(0, 10);
+  const html =
+    `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Liberatoria — ToothTalk</title>` +
+    `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
+    `h1{font-size:1.2em;margin-bottom:.5em}.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
+    `<img src="https://toothtalk.it/logo-toothtalk.svg" style="height:36px" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
+    `<p>Il/La sottoscritto/a <strong>${nome}</strong> autorizza il progetto <strong>ToothTalk</strong> ` +
+    `a riprendere e pubblicare la propria immagine e voce nel video per il quale è stato/a intervistato/a.</p>` +
+    `<p>Firmato digitalmente tramite codice OTP verificato il ${data}.</p>` +
+    `<p class="data">Documento certificato. Progetto ToothTalk.</p></body></html>`;
+
+
+  const { randomUUID } = await import("node:crypto");
+  const buffer = Buffer.from(html, "utf8");
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+  const fileName = `liberatoria_${nome.replace(/\s+/g, "_").slice(0, 40)}.html`;
+  const storagePath = `${taskId}/finale_liberatoria/${randomUUID()}__${fileName}`;
+
+  const { data: del } = await admin.from("deliverables").select("id")
+    .eq("task_id", taskId).eq("kind", "finale_liberatoria").single<{ id: string }>();
+  let deliverableId: string;
+  if (!del) {
+    const { data: nuovo } = await admin.from("deliverables")
+      .insert({ task_id: taskId, kind: "finale_liberatoria", created_by: null })
+      .select("id").single<{ id: string }>();
+    if (!nuovo) return errore("Impossibile creare lo slot.");
+    deliverableId = nuovo.id;
+  } else { deliverableId = del.id; }
+
+  const { data: profilo } = await admin.from("profiles").select("id")
+    .eq("role", "admin").eq("attivo", true).limit(1).single<{ id: string }>();
+  if (!profilo) return errore("Nessun admin trovato.");
+
+  const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
+    contentType: "text/html; charset=utf-8", upsert: false,
+  });
+  if (eUpload) return errore("Upload fallito: " + eUpload.message);
+
+  const { data: versione } = await admin.from("deliverable_versions").insert({
+    deliverable_id: deliverableId, origin: "originale", bucket: "finali",
+    storage_path: storagePath, file_name: fileName, mime_type: "text/html; charset=utf-8",
+    size_bytes: buffer.byteLength, sha256, uploaded_by: profilo.id,
+  }).select("id").single<{ id: string }>();
+  if (!versione) { await admin.storage.from("finali").remove([storagePath]).catch(() => {}); return errore("Registrazione fallita."); }
+
+  const { error: eReg } = await admin.rpc("registra_upload_liberatoria", {
+    p_token: token, p_version: versione.id,
+  });
+  if (eReg) return errore("Token non valido o gia usato.");
+
+  const { data: td } = await admin.from("tasks")
+    .select("contatto_esterno_pec").eq("id", taskId)
+    .single<{ contatto_esterno_pec: string | null }>();
+  if (!td?.contatto_esterno_pec) {
+    try { await inviaConfermaFirma(richiesta.contatto_email, nome, sha256); } catch { /* best-effort */ }
+  }
+
+  return { ok: true };
+}
+
+async function inviaEmailOtp(destinatario: string, nome: string, otp: string) {
+  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
+  const nodemailer = await import("nodemailer");
+  const t = nodemailer.createTransport({
+    host: "smtp.gmail.com", port: 587, secure: false,
+    auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+  });
+  await t.sendMail({
+    from: process.env.MAIL_USER, to: destinatario,
+    subject: "Codice di firma — ToothTalk",
+    text: `Gentile ${nome},\n\nIl tuo codice per firmare la liberatoria è:\n\n  ${otp}\n\n` +
+      `Inseriscilo nella pagina che hai aperto. Valido 10 minuti.\n\n— ToothTalk`,
+  });
+}
+
+
