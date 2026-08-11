@@ -39,7 +39,7 @@ export default function CaricaLiberatoriaPage() {
     if (!consenso) { setErrore("Devi acconsentire al trattamento."); return; }
     start(async () => {
       setErrore(null);
-      const esito = await firmaLiberatoriaOnline(token, nome.trim(), firma.trim() || nome.trim());
+      const esito = await firmaLiberatoriaOnline(token!, nome.trim(), firma.trim() || nome.trim());
       if (!esito.ok) setErrore(esito.errore);
       else setOk(true);
     });

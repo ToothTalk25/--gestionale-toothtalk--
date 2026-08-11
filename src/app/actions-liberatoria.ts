@@ -191,6 +191,7 @@ export async function caricaLiberatoriaPubblica(
   }
 
   return { ok: true };
+}
 
 /** Firma la liberatoria online: il contatto inserisce nome e firma, il sistema genera il documento e lo archivia. */
 export async function firmaLiberatoriaOnline(
@@ -261,4 +262,3 @@ export async function firmaLiberatoriaOnline(
   return { ok: true };
 }
 
-}
