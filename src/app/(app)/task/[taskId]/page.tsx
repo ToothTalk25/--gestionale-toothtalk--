@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth";
+import NumeroVideoEditor from "@/components/NumeroVideoEditor";
 import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
 import StatusControls from "@/components/StatusControls";
@@ -43,9 +44,9 @@ export default async function TaskPage({
 
   const { data: polo } = await supabase
     .from("poli")
-    .select("nome")
+    .select("nome, drive_immagini_montaggio_folder_id")
     .eq("id", task.polo_id)
-    .single<{ nome: string }>();
+    .single<{ nome: string; drive_immagini_montaggio_folder_id: string | null }>();
 
   const { data: deliverables } = await supabase
     .from("deliverables")
@@ -151,7 +152,7 @@ export default async function TaskPage({
               taskId={task.id}
               titolo={task.titolo}
               poloId={task.polo_id}
-              isAdmin={isAdmin}
+              status={task.status}
             />
             <p className="mt-1 text-xs text-slate-400">
               {task.scadenza
@@ -162,6 +163,11 @@ export default async function TaskPage({
             </p>
           </div>
           <StatusBadge status={task.status} />
+          <NumeroVideoEditor
+            taskId={task.id}
+            numeroVideo={task.numero_video ?? null}
+            isAdmin={isAdmin}
+          />
         </div>
 
         {task.locked && (
@@ -237,18 +243,31 @@ export default async function TaskPage({
         {KIND_LAVORAZIONE.map((kind) => {
           const d = (deliverables ?? []).find((x) => x.kind === kind);
           const vs = (versioni ?? []).filter((v) => v.deliverable_id === d?.id);
+          const accetta = kind === "immagini_montaggio" ? "image/*" : undefined;
+          const mancaNumeroVideo =
+            kind === "immagini_montaggio" &&
+            !!polo?.drive_immagini_montaggio_folder_id &&
+            task.numero_video == null;
 
           return (
             <div key={kind} className="rounded-2xl bg-white p-5 ring-1 ring-black/5">
               <div className="flex flex-wrap items-center gap-3">
                 <h3 className="flex-1 font-medium">{KIND_LABEL[kind]}</h3>
-                <UploadDeliverable
-                  taskId={task.id}
-                  kind={kind}
-                  isAdmin={isAdmin}
-                  locked={task.locked}
-                  esisteOriginale={vs.some((v) => v.origin === "originale")}
-                />
+                {mancaNumeroVideo ? (
+                  <p className="text-xs text-amber-700">
+                    Prima assegna un numero video a questo progetto: serve alla
+                    cartella Drive dove finiscono le immagini.
+                  </p>
+                ) : (
+                  <UploadDeliverable
+                    taskId={task.id}
+                    kind={kind}
+                    isAdmin={isAdmin}
+                    locked={task.locked}
+                    esisteOriginale={vs.some((v) => v.origin === "originale")}
+                    accept={accetta}
+                  />
+                )}
               </div>
 
               <VersionList
