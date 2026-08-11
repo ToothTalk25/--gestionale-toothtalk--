@@ -231,6 +231,13 @@ export async function firmaLiberatoriaOnline(
   if (eTok || !richiesta?.length) return errore("Token non valido o scaduto.");
   const { task_id } = richiesta[0] as { task_id: string };
 
+  // Legge se il contatto ha PEC: se sì riceverà la PEC di sigillo,
+  // altrimenti gli mandiamo subito una conferma via email ordinaria.
+  const { data: td } = await admin.from("tasks")
+    .select("contatto_esterno_email, contatto_esterno_pec")
+    .eq("id", task_id).single<{ contatto_esterno_email: string | null; contatto_esterno_pec: string | null }>();
+  const haPec = !!td?.contatto_esterno_pec?.trim();
+
   const data = new Date().toISOString().slice(0, 10);
   const html =
     `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Liberatoria — ToothTalk</title>` +
@@ -285,6 +292,35 @@ export async function firmaLiberatoriaOnline(
   });
   if (eReg) return errore("Token non valido o gia usato: " + eReg.message);
 
+  // Conferma al firmatario: se ha PEC, riceverà la PEC di sigillo.
+  // Se ha solo email, gli mandiamo subito una ricevuta con l'impronta.
+  if (!haPec) {
+    // Il contatto non ha PEC: inviamo conferma via email ordinaria
+    try {
+      await inviaConfermaFirma(td?.contatto_esterno_email || "", nome, sha256);
+    } catch { /* best-effort */ }
+  }
+
   return { ok: true };
+}
+
+async function inviaConfermaFirma(destinatario: string, nome: string, sha256: string) {
+  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
+  const nodemailer = await import("nodemailer");
+  const t = nodemailer.createTransport({
+    host: "smtp.gmail.com", port: 587, secure: false,
+    auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+  });
+  await t.sendMail({
+    from: process.env.MAIL_USER,
+    to: destinatario,
+    subject: "Conferma liberatoria — ToothTalk",
+    text: `Gentile ${nome},\n\n` +
+      `Hai firmato la liberatoria per il progetto ToothTalk.\n` +
+      `Il documento è stato registrato con impronta SHA256:\n${sha256}\n\n` +
+      `Questa impronta identifica in modo univoco il contenuto che hai firmato ` +
+      `e sarà certificata via PEC al momento della pubblicazione del video.\n\n` +
+      `— ToothTalk`,
+  });
 }
 

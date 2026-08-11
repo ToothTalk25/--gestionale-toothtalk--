@@ -373,10 +373,21 @@ export async function inviaPecPacchetto(
     .returns<{ profiles: { pec: string | null } }[]>();
 
   // Copie certificate: a ogni partecipante sulla sua PEC (PEC-to-PEC =
-  // avvenuta consegna certificata per tutti).
+  // avvenuta consegna certificata per tutti). Se il contatto esterno ha
+  // una PEC, la riceve anche lui: così ha prova legale della liberatoria.
+  const { data: taskPec } = await supabase
+    .from("tasks")
+    .select("contatto_esterno_pec")
+    .eq("id", taskId)
+    .single<{ contatto_esterno_pec: string | null }>();
+
   const cc = (membri ?? [])
     .map((m) => m.profiles.pec)
     .filter((x): x is string => !!x);
+
+  if (taskPec?.contatto_esterno_pec) {
+    cc.push(taskPec.contatto_esterno_pec);
+  }
 
   // --- spedizione -----------------------------------------------------
   const nomiAllegati = allegati.map((a) => a.filename);
