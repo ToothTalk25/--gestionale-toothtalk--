@@ -197,7 +197,7 @@ export async function caricaLiberatoriaPubblica(
 export async function firmaLiberatoriaOnline(
   token: string,
   nome: string,
-  firma: string,
+  firmaImg: string,
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
   const admin = supabaseAdmin();
 
@@ -207,21 +207,22 @@ export async function firmaLiberatoriaOnline(
   const { task_id } = richiesta[0] as { task_id: string };
 
   const data = new Date().toISOString().slice(0, 10);
-  const testo =
-    `LIBERATORIA PRIVACY / IMMAGINE\n` +
-    `Progetto: ToothTalk\n` +
-    `Data: ${data}\n\n` +
-    `Il/La sottoscritto/a: ${nome}\n` +
-    `DICHIARA di acconsentire alla ripresa e alla pubblicazione della\n` +
-    `propria immagine e voce nel video del progetto ToothTalk, secondo\n` +
-    `l'informativa privacy consultabile sul sito del progetto.\n\n` +
-    `Firma: ${firma}\n\n` +
-    `Documento generato e certificato digitalmente dal sistema ToothTalk.`;
+  const html =
+    `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Liberatoria — ToothTalk</title>` +
+    `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
+    `h1{font-size:1.2em;margin-bottom:.5em}img.logo{height:36px}.firma{border:1px solid #cbd5e1;border-radius:8px;padding:8px;max-width:280px}` +
+    `.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
+    `<img src="https://toothtalk.it/logo-toothtalk.svg" class="logo" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
+    `<p>Con la presente il/la sottoscritto/a <strong>${nome}</strong> autorizza il progetto <strong>ToothTalk</strong> — ` +
+    `progetto di divulgazione odontoiatrica — a riprendere e pubblicare la propria immagine e voce nel video per il ` +
+    `quale è stato/a intervistato/a, esclusivamente per le finalità del progetto e in conformità all'informativa privacy.</p>` +
+    `<p>Firma:</p><p class="firma"><img src="${firmaImg}" alt="Firma di ${nome}" style="max-width:100%"></p>` +
+    `<p class="data">Documento firmato digitalmente il ${data}. Progetto ToothTalk.</p></body></html>`;
 
   const { randomUUID } = await import("node:crypto");
-  const buffer = Buffer.from(testo, "utf8");
+  const buffer = Buffer.from(html, "utf8");
   const sha256 = (await import("node:crypto")).createHash("sha256").update(buffer).digest("hex");
-  const fileName = `liberatoria_${nome.replace(/\s+/g, "_").slice(0, 50)}.txt`;
+  const fileName = `liberatoria_${nome.replace(/\s+/g, "_").slice(0, 40)}.html`;
   const storagePath = `${task_id}/finale_liberatoria/${randomUUID()}__${fileName}`;
 
   const { data: del } = await admin.from("deliverables").select("id")
@@ -240,13 +241,13 @@ export async function firmaLiberatoriaOnline(
   if (!profilo) return errore("Nessun admin trovato.");
 
   const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
-    contentType: "text/plain; charset=utf-8", upsert: false,
+    contentType: "text/html; charset=utf-8", upsert: false,
   });
   if (eUpload) return errore("Upload fallito: " + eUpload.message);
 
   const { data: versione, error: eVers } = await admin.from("deliverable_versions").insert({
     deliverable_id: deliverableId, origin: "originale", bucket: "finali",
-    storage_path: storagePath, file_name: fileName, mime_type: "text/plain; charset=utf-8",
+    storage_path: storagePath, file_name: fileName, mime_type: "text/html; charset=utf-8",
     size_bytes: buffer.byteLength, sha256, uploaded_by: profilo.id,
   }).select("id").single<{ id: string }>();
   if (eVers) {
