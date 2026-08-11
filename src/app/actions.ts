@@ -116,7 +116,7 @@ export async function archiviaFileFinale(
   versionId: string,
 ): Promise<Esito> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Solo chi ha accesso globale può archiviare un file.");
+  if (!isAdmin) return fallita({ message: "Accesso negato" }, "Solo chi ha accesso globale può archiviare un file.");
 
   const supabase = await supabaseServer();
   const admin = supabaseAdmin();
@@ -127,8 +127,8 @@ export async function archiviaFileFinale(
     .eq("id", versionId)
     .single<{ storage_path: string; bucket: string; archiviato_esterno: boolean }>();
 
-  if (eL || !versione) return errore("File non trovato.");
-  if (versione.archiviato_esterno) return errore("Gia archiviato.");
+  if (eL || !versione) return fallita(eL ?? { message: "File non trovato." }, "File non trovato.");
+  if (versione.archiviato_esterno) return fallita(null, "Gia archiviato.");
 
   const { error: eA } = await supabase.rpc("archivia_file_finale", {
     p_version: versionId,
