@@ -20,6 +20,7 @@ import {
 import {
   PACCHETTO_LABEL,
   type EsportazioneDriveRow,
+  type Formato,
   type PacchettoStato,
   type PacchettoVideoRow,
   type RuoloElemento,
@@ -51,6 +52,7 @@ export default function PacchettoVideo({
   locked,
   coinvolgeTerzi,
   esportazione,
+  formato,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -59,6 +61,7 @@ export default function PacchettoVideo({
   locked: boolean;
   coinvolgeTerzi: boolean;
   esportazione: EsportazioneDriveRow | null;
+  formato: Formato | null;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -86,6 +89,17 @@ export default function PacchettoVideo({
     script.trim() !== "" &&
     titoloYoutube.trim() !== "" &&
     (!coinvolgeTerzi || !!liberatoria);
+
+  // Lo script cambia a seconda del formato scelto alla creazione del
+  // progetto: il titolo, la nota e il placeholder spiegano cosa ci si
+  // aspetta (narrazione integrale, domande, quiz…).
+  const scriptTitolo =
+    formato?.script_richiesto === "quiz" ? "5 · Domande del test" : "5 · Script usato";
+  const scriptNota =
+    formato?.istruzioni_script ?? "dev'essere ciò che si dice davvero nel video";
+  const scriptPlaceholder = formato?.istruzioni_script
+    ? `Es. ${formato.istruzioni_script.replace(/[.:]\s*$/, "")}…`
+    : "Incolla qui il testo effettivamente pronunciato nel video…";
 
   async function assicuraPacchetto(): Promise<string | null> {
     if (pacchetto) return pacchetto.id;
@@ -232,13 +246,13 @@ export default function PacchettoVideo({
           placeholder="La caption esatta che accompagnerà il video…"
         />
         <Testo
-          titolo="5 · Script usato"
-          nota="dev'essere ciò che si dice davvero nel video"
+          titolo={scriptTitolo}
+          nota={scriptNota}
           valore={script}
           onChange={setScript}
           modificabile={componibile}
           righe={5}
-          placeholder="Incolla qui il testo effettivamente pronunciato nel video…"
+          placeholder={scriptPlaceholder}
         />
       </div>
 

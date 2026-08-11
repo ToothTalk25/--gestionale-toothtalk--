@@ -121,10 +121,22 @@ export type Task = {
   scadenza: string | null;
   locked: boolean;
   coinvolge_terzi: boolean;
+  formato_id: string | null;
   published_url: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** Formato del contenuto: dice anche QUANTO script serve per il progetto. */
+export type Formato = {
+  id: string;
+  slug: string;
+  nome: string;
+  richiede_liberatoria: boolean;
+  script_richiesto: "completo" | "parziale" | "quiz" | "no";
+  istruzioni_script: string | null;
+  attivo: boolean;
 };
 
 export type Deliverable = {

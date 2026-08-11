@@ -1,0 +1,211 @@
+-- =====================================================================
+-- 0034_formati_script.sql — script richiesto per formato e istruzioni
+-- =====================================================================
+-- La tabella formati (0011) esiste da sempre ma l'applicazione non la
+-- usava: i progetti non la sceglievano e lo script era trattato come un
+-- campo unico. Da qui ogni formato dice QUANTO script serve:
+--
+--   completo  → narrazione integrale, testo scientifico da far rivedere
+--   parziale  → solo la domanda o l'introduzione (risposta spontanea)
+--   quiz      → le domande del test con le opzioni di risposta
+--   no        → nessuno script (nessun formato attuale; opzione futura)
+--
+-- Il valore 'no' entra nel vincolo ma NON è assegnato a nessuno dei 7
+-- formati esistenti: per tutti lo script resta obbligatorio al sigillo.
+-- =====================================================================
+
+alter table public.formati
+  add column if not exists script_richiesto text not null default 'completo'
+    check (script_richiesto in ('completo', 'parziale', 'quiz', 'no'));
+
+alter table public.formati
+  add column if not exists istruzioni_script text;
+
+comment on column public.formati.script_richiesto is
+  'Tipo di script atteso per questo formato: completo (narrazione '
+  'integrale), parziale (solo domanda/introduzione), quiz (domande a '
+  'scelta multipla), no (nessuno script richiesto).';
+
+comment on column public.formati.istruzioni_script is
+  'Testo mostrato a chi compila lo script del progetto, per spiegare cosa '
+  'ci si aspetta in base al formato scelto.';
+
+-- ------------------------------------------------------------ matrice
+update public.formati set
+  script_richiesto = 'completo',
+  istruzioni_script = 'Testo integrale di ciò che si dice nel video, '
+    'parola per parola: contenuto scientifico, va rivisto dai professori '
+    'prima della registrazione.'
+where slug in ('anatomia_scienza', 'orientamento', 'toothtalk');
+
+update public.formati set
+  script_richiesto = 'parziale',
+  istruzioni_script = 'Solo la domanda o l''introduzione che viene posta '
+    'al professionista/ospite: la risposta è spontanea e non va scritta.'
+where slug in ('parola_professionista', 'eventi', 'pillole_igiene');
+
+update public.formati set
+  script_richiesto = 'quiz',
+  istruzioni_script = 'Le domande del test, con le opzioni di risposta '
+    'proposte alla popolazione.'
+where slug = 'toothtest';
+
+-- ------------------------------------------------------- sigilla_pacchetto
+-- Riproduce la versione di 0021 (lock, accesso globale, stato 'pronto',
+-- descrizione/titolo/video/copertina obbligatori, liberatoria condizionale
+-- a coinvolge_terzi) con UNA sola modifica: il controllo dello script
+-- diventa condizionale al formato del progetto. Lo script resta
+-- obbligatorio finché il formato ha script_richiesto <> 'no' — oggi
+-- nessun formato lo ha, quindi di fatto non cambia nulla; ma la lettura è
+-- dinamica, così un futuro formato senza script non richiede di toccare
+-- la funzione.
+create or replace function public.sigilla_pacchetto(p_pacchetto uuid)
+returns jsonb
+language plpgsql security definer set search_path = public, extensions as $$
+declare
+  v_p                 public.pacchetti_video%rowtype;
+  v_polo_id           uuid;
+  v_coinvolge_terzi   boolean;
+  v_script_richiesto  text;
+  v_task              record;
+  v_polo              record;
+  v_autore            record;
+  v_elementi          jsonb;
+  v_manifest          jsonb;
+  v_hash              text;
+  v_quando            timestamptz := now();
+  v_quando_s          text;
+begin
+  select * into v_p from public.pacchetti_video where id = p_pacchetto for update;
+  if not found then
+    raise exception 'Pacchetto inesistente';
+  end if;
+
+  v_polo_id := public.polo_of_task(v_p.task_id);
+
+  if not public.is_admin() then
+    raise exception 'Solo chi ha accesso globale può sigillare un pacchetto'
+      using errcode = '42501';
+  end if;
+
+  if v_p.stato <> 'pronto' then
+    raise exception 'Il pacchetto non è pronto per il sigillo (stato: %)', v_p.stato;
+  end if;
+
+  select t.coinvolge_terzi into v_coinvolge_terzi from public.tasks t where t.id = v_p.task_id;
+
+  -- Tipo di script atteso dal formato del progetto (dinamico).
+  select coalesce(f.script_richiesto, 'completo') into v_script_richiesto
+  from public.tasks t
+  left join public.formati f on f.id = t.formato_id
+  where t.id = v_p.task_id;
+
+  if coalesce(btrim(v_p.descrizione), '') = '' then
+    raise exception 'Manca la descrizione da pubblicare';
+  end if;
+  if v_script_richiesto <> 'no' and coalesce(btrim(v_p.script), '') = '' then
+    raise exception 'Manca lo script usato per il video';
+  end if;
+  if coalesce(btrim(v_p.titolo_youtube), '') = '' then
+    raise exception 'Manca il titolo per YouTube';
+  end if;
+  if not exists (select 1 from public.pacchetto_elementi
+                 where pacchetto_id = p_pacchetto and ruolo = 'video') then
+    raise exception 'Manca il video montato';
+  end if;
+  if not exists (select 1 from public.pacchetto_elementi
+                 where pacchetto_id = p_pacchetto and ruolo = 'copertina') then
+    raise exception 'Manca la copertina';
+  end if;
+  if v_coinvolge_terzi and not exists (
+    select 1 from public.pacchetto_elementi
+    where pacchetto_id = p_pacchetto and ruolo = 'liberatoria'
+  ) then
+    raise exception 'Il progetto coinvolge una persona esterna: manca la liberatoria';
+  end if;
+
+  v_quando_s := to_char(v_quando at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
+
+
+  select t.id, t.titolo, t.polo_id into v_task from public.tasks t where t.id = v_p.task_id;
+  select pl.id, pl.nome, pl.citta into v_polo from public.poli pl where pl.id = v_polo_id;
+  select pr.id, pr.email, pr.full_name into v_autore
+    from public.profiles pr where pr.id = auth.uid();
+
+  select jsonb_agg(x.e order by x.ruolo) into v_elementi
+  from (
+    select
+      pe.ruolo::text as ruolo,
+      jsonb_build_object(
+        'ruolo',        pe.ruolo,
+        'tipo',         'file',
+        'file_name',    v.file_name,
+        'mime_type',    v.mime_type,
+        'size_bytes',   v.size_bytes,
+        'sha256',       v.sha256,
+        'bucket',       v.bucket,
+        'storage_path', v.storage_path,
+        'version_id',   v.id,
+        'record_hash',  v.record_hash,
+        'caricato_da',  pr.email,
+        'caricato_at',  to_char(v.uploaded_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+      ) as e
+    from public.pacchetto_elementi pe
+    join public.deliverable_versions v on v.id = pe.version_id
+    join public.profiles pr on pr.id = v.uploaded_by
+    where pe.pacchetto_id = p_pacchetto
+  ) x;
+
+  v_elementi := v_elementi || jsonb_build_array(
+    jsonb_build_object(
+      'ruolo', 'descrizione', 'tipo', 'testo',
+      'sha256', encode(extensions.digest(v_p.descrizione, 'sha256'), 'hex'),
+      'caratteri', length(v_p.descrizione),
+      'testo', v_p.descrizione
+    ),
+    jsonb_build_object(
+      'ruolo', 'script', 'tipo', 'testo',
+      'sha256', encode(extensions.digest(v_p.script, 'sha256'), 'hex'),
+      'caratteri', length(v_p.script),
+      'testo', v_p.script
+    ),
+    jsonb_build_object(
+      'ruolo', 'titolo_youtube', 'tipo', 'testo',
+      'sha256', encode(extensions.digest(v_p.titolo_youtube, 'sha256'), 'hex'),
+      'caratteri', length(v_p.titolo_youtube),
+      'testo', v_p.titolo_youtube
+    )
+  );
+
+  v_manifest := jsonb_build_object(
+    'versione_formato', 1,
+    'emittente', 'ToothTalk — gestionale interno',
+    'pacchetto_id', p_pacchetto,
+    'task', jsonb_build_object('id', v_task.id, 'titolo', v_task.titolo),
+    'polo', jsonb_build_object('id', v_polo.id, 'nome', v_polo.nome, 'citta', v_polo.citta),
+    'sigillato_at', v_quando_s,
+    'sigillato_da', jsonb_build_object(
+      'id', v_autore.id, 'email', v_autore.email, 'nome', v_autore.full_name
+    ),
+    'elementi', v_elementi
+  );
+
+  v_hash := encode(extensions.digest(v_manifest::text, 'sha256'), 'hex');
+
+  perform set_config('app.sigillo_in_corso', '1', true);
+  update public.pacchetti_video
+     set stato = 'sigillato',
+         manifest = v_manifest,
+         manifest_hash = v_hash,
+         sigillato_at = v_quando,
+         sigillato_da = auth.uid()
+   where id = p_pacchetto;
+  perform set_config('app.sigillo_in_corso', '0', true);
+
+  insert into public.audit_log (actor, actor_role, action, entity_type, entity_id, polo_id, meta)
+  values (auth.uid(), 'admin'::public.user_role,
+          'sigillo_pacchetto', 'pacchetto_video', p_pacchetto, v_polo_id,
+          jsonb_build_object('manifest_hash', v_hash, 'task_id', v_p.task_id));
+
+  return v_manifest || jsonb_build_object('manifest_hash', v_hash);
+end $$;

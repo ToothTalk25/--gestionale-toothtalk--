@@ -3,12 +3,22 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { creaTask } from "@/app/actions";
+import type { Formato } from "@/lib/types";
 
-export default function NewTaskForm({ poloId }: { poloId: string }) {
+export default function NewTaskForm({
+  poloId,
+  formati,
+}: {
+  poloId: string;
+  formati: Formato[];
+}) {
   const router = useRouter();
   const [aperto, setAperto] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+  const [formatoId, setFormatoId] = useState("");
   const [pending, start] = useTransition();
+
+  const formato = formati.find((f) => f.id === formatoId);
 
   if (!aperto) {
     return (
@@ -49,12 +59,37 @@ export default function NewTaskForm({ poloId }: { poloId: string }) {
       </div>
 
       <div>
+        <label className="block text-sm font-medium">Formato del contenuto</label>
+        <select
+          name="formato_id"
+          required
+          value={formatoId}
+          onChange={(e) => setFormatoId(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        >
+          <option value="">Scegli un formato…</option>
+          {formati.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.nome}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <label className="block text-sm font-medium">Script (bozza)</label>
         <textarea
           name="script"
           rows={5}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
+        {formato?.istruzioni_script ? (
+          <p className="mt-1 text-xs text-slate-500">{formato.istruzioni_script}</p>
+        ) : (
+          <p className="mt-1 text-xs text-slate-400">
+            Scegli il formato per sapere cosa scrivere qui.
+          </p>
+        )}
       </div>
 
       <div>

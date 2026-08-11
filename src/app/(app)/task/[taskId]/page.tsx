@@ -15,6 +15,7 @@ import {
   type Deliverable,
   type DeliverableVersion,
   type EsportazioneDriveRow,
+  type Formato,
   type PacchettoVideoRow,
   type RichiestaModifica,
   type Task,
@@ -31,9 +32,11 @@ export default async function TaskPage({
 
   const { data: task } = await supabase
     .from("tasks")
-    .select("*")
+    .select(
+      "*, formati(id, slug, nome, richiede_liberatoria, script_richiesto, istruzioni_script)",
+    )
     .eq("id", taskId)
-    .single<Task>();
+    .single<Task & { formati: Formato | null }>();
 
   if (!task) notFound();
 
@@ -261,6 +264,7 @@ export default async function TaskPage({
         locked={task.locked}
         coinvolgeTerzi={task.coinvolge_terzi}
         esportazione={esportazione ?? null}
+        formato={task.formati ?? null}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

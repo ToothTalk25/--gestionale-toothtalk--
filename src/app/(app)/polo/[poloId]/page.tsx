@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
 import NewTaskForm from "@/components/NewTaskForm";
-import type { Polo, TaskStatus } from "@/lib/types";
+import type { Formato, Polo, TaskStatus } from "@/lib/types";
 
 export default async function PoloPage({
   params,
@@ -22,6 +22,14 @@ export default async function PoloPage({
     .single<Polo>();
 
   if (!polo) notFound();
+
+  // Formati attivi per la scelta in fase di creazione progetto.
+  const { data: formati } = await supabase
+    .from("formati")
+    .select("*")
+    .eq("attivo", true)
+    .order("nome")
+    .returns<Formato[]>();
 
   const [{ data: tasks }, { data: membri }] = await Promise.all([
     supabase
@@ -74,7 +82,7 @@ export default async function PoloPage({
         )}
       </header>
 
-      <NewTaskForm poloId={polo.id} />
+      <NewTaskForm poloId={polo.id} formati={formati ?? []} />
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Progetti del gruppo</h2>

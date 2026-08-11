@@ -38,12 +38,13 @@ export async function creaTask(formData: FormData): Promise<Esito<{ id: string }
   const titolo = String(formData.get("titolo") ?? "").trim();
   const script = String(formData.get("script") ?? "").trim() || null;
   const scadenza = String(formData.get("scadenza") ?? "").trim() || null;
+  const formato_id = String(formData.get("formato_id") ?? "").trim() || null;
 
   if (!titolo) return { ok: false, errore: "Il titolo è obbligatorio." };
 
   const { data, error } = await supabase
     .from("tasks")
-    .insert({ polo_id, titolo, script, scadenza, created_by: profile.id })
+    .insert({ polo_id, titolo, script, scadenza, formato_id, created_by: profile.id })
     .select("id")
     .single();
 
