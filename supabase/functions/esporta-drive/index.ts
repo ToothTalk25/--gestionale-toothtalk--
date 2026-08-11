@@ -227,25 +227,45 @@ Deno.serve(async (req) => {
       )
       .eq("pacchetto_id", pacchettoId);
 
-    // --- token Google e cartelle <root>/<Gruppo>/<Progetto>/
+    // --- token Google e cartelle <root>/<Gruppo>/<Progetto>/<tipo>/
     const token = await tokenGoogle();
     const root = Deno.env.get("GOOGLE_DRIVE_ROOT_FOLDER");
     if (!root) throw new Error("Secret GOOGLE_DRIVE_ROOT_FOLDER assente");
     const cartellaGruppo = await trovaOCreaCartella(token, root, polo.nome);
     const cartellaProgetto = await trovaOCreaCartella(token, cartellaGruppo, task.titolo);
 
-    // --- testi (piccoli, vanno in memoria)
+    // Sottocartelle per tipo, create solo quando servono davvero (una
+    // ricerca+eventuale creazione per nome, mai duplicate nella stessa
+    // esecuzione grazie alla cache locale).
+    const sottocartelle = new Map<string, string>();
+    async function cartellaFiglia(nome: string): Promise<string> {
+      const esistente = sottocartelle.get(nome);
+      if (esistente) return esistente;
+      const id = await trovaOCreaCartella(token, cartellaProgetto, nome);
+      sottocartelle.set(nome, id);
+      return id;
+    }
+
+    // --- testi (piccoli, vanno in memoria): descrizione e titolo YouTube
+    // dentro "descrizione/", lo script dentro "script/".
     const encoder = new TextEncoder();
-    const testi: Array<{ nome: string; testo: string }> = [];
-    if (pacchetto.descrizione) testi.push({ nome: "descrizione.txt", testo: pacchetto.descrizione });
-    if (pacchetto.script) testi.push({ nome: "script.txt", testo: pacchetto.script });
-    if (pacchetto.titolo_youtube) testi.push({ nome: "titolo_youtube.txt", testo: pacchetto.titolo_youtube });
+    const testi: Array<{ nome: string; testo: string; cartella: string }> = [];
+    if (pacchetto.descrizione) {
+      testi.push({ nome: "descrizione.txt", testo: pacchetto.descrizione, cartella: "descrizione" });
+    }
+    if (pacchetto.titolo_youtube) {
+      testi.push({ nome: "titolo_youtube.txt", testo: pacchetto.titolo_youtube, cartella: "descrizione" });
+    }
+    if (pacchetto.script) {
+      testi.push({ nome: "script.txt", testo: pacchetto.script, cartella: "script" });
+    }
 
     for (const t of testi) {
       const buf = encoder.encode(t.testo);
+      const dest = await cartellaFiglia(t.cartella);
       await caricaResumable(
         token,
-        cartellaProgetto,
+        dest,
         t.nome,
         "text/plain; charset=utf-8",
         buf.byteLength,
@@ -253,7 +273,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // --- file: stream dallo Storage direttamente su Drive
+    // --- file: stream dallo Storage direttamente su Drive, ognuno nella
+    // sottocartella del proprio ruolo (video/copertina/liberatoria).
+    const CARTELLA_PER_RUOLO: Record<string, string> = {
+      video: "video",
+      copertina: "copertina",
+      liberatoria: "liberatoria",
+    };
     for (const el of elementi ?? []) {
       const v = el.deliverable_versions as {
         bucket: string;
@@ -277,9 +303,11 @@ Deno.serve(async (req) => {
         throw new Error(`Storage ${v.bucket}/${v.storage_path}: risposta senza contenuto`);
       }
 
+      const nomeCartella = CARTELLA_PER_RUOLO[el.ruolo as string] ?? "altro";
+      const dest = await cartellaFiglia(nomeCartella);
       await caricaResumable(
         token,
-        cartellaProgetto,
+        dest,
         v.file_name,
         v.mime_type ?? "application/octet-stream",
         size,

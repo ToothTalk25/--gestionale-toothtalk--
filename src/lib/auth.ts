@@ -2,6 +2,15 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import type { Polo, Profile, SessionContext } from "@/lib/types";
 
+/** Genova è il gruppo storico del progetto: compare sempre per primo nelle liste. */
+export function ordinaPoli(poli: Polo[]): Polo[] {
+  return [...poli].sort((a, b) => {
+    if (a.nome === "Genova") return -1;
+    if (b.nome === "Genova") return 1;
+    return 0;
+  });
+}
+
 /**
  * Risolve utente + ruolo + poli di appartenenza.
  * È l'unico punto in cui l'app decide "chi sei"; le autorizzazioni vere
@@ -34,7 +43,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
   return {
     profile,
-    poli: poli ?? [],
+    poli: ordinaPoli(poli ?? []),
     isAdmin: profile.role === "admin",
   };
 }

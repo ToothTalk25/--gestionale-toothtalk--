@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, ordinaPoli } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
@@ -106,7 +106,7 @@ export default async function AdminPage() {
         </p>
       </header>
 
-      <GestioneInviti poli={poli ?? []} inviti={inviti ?? []} />
+      <GestioneInviti poli={ordinaPoli(poli ?? [])} inviti={inviti ?? []} />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
         <h2 className="text-lg font-medium">Originale vs versione finale</h2>

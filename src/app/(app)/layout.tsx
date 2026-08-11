@@ -8,9 +8,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { profile, poli, isAdmin } = await requireSession();
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 md:px-8">
           <Link href="/dashboard" className="shrink-0">
             <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-6 w-auto" />
           </Link>
@@ -44,7 +44,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="flex-1">
+        <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
+      </main>
 
       <footer className="border-t border-slate-100 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 text-xs text-slate-400">
