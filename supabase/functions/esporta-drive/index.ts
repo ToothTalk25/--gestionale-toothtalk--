@@ -11,82 +11,40 @@
 // Segreti (Edge Function secrets, non nel codice):
 //   - SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  → auto-iniettati da Supabase
 //   - EDGE_FUNCTION_DRIVE_KEY                  → la stessa chiave del vault
-//   - GOOGLE_DRIVE_CREDENTIALS_JSON            → JSON del service account
+//   - GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET,
+//     GOOGLE_OAUTH_REFRESH_TOKEN               → OAuth del Gmail ToothTalk
 //   - GOOGLE_DRIVE_ROOT_FOLDER                 → id della cartella condivisa
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 // ------------------------------------------------------------------ utils
 
-function base64url(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function pemToDer(pem: string): Uint8Array {
-  const body = pem
-    .replace("-----BEGIN PRIVATE KEY-----", "")
-    .replace("-----END PRIVATE KEY-----", "")
-    .replace(/\s+/g, "");
-  const bin = atob(body);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-/** Token Google via JWT Bearer flow (service account), firma RS256 con Web Crypto. */
+/** Token Google via OAuth refresh token: i file contano sulla quota del Gmail vero di ToothTalk. */
 async function tokenGoogle(): Promise<string> {
-  const raw = Deno.env.get("GOOGLE_DRIVE_CREDENTIALS_JSON");
-  if (!raw) throw new Error("Secret GOOGLE_DRIVE_CREDENTIALS_JSON assente");
-  const creds = JSON.parse(raw);
-  if (!creds.client_email || !creds.private_key || !creds.token_uri) {
-    throw new Error("Credenziali Google incomplete");
+  const clientId = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID");
+  const clientSecret = Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
+  const refreshToken = Deno.env.get("GOOGLE_OAUTH_REFRESH_TOKEN");
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error("Credenziali OAuth Google assenti");
   }
 
-  const ora = Math.floor(Date.now() / 1000);
-  const encoder = new TextEncoder();
-  const header = base64url(
-    encoder.encode(JSON.stringify({ alg: "RS256", typ: "JWT" })),
-  );
-  const claims = base64url(
-    encoder.encode(
-      JSON.stringify({
-        iss: creds.client_email,
-        scope: "https://www.googleapis.com/auth/drive.file",
-        aud: creds.token_uri,
-        iat: ora,
-        exp: ora + 3600,
-      }),
-    ),
-  );
-  const input = `${header}.${claims}`;
-
-  const chiave = await crypto.subtle.importKey(
-    "pkcs8",
-    pemToDer(creds.private_key),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const firma = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    chiave,
-    encoder.encode(input),
-  );
-  const jwt = `${input}.${base64url(new Uint8Array(firma))}`;
-
-  const res = await fetch(creds.token_uri, {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body:
-      `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`,
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
   });
   if (!res.ok) {
     throw new Error(`Token Google: HTTP ${res.status} ${await res.text()}`);
   }
   const dati = await res.json();
-  if (!dati.access_token) throw new Error("Token Google: risposta senza access_token");
+  if (!dati.access_token) {
+    throw new Error("Token Google: risposta senza access_token");
+  }
   return dati.access_token;
 }
 
@@ -183,6 +141,7 @@ async function caricaResumable(
     body,
   });
   if (!put.ok) throw new Error(`Upload: HTTP ${put.status} ${await put.text()}`);
+}
 
 // ------------------------------------------------------------------ handler
 
@@ -362,4 +321,3 @@ Deno.serve(async (req) => {
   }
 });
 
-}
