@@ -6,6 +6,7 @@ import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import FotoProfilo from "@/components/FotoProfilo";
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
+import ScaricaRicevuta from "@/components/ScaricaRicevuta";
 
 type Confronto = {
   deliverable_id: string;
@@ -293,7 +294,8 @@ export default async function AdminPage() {
                 <th className="py-2 pr-4">Tipo</th>
                 <th className="py-2 pr-4">Versione</th>
                 <th className="py-2 pr-4">Accettato il</th>
-                <th className="py-2">SHA256</th>
+                <th className="py-2 pr-4">SHA256</th>
+                <th className="py-2">Ricevuta</th>
               </tr>
             </thead>
             <tbody>
@@ -315,6 +317,9 @@ export default async function AdminPage() {
                   </td>
                   <td className="py-2 text-xs font-mono text-slate-400">
                     {c.sha256 ? c.sha256.slice(0, 16) + "…" : "—"}
+                  </td>
+                  <td className="py-2">
+                    <ScaricaRicevuta consensoId={c.id} disabled={!c.storage_path} />
                   </td>
                 </tr>
               ))}

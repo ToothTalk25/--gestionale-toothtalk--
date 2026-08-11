@@ -346,4 +346,19 @@ export async function caricaAccordo(
       `Accordo salvato ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
     );
   }
+  }
+
+/** Genera un URL firmato per scaricare una ricevuta di consenso (admin only). */
+export async function scaricaRicevutaConsenso(consensoId: string): Promise<Esito<string>> {
+  const { profile } = await requireSession();
+  if (profile.role !== "admin") return errore("Solo l'admin può scaricare le ricevute.");
+
+  const admin = supabaseAdmin();
+  const { data: c } = await admin.from("consensi")
+    .select("storage_path").eq("id", consensoId).single<{ storage_path: string | null }>();
+  if (!c?.storage_path) return errore("Ricevuta non ancora generata.");
+
+  const { data } = await admin.storage.from("finali").createSignedUrl(c.storage_path, 300);
+  if (!data?.signedUrl) return errore("Impossibile generare il link.");
+  return { ok: true, dati: data.signedUrl };
 }
