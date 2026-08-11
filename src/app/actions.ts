@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import type { Archivio, DeliverableKind, TaskStatus, VersionOrigin } from "@/lib/types";
 
@@ -63,6 +64,45 @@ export async function aggiornaTesti(
   const { error } = await supabase.from("tasks").update(campi).eq("id", taskId);
   if (error) return fallita(error, "Aggiornamento fallito");
   revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+
+/**
+ * Elimina completamente un progetto (solo chi ha accesso globale).
+ *
+ * La RPC elimina_progetto verifica il permesso e rifiuta i progetti bloccati
+ * o con un pacchetto già certificato via PEC. I file vengono rimossi dallo
+ * storage dopo la cancellazione delle righe (best-effort: se la rimozione
+ * fallisce resta un file orfano invisibile, innocuo).
+ */
+export async function eliminaProgetto(taskId: string): Promise<Esito> {
+  const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  // Raccoglie i path dello storage PRIMA che la RPC cancelli le righe.
+  const { data: versioni } = await supabase
+    .from("deliverable_versions")
+    .select("bucket, storage_path, deliverables!inner(task_id)")
+    .eq("deliverables.task_id", taskId)
+    .returns<{ bucket: string; storage_path: string }[]>();
+
+  // La RPC verifica l'accesso globale e cancella tutto (rifiuta i progetti
+  // certificati via PEC o bloccati).
+  const { error } = await supabase.rpc("elimina_progetto", { p_task: taskId });
+  if (error) return fallita(error, "Eliminazione non consentita");
+
+  // Rimozione best-effort dei file, ormai orfani.
+  const perBucket = new Map<string, string[]>();
+  for (const v of versioni ?? []) {
+    const arr = perBucket.get(v.bucket) ?? [];
+    arr.push(v.storage_path);
+    perBucket.set(v.bucket, arr);
+  }
+  for (const [bucket, paths] of perBucket) {
+    await admin.storage.from(bucket).remove(paths).catch(() => {});
+  }
+
+  revalidatePath("/dashboard");
   return { ok: true, dati: undefined };
 }
 
