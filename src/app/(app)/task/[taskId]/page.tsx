@@ -248,7 +248,7 @@ export default async function TaskPage({
               task.numero_video == null;
 
             return (
-              <div key={kind} className="group aspect-square rounded-2xl bg-white p-4 ring-1 ring-black/5 flex flex-col">
+              <div key={kind} className="group aspect-square rounded-xl bg-white p-3 ring-1 ring-black/5 flex flex-col">
                 <h3 className="text-sm font-medium text-slate-700">{KIND_LABEL[kind]}</h3>
 
                 <div className="flex-1 flex items-center justify-center">
