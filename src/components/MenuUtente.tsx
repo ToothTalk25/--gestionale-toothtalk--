@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
@@ -13,8 +13,12 @@ import FotoProfilo from "@/components/FotoProfilo";
  */
 export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isAdmin: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [aperto, setAperto] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+
+  const vociAttive = "block px-4 py-2 text-sm font-medium bg-tt-blue-50 text-tt-blue";
+  const vociInattive = "block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50";
 
   useEffect(() => {
     function chiudi(e: MouseEvent) {
@@ -79,7 +83,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
                 href="/dashboard"
                 onClick={() => setAperto(false)}
                 role="menuitem"
-                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className={pathname === "/dashboard" ? vociAttive : vociInattive}
               >
                 Progetti
               </Link>
@@ -87,7 +91,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
                 href="/profilo"
                 onClick={() => setAperto(false)}
                 role="menuitem"
-                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className={pathname === "/profilo" ? vociAttive : vociInattive}
               >
                 Profilo
               </Link>

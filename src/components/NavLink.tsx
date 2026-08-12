@@ -2,22 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePoloAttivo } from "@/components/PoloAttivoContext";
 
 /**
  * Link di navigazione con stato attivo: quando sei nella sezione, il link
  * diventa blu; le altre voci restano normali.
+ *
+ * `poloId`, se passato, tiene il link evidenziato anche quando si è dentro
+ * una pagina di progetto di quel gruppo (fuori da /polo/[poloId]/..., vedi
+ * PoloAttivoContext).
  */
 export default function NavLink({
   href,
   children,
   activePrefix,
+  poloId,
 }: {
   href: string;
   children: React.ReactNode;
   activePrefix?: string;
+  poloId?: string;
 }) {
   const pathname = usePathname();
-  const attivo = activePrefix ? pathname.startsWith(activePrefix) : pathname === href;
+  const poloAttivo = usePoloAttivo();
+  const attivo = activePrefix
+    ? pathname.startsWith(activePrefix) || (!!poloId && poloId === poloAttivo)
+    : pathname === href;
 
   return (
     <Link

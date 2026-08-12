@@ -7,6 +7,7 @@ import StatusBadge from "@/components/StatusBadge";
 import StatusControls from "@/components/StatusControls";
 import TaskTextEditor from "@/components/TaskTextEditor";
 import KindCard from "@/components/KindCard";
+import SegnalaPolo from "@/components/SegnalaPolo";
 import PacchettoVideo, { type ElementoCaricato } from "@/components/PacchettoVideo";
 import RichiesteModifica from "@/components/RichiesteModifica";
 import AzioniProgetto from "@/components/AzioniProgetto";
@@ -183,6 +184,7 @@ export default async function TaskPage({
 
   return (
     <div className="space-y-8">
+      <SegnalaPolo poloId={task.polo_id} />
       <header className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex-1">
