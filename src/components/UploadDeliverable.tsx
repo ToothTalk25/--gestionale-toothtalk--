@@ -137,7 +137,6 @@ export default function UploadDeliverable({
       }}
       className={`${children ? "flex-1 flex flex-col items-center justify-center" : ""} ${dragOver ? "ring-2 ring-tt-blue bg-tt-blue/5 rounded-lg" : ""}`}
     >
-      {children}
       <div className="text-right">
         <input
           ref={input}
@@ -175,6 +174,7 @@ export default function UploadDeliverable({
           </p>
         )}
       </div>
+      {children}
     </div>
   );
 }
