@@ -103,17 +103,19 @@ export default async function TaskPage({
   type ElementoRaw = {
     ruolo: "video" | "copertina" | "liberatoria";
     deliverable_versions: {
+      version_id: string;
       file_name: string;
       sha256: string;
       size_bytes: number | null;
       uploaded_at: string;
+      archiviato_esterno: boolean;
     };
   };
 
   const { data: elementiRaw } = pacchetto
     ? await supabase
         .from("pacchetto_elementi")
-        .select("ruolo, deliverable_versions!inner(file_name, sha256, size_bytes, uploaded_at)")
+        .select("ruolo, deliverable_versions!inner(version_id:id, file_name, sha256, size_bytes, uploaded_at, archiviato_esterno)")
         .eq("pacchetto_id", pacchetto.id)
         .returns<ElementoRaw[]>()
     : { data: [] as ElementoRaw[] };

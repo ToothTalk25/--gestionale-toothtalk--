@@ -19,6 +19,7 @@ import {
   segnalaCompletato,
   sigillaPacchetto,
 } from "@/app/actions-pacchetto";
+import { archiviaFileFinale } from "@/app/actions";
 import {
   PACCHETTO_LABEL,
   type EsportazioneDriveRow,
@@ -30,10 +31,12 @@ import {
 
 export type ElementoCaricato = {
   ruolo: RuoloElemento;
+  version_id: string;
   file_name: string;
   sha256: string;
   size_bytes: number | null;
   uploaded_at: string;
+  archiviato_esterno: boolean;
 };
 
 const COLORI: Record<PacchettoStato, string> = {
@@ -88,6 +91,7 @@ export default function PacchettoVideo({
   // Il pacchetto lo compone il gruppo, non chi ha accesso globale: è il loro deposito, e
   // la RLS rifiuterebbe comunque una consegna "originale" fatta dall'Admin.
   const componibile = inBozza && !locked && !isAdmin;
+  const archiviabile = isAdmin && (stato === "sigillato" || stato === "pec_inviata" || stato === "pec_confermata");
 
   const video = elementi.find((e) => e.ruolo === "video");
   const copertina = elementi.find((e) => e.ruolo === "copertina");
@@ -295,6 +299,8 @@ export default function PacchettoVideo({
               />
             ) : null
           }
+          taskId={taskId}
+          archiviabile={archiviabile}
         />
         <Slot
           titolo="2 · Copertina"
@@ -316,6 +322,8 @@ export default function PacchettoVideo({
               />
             ) : null
           }
+          taskId={taskId}
+          archiviabile={archiviabile}
         />
       </div>
 
@@ -374,6 +382,8 @@ export default function PacchettoVideo({
                   />
                 ) : null
               }
+              taskId={taskId}
+              archiviabile={archiviabile}
             />
           ) : (
             <div className="rounded-xl border border-slate-200 p-3">
@@ -723,13 +733,31 @@ function Slot({
   elemento,
   azione,
   onRimuovi,
+  taskId,
+  archiviabile,
 }: {
   titolo: string;
   elemento?: ElementoCaricato;
   azione: React.ReactNode;
   onRimuovi?: () => void;
+  taskId: string;
+  archiviabile: boolean;
 }) {
   const [conferma, setConferma] = useState(false);
+  const [confermaArchivia, setConfermaArchivia] = useState(false);
+  const [erroreArchivia, setErroreArchivia] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function archivia() {
+    setErroreArchivia(null);
+    const res = await archiviaFileFinale(taskId, elemento!.version_id);
+    if (!res.ok) {
+      setErroreArchivia(res.errore);
+      setConfermaArchivia(false);
+      return;
+    }
+    router.refresh();
+  }
 
   return (
     <div className="rounded-xl border border-slate-200 p-3">
@@ -778,6 +806,38 @@ function Slot({
                 Rimuovi
               </button>
             ))}
+
+          {elemento.archiviato_esterno ? (
+            <p className="mt-2 text-xs text-emerald-600 font-medium">
+              Archiviato esternamente ✓
+            </p>
+          ) : archiviabile ? (
+            <div className="mt-2">
+              {confermaArchivia ? (
+                <div>
+                  {erroreArchivia && (
+                    <p className="text-xs text-red-600 mb-1">{erroreArchivia}</p>
+                  )}
+                  <p className="flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-500">Archiviare il file?</span>
+                    <button onClick={archivia} className="font-medium text-emerald-600 hover:underline">
+                      Sì
+                    </button>
+                    <button onClick={() => { setConfermaArchivia(false); setErroreArchivia(null); }} className="text-slate-500 hover:underline">
+                      No
+                    </button>
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfermaArchivia(true)}
+                  className="text-xs text-slate-400 hover:text-emerald-600 hover:underline"
+                >
+                  Archivia
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-2 text-xs text-slate-400">Nessun file.</p>
