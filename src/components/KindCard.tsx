@@ -66,7 +66,11 @@ export default function KindCard({
           : undefined
       }
       className={`group aspect-square rounded-lg p-2 ring-1 flex flex-col transition-colors ${
-        dragOver ? "ring-2 ring-tt-blue bg-tt-blue/5" : "bg-white ring-black/5"
+        dragOver
+          ? "ring-2 ring-tt-blue bg-tt-blue/5"
+          : versioni.length > 0
+            ? "bg-tt-blue-50 ring-tt-blue/20"
+            : "bg-white ring-black/5"
       }`}
     >
       <h3 className="pt-2 text-base font-semibold text-slate-700 text-center">{label}</h3>
