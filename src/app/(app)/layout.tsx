@@ -12,12 +12,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <PoloAttivoProvider>
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 md:px-8">
+          <div className="flex items-center gap-x-6 gap-y-2 px-4 py-3 md:px-8">
             <Link href="/dashboard" className="shrink-0">
               <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-6 w-auto" />
             </Link>
 
-            <nav className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+            <nav className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto whitespace-nowrap text-sm text-slate-600 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {poli.map((p) => (
                 <NavLink key={p.id} href={`/polo/${p.id}`} activePrefix={`/polo/${p.id}`} poloId={p.id}>
                   {p.nome}
@@ -40,14 +40,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               accesso globale e chi no si vede dalle voci di menu disponibili
               (es. "Registro globale"), non da un titolo scritto addosso alla persona.
             */}
-            <div className="ml-auto flex items-center">
+            <div className="ml-auto flex shrink-0 items-center">
               <MenuUtente profile={profile} isAdmin={isAdmin} />
             </div>
           </div>
         </header>
 
         <main className="flex-1">
-          <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
+          <div className="mx-auto max-w-6xl px-4 py-4 md:py-8">{children}</div>
         </main>
 
         <footer className="border-t border-slate-100 py-4">

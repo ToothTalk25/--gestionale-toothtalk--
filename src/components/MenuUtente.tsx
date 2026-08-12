@@ -58,7 +58,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
             {iniziali}
           </span>
         )}
-        <span className="text-slate-600">{profile.full_name ?? profile.email}</span>
+        <span className="hidden text-slate-600 min-[420px]:inline">{profile.full_name ?? profile.email}</span>
         <svg
           width="10"
           height="10"
