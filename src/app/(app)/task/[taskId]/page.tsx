@@ -230,7 +230,7 @@ export default async function TaskPage({
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-medium">Video in lavorazione</h2>
+          <h2 className="text-lg font-medium">Materiali di lavorazione</h2>
           <p className="text-sm text-slate-500">
             Lo spazio di lavoro condiviso: girato grezzo, bozze, materiali di
             servizio. Trascina o clicca su ogni card per caricare.
