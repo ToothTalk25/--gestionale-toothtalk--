@@ -7,8 +7,10 @@ import "server-only";
  * fotogrammi) e risponde con una valutazione testuale/JSON. Niente dipendenze
  * esterne: si chiama la REST API con fetch.
  *
- * Tutti i controlli sono di SEGNALAZIONE, mai di blocco: l'IA può sbagliare
- * e la prova legale resta nella PEC.
+ * verificaAccordoFirmato è di sola segnalazione (la prova legale resta nella
+ * PEC). verificaPersoneVideo invece alimenta un blocco reale al sigillo (vedi
+ * 0050_riconoscimento_in_sigillo.sql) — è una scelta esplicita per prevenire
+ * la pubblicazione di contenuti con terzi non tutelati da liberatoria.
  */
 
 const MODELLO = "gemini-flash-latest";
@@ -155,6 +157,21 @@ export async function caricaFileGemini(buffer: Buffer, mimeType: string): Promis
     file?: { uri?: string; name?: string; state?: string };
   };
   if (!fileInfo.file?.uri) throw new Error("Gemini File API: fileUri mancante");
+  if (!fileInfo.file.name) throw new Error("Gemini File API: fileName mancante");
+
+  // Polling: il video potrebbe essere in PROCESSING dopo l'upload
+  if (fileInfo.file.state !== "ACTIVE") {
+    const name = fileInfo.file.name;
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const poll = await fetch(`${BASE_URL}/${name}?key=${key}`);
+      if (!poll.ok) throw new Error(`Gemini File API poll: HTTP ${poll.status}`);
+      const info = (await poll.json()) as { state?: string };
+      if (info.state === "ACTIVE") break;
+      if (i === 9) throw new Error("File Gemini non pronto in tempo (ancora in PROCESSING dopo 20s)");
+    }
+  }
+
   return fileInfo.file.uri;
 }
 

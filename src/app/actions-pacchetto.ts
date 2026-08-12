@@ -2,6 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
@@ -85,9 +86,7 @@ export async function collegaElemento(
 
   // --- controllo riconoscimento automatico (solo per il video) ---
   if (ruolo === "video") {
-    avviaVerificaPersone(taskId, pacchettoId, versionId).catch(() => {
-      // best-effort: non blocca mai il caricamento
-    });
+    after(() => avviaVerificaPersone(taskId, pacchettoId, versionId));
   }
 
   revalidatePath(`/task/${taskId}`);
