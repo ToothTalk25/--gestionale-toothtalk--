@@ -67,6 +67,7 @@ $$;
 -- ----------------------------------------------------------------- RLS
 
 drop policy if exists versions_delete_lavorazione on public.deliverable_versions;
+drop policy if exists versions_delete on public.deliverable_versions;
 create policy versions_delete on public.deliverable_versions
   for delete to authenticated
   using (
