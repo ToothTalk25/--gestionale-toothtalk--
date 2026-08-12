@@ -32,14 +32,19 @@ export default async function DashboardPage() {
     .returns<Riga[]>();
 
   const righe = tasks ?? [];
-  const daRevisionare = righe.filter((t) =>
-    ["consegnato", "in_revisione"].includes(t.status),
-  );
 
-  // Panoramica per polo (solo admin)
-  const { data: panoramicaPoli } = isAdmin
-    ? await supabase.from("v_polo_overview").select("*").order("polo_nome").returns<PoloOverview[]>()
-    : { data: null };
+  // Panoramica per polo: la RLS della vista restringe già ai poli visibili
+  // (tutti per l'admin, il proprio per un membro) — nessun filtro qui.
+  const { data: panoramicaPoli } = await supabase
+    .from("v_polo_overview")
+    .select("*")
+    .order("polo_nome")
+    .returns<PoloOverview[]>();
+
+  const inAttesaRevisione = (panoramicaPoli ?? []).reduce(
+    (s, p) => s + Number(p.in_attesa_revisione),
+    0,
+  );
 
   return (
     <div className="space-y-8">
@@ -54,13 +59,9 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2">
         <Card etichetta="Progetti totali" valore={righe.length} />
-        <Card etichetta="In attesa di revisione" valore={daRevisionare.length} />
-        <Card
-          etichetta="Materiali depositati"
-          valore={righe.reduce((s, t) => s + Number(t.n_consegne_originali), 0)}
-        />
+        <Card etichetta="In attesa di revisione" valore={inAttesaRevisione} />
       </section>
 
       {isAdmin && panoramicaPoli && panoramicaPoli.length > 0 && (

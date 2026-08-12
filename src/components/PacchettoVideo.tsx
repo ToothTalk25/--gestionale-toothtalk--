@@ -88,6 +88,7 @@ export default function PacchettoVideo({
   const [pending, start] = useTransition();
   const [contattoEmail, setContattoEmail] = useState(contattoEsternoEmail ?? "");
   const [contattoPec, setContattoPec] = useState(contattoEsternoPec ?? "");
+  const [testiConfermati, setTestiConfermati] = useState(false);
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
@@ -480,36 +481,48 @@ export default function PacchettoVideo({
         {inBozza ? (
           <>
             {componibile && (
-              <button
-                disabled={!completo || pending}
-                onClick={() =>
-                  start(async () => {
-                    setErrore(null);
-                    setMessaggio(null);
-                    const id = await assicuraPacchetto();
-                    if (!id) return;
+              <>
+                <label className="mb-3 flex items-start gap-2 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={testiConfermati}
+                    onChange={(e) => setTestiConfermati(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  Confermo che i testi inseriti (titolo, descrizione, script) sono la
+                  versione definitiva, non una bozza.
+                </label>
+                <button
+                  disabled={!completo || !testiConfermati || pending}
+                  onClick={() =>
+                    start(async () => {
+                      setErrore(null);
+                      setMessaggio(null);
+                      const id = await assicuraPacchetto();
+                      if (!id) return;
 
-                    // La segnalazione legge dal database: salviamo i testi prima.
-                    const salva = await salvaPacchetto(taskId, {
-                      descrizione,
-                      script,
-                      titolo_youtube: titoloYoutube,
-                    });
-                    if (!salva.ok) return setErrore(salva.errore);
+                      // La segnalazione legge dal database: salviamo i testi prima.
+                      const salva = await salvaPacchetto(taskId, {
+                        descrizione,
+                        script,
+                        titolo_youtube: titoloYoutube,
+                      });
+                      if (!salva.ok) return setErrore(salva.errore);
 
-                    const esito = await segnalaCompletato(taskId, id);
-                    if (!esito.ok) return setErrore(esito.errore);
+                      const esito = await segnalaCompletato(taskId, id);
+                      if (!esito.ok) return setErrore(esito.errore);
 
-                    setMessaggio(
-                      "Pacchetto segnalato come completato: ora è in attesa della revisione.",
-                    );
-                    router.refresh();
-                  })
-                }
-                className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-              >
-                {pending ? "Attendere…" : "Segnala completato"}
-              </button>
+                      setMessaggio(
+                        "Pacchetto segnalato come completato: ora è in attesa della revisione.",
+                      );
+                      router.refresh();
+                    })
+                  }
+                  className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {pending ? "Attendere…" : "Segnala completato"}
+                </button>
+              </>
             )}
             {!completo && (
               <p className="mt-2 text-xs text-slate-400">
@@ -787,7 +800,11 @@ function Slot({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3">
+    <div
+      className={`rounded-xl border p-3 ${
+        elemento ? "border-sky-200 bg-sky-50" : "border-slate-200"
+      }`}
+    >
       <div className="flex items-start gap-2">
         <h3 className="flex-1 text-sm font-medium">{titolo}</h3>
         {azione}
@@ -899,7 +916,11 @@ function Testo({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3">
+    <div
+      className={`rounded-xl border p-3 ${
+        valore.trim() ? "border-amber-200 bg-amber-50" : "border-slate-200"
+      }`}
+    >
       <h3 className="flex items-center gap-2 text-sm font-medium">
         <span>{titolo}</span>
         {nota && <span className="font-normal text-xs text-slate-400">{nota}</span>}
