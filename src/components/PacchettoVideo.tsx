@@ -361,6 +361,7 @@ export default function PacchettoVideo({
           valore={script}
           onChange={setScript}
           modificabile={componibile}
+          confermato={!inBozza}
           righe={8}
           placeholder={scriptPlaceholder}
           onImporta={
@@ -379,6 +380,7 @@ export default function PacchettoVideo({
           valore={descrizione}
           onChange={setDescrizione}
           modificabile={componibile}
+          confermato={!inBozza}
           righe={8}
           placeholder="La caption esatta che accompagnerà il video…"
           onImporta={
@@ -398,6 +400,7 @@ export default function PacchettoVideo({
           valore={titoloYoutube}
           onChange={setTitoloYoutube}
           modificabile={componibile}
+          confermato={!inBozza}
           righe={3}
           placeholder="Il titolo che comparirà sullo Short di YouTube…"
           onImporta={
@@ -1007,6 +1010,7 @@ function Testo({
   righe,
   placeholder,
   onImporta,
+  confermato,
 }: {
   id?: string;
   titolo: string;
@@ -1017,6 +1021,8 @@ function Testo({
   righe: number;
   placeholder?: string;
   onImporta?: () => void;
+  /** true quando il pacchetto non è più in bozza: il gruppo ha già confermato che questo testo è la versione definitiva, non una bozza. */
+  confermato: boolean;
 }) {
   const [importando, setImportando] = useState(false);
 
@@ -1031,7 +1037,11 @@ function Testo({
     <div
       id={id}
       className={`rounded-xl border p-3 ${
-        valore.trim() ? "border-tt-blue/20 bg-tt-blue-50" : "border-slate-200"
+        !valore.trim()
+          ? "border-slate-200"
+          : confermato
+            ? "border-tt-blue/20 bg-tt-blue-50"
+            : "border-amber-200 bg-amber-50"
       }`}
     >
       <h3 className="flex items-center gap-2 text-sm font-medium">
