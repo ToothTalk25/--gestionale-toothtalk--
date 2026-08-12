@@ -15,6 +15,7 @@ import {
   type Allegato,
 } from "@/lib/pec";
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
+import { verificaPersoneVideo } from "@/lib/gemini";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -81,8 +82,126 @@ export async function collegaElemento(
     );
 
   if (error) return errore(error.message);
+
+  // --- controllo riconoscimento automatico (solo per il video) ---
+  if (ruolo === "video") {
+    avviaVerificaPersone(taskId, pacchettoId, versionId).catch(() => {
+      // best-effort: non blocca mai il caricamento
+    });
+  }
+
   revalidatePath(`/task/${taskId}`);
   return { ok: true, dati: undefined };
+}
+
+/**
+ * Esegue il riconoscimento automatico (Fase D) in background.
+ * Scarica il video, le foto dei membri con consenso, chiama Gemini
+ * e scrive il risultato nella tabella verifiche_riconoscimento.
+ */
+async function avviaVerificaPersone(
+  taskId: string,
+  pacchettoId: string,
+  versionId: string,
+): Promise<void> {
+  try {
+    const admin = supabaseAdmin();
+
+    // 1) Recupera la versione del video e il polo del task
+    const { data: versione } = await admin
+      .from("deliverable_versions")
+      .select("storage_path, bucket, mime_type")
+      .eq("id", versionId)
+      .single<{ storage_path: string; bucket: string; mime_type: string | null }>();
+    if (!versione) return;
+
+    const { data: task } = await admin
+      .from("tasks")
+      .select("polo_id")
+      .eq("id", taskId)
+      .single<{ polo_id: string }>();
+    if (!task?.polo_id) return;
+
+    // 2) Scarica il video da Storage
+    const { data: blob, error: eDown } = await admin.storage
+      .from(versione.bucket)
+      .download(versione.storage_path);
+    if (eDown || !blob) return;
+
+    const videoBuffer = Buffer.from(await blob.arrayBuffer());
+    const mimeType = versione.mime_type ?? "video/mp4";
+
+    // 3) Trova i membri del polo con foto e consenso riconoscimento_foto
+    const { data: membri } = await admin
+      .from("memberships")
+      .select("user_id, profiles!inner(id, foto_path)")
+      .eq("polo_id", task.polo_id)
+      .not("profiles.foto_path", "is", null)
+      .returns<{ user_id: string; profiles: { id: string; foto_path: string } }[]>();
+
+    if (!membri?.length) {
+      await scriviEsito(admin, pacchettoId, "errore", "Nessun membro del gruppo ha una foto profilo.");
+      return;
+    }
+
+    // Filtra: solo chi ha dato il consenso riconoscimento_foto
+    const userIds = membri.map((m) => m.user_id);
+    const { data: consensi } = await admin
+      .from("consensi")
+      .select("user_id")
+      .in("user_id", userIds)
+      .eq("tipo", "riconoscimento_foto");
+    const conConsenso = new Set((consensi ?? []).map((c) => c.user_id));
+
+    const fotoRiferimento: { profileId: string; base64: string; mimeType: string }[] = [];
+
+    for (const m of membri) {
+      if (!conConsenso.has(m.user_id)) continue;
+      const fotoPath = m.profiles.foto_path;
+      const { data: fotoBlob, error: eFoto } = await admin.storage
+        .from("profili")
+        .download(fotoPath);
+      if (eFoto || !fotoBlob) continue;
+
+      const base64 = Buffer.from(await fotoBlob.arrayBuffer()).toString("base64");
+      fotoRiferimento.push({
+        profileId: m.profiles.id,
+        base64,
+        mimeType: fotoBlob.type || "image/jpeg",
+      });
+    }
+
+    if (!fotoRiferimento.length) {
+      await scriviEsito(admin, pacchettoId, "errore", "Nessun membro ha dato il consenso al riconoscimento foto.");
+      return;
+    }
+
+    // 4) Chiama Gemini
+    const esito = await verificaPersoneVideo({ videoBuffer, videoMimeType: mimeType, fotoRiferimento });
+
+    // 5) Scrivi risultato
+    await scriviEsito(admin, pacchettoId, esito.esito, esito.dettaglio);
+  } catch (e) {
+    const admin = supabaseAdmin();
+    await scriviEsito(admin, pacchettoId, "errore", e instanceof Error ? e.message : "Errore durante la verifica.");
+  }
+}
+
+async function scriviEsito(
+  admin: ReturnType<typeof supabaseAdmin>,
+  pacchettoId: string,
+  esito: string,
+  dettaglio: string,
+): Promise<void> {
+  try {
+    await admin.from("verifiche_riconoscimento").insert({
+      pacchetto_id: pacchettoId,
+      esito,
+      dettaglio,
+    });
+  } catch {
+    // best-effort: se la scrittura fallisce non blocca nulla
+  }
 }
 
 /**
