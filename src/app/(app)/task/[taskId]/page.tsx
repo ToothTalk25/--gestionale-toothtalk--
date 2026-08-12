@@ -157,14 +157,19 @@ export default async function TaskPage({
         .maybeSingle<EsitoRiconoscimento>()
     : { data: null };
 
-  // Ultima richiesta di liberatoria: serve a far capire alla UI se il
-  // sigillo è davvero raggiungibile (solo firma OTP vale).
+  // Esiste una richiesta di liberatoria firmata via OTP per questo progetto?
+  // Stessa condizione esatta controllata da sigilla_pacchetto (0052): non la
+  // più recente in assoluto, perché ogni invio crea una nuova riga e una
+  // vecchia già firmata resterebbe valida anche se ne esiste una più nuova
+  // ancora in sospeso — prendere solo "l'ultima" farebbe dire alla UI che il
+  // sigillo è bloccato quando il server lo permetterebbe comunque.
   const { data: liberatoriaInfo } = pacchetto
     ? await supabase
         .from("richieste_liberatoria")
         .select("stato, metodo_firma")
         .eq("task_id", taskId)
-        .order("creato_at", { ascending: false })
+        .eq("stato", "caricata")
+        .eq("metodo_firma", "otp")
         .limit(1)
         .maybeSingle<{ stato: string; metodo_firma: string | null }>()
     : { data: null };
