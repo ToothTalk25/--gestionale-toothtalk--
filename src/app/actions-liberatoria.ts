@@ -210,7 +210,7 @@ export async function caricaLiberatoriaPubblica(
 
   // 7. marca come caricata
   const { error: eReg } = await admin
-    .rpc("registra_upload_liberatoria", { p_token: token, p_version: versione.id });
+    .rpc("registra_upload_liberatoria", { p_token: token, p_version: versione.id, p_metodo: "upload_manuale" });
   if (eReg) {
     return errore("Token non valido o gia usato: " + eReg.message);
   }
@@ -288,7 +288,7 @@ export async function firmaLiberatoriaOnline(
   }
 
   const { error: eReg } = await admin.rpc("registra_upload_liberatoria", {
-    p_token: token, p_version: versione.id,
+    p_token: token, p_version: versione.id, p_metodo: "canvas",
   });
   if (eReg) return errore("Token non valido o gia usato: " + eReg.message);
 
@@ -423,7 +423,7 @@ export async function firmaConOtpLiberatoria(
   if (!versione) { await admin.storage.from("finali").remove([storagePath]).catch(() => {}); return errore("Registrazione fallita."); }
 
   const { error: eReg } = await admin.rpc("registra_upload_liberatoria", {
-    p_token: token, p_version: versione.id,
+    p_token: token, p_version: versione.id, p_metodo: "otp",
   });
   if (eReg) return errore("Token non valido o gia usato.");
 
