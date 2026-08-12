@@ -287,7 +287,7 @@ export default async function TaskPage({
                 </div>
 
                 {vs.length > 0 && (
-                  <div className="mt-2 border-t border-slate-100 pt-2">
+                  <div className="mt-2 max-h-24 overflow-y-auto border-t border-slate-100 pt-2">
                     <VersionList
                       taskId={task.id}
                       versioni={vs}

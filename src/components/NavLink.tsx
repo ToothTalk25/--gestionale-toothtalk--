@@ -23,7 +23,9 @@ export default function NavLink({
     <Link
       href={href}
       className={
-        attivo ? "font-medium text-tt-blue" : "text-slate-600 hover:text-tt-ink"
+        attivo
+          ? "rounded-md bg-tt-blue-50 px-2 py-0.5 font-medium text-tt-blue"
+          : "rounded-md px-2 py-0.5 text-slate-600 hover:text-tt-ink hover:bg-slate-50"
       }
     >
       {children}
