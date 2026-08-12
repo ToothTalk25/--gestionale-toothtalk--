@@ -248,12 +248,14 @@ Deno.serve(async (req) => {
     const num = task.numero_video ?? "?";
     const nomeBase = `Video ${num} - ${task.titolo}`.replace(SANITIZZA, "_");
 
-    const cartVideo = await trovaOCreaCartella(token, cartellaPolo, "Video");
-    const cartCopertine = await trovaOCreaCartella(token, cartellaPolo, "Copertine");
-    const cartLiberatorie = await trovaOCreaCartella(token, cartellaPolo, "Liberatorie");
-    const cartVerbali = await trovaOCreaCartella(token, cartellaPolo, "Verbali");
+    // Struttura di destinazione: tutto dentro GESTIONE VIDEO
+    const cartellaGV = await trovaOCreaCartella(token, cartellaPolo, "GESTIONE VIDEO");
+    const cartVideo = await trovaOCreaCartella(token, cartellaGV, "Video");
+    const cartCopertine = await trovaOCreaCartella(token, cartellaGV, "Copertine");
+    const cartLiberatorie = await trovaOCreaCartella(token, cartellaGV, "Liberatorie");
+    const cartVerbali = await trovaOCreaCartella(token, cartellaGV, "Verbali");
 
-    // --- testi accumulati: scarica, appendi, ricarica nel polo
+    // --- testi accumulati: scarica, appendi, ricarica in GESTIONE VIDEO
     const encoder = new TextEncoder();
     const header = `#Video ${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
 
@@ -266,7 +268,7 @@ Deno.serve(async (req) => {
     for (const t of testiDaAccumulare) {
       if (!t.contenuto) continue;
       const n = t.nomeFile.replace(SANITIZZA, "_");
-      const q = `'${cartellaPolo}' in parents and name='${n.replace(/'/g, "\\'")}' and trashed=false`;
+      const q = `'${cartellaGV}' in parents and name='${n.replace(/'/g, "\\'")}' and trashed=false`;
       const ricerca = await driveFetch(token, `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
       const trovata = (await ricerca.json()) as { files?: { id: string }[] };
       const fileId = trovata.files?.length ? trovata.files[0].id : null;
@@ -287,7 +289,7 @@ Deno.serve(async (req) => {
           method: "PATCH", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: buf,
         });
       } else {
-        const metadata = { name: n, mimeType: "text/plain", parents: [cartellaPolo] };
+        const metadata = { name: n, mimeType: "text/plain", parents: [cartellaGV] };
         const form = new FormData();
         form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
         form.append("file", new Blob([buf], { type: "text/plain; charset=utf-8" }));
