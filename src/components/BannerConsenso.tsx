@@ -60,7 +60,9 @@ export default function BannerConsenso() {
         }
       }
     } catch (e) {
-      setErroreUi("Errore interno: " + (e instanceof Error ? e.message : String(e)));
+      // La server action ha lanciato: il consenso potrebbe non essere stato
+      // registrato. Non chiudiamo il banner, mostriamo l'errore.
+      setErroreUi("Errore durante il salvataggio: " + (e instanceof Error ? e.message : String(e)));
       tuttoOk = false;
     }
     // Chiudi SOLO se il consenso è stato davvero registrato: un'accettazione
@@ -100,7 +102,7 @@ export default function BannerConsenso() {
           </button>
         </div>
         {erroreUi && (
-          <p className="w-full text-xs text-red-600">Consenso registrato, ma: {erroreUi}</p>
+          <p className="w-full text-xs text-red-600">{erroreUi}</p>
         )}
       </div>
     </div>

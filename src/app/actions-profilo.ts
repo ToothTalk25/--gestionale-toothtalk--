@@ -201,15 +201,21 @@ export async function registraConsenso(tipo: "privacy" | "cookie" | "riconoscime
   const sha256 = createHash("sha256").update(buffer).digest("hex");
   const storagePath = `consensi/${profile.id}/${tipo}_v${versione}_${consenso.id}.html`;
 
-  const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
-    contentType: "text/html; charset=utf-8", upsert: false,
-  });
-  if (eUpload) {
-    // Best-effort: se upload fallisce, il consenso è comunque registrato
-    console.error("Upload ricevuta consenso fallito:", eUpload.message);
-  } else {
-    // Aggiorna la riga con il path e l'hash
-    await admin.from("consensi").update({ storage_path: storagePath, sha256 }).eq("id", consenso.id);
+  try {
+    const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
+      contentType: "text/html; charset=utf-8", upsert: false,
+    });
+    if (eUpload) {
+      // Best-effort: se l'upload fallisce, il consenso è comunque registrato
+      console.error("Upload ricevuta consenso fallito:", eUpload.message);
+    } else {
+      // Aggiorna la riga con il path e l'hash
+      await admin.from("consensi").update({ storage_path: storagePath, sha256 }).eq("id", consenso.id);
+    }
+  } catch (e) {
+    // Il consenso è già registrato nella tabella: un errore di storage non
+    // deve mai far fallire l'accettazione (il banner deve chiudersi).
+    console.error("Upload ricevuta consenso THROWS (ignorato):", e);
   }
 
   revalidatePath("/");
