@@ -171,11 +171,11 @@ export async function caricaFoto(storagePath: string): Promise<Esito> {
 export async function registraConsenso(tipo: "privacy" | "cookie" | "riconoscimento_foto"): Promise<Esito> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
-  const admin = supabaseAdmin();
 
   const versione = tipo === "privacy" ? PRIVACY_VERSION : COOKIE_VERSION;
 
-  // 1. Registra il consenso nella tabella
+  // 1. Registra il consenso nella tabella — è la prova legale, deve sempre
+  //    riuscire. Nulla qui sotto deve poter far fallire questa riga.
   const { data: consenso, error } = await supabase.from("consensi").insert({
     user_id: profile.id,
     tipo,
@@ -183,39 +183,42 @@ export async function registraConsenso(tipo: "privacy" | "cookie" | "riconoscime
   }).select("id").single<{ id: string }>();
   if (error || !consenso) return errore(error?.message ?? "Errore registrazione consenso.");
 
-  // 2. Genera ricevuta HTML firmata (SHA256) — prova dimostrabile per GDPR
-  const dataIso = new Date().toISOString();
-  const tipoLabel = tipo === "privacy" ? "Informativa Privacy" : tipo === "cookie" ? "Cookie Policy" : "Riconoscimento foto";
-  const html =
-    `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Ricevuta consenso — ToothTalk</title>` +
-    `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
-    `h1{font-size:1.2em}.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
-    `<h1>Ricevuta di consenso — ToothTalk</h1>` +
-    `<p><strong>Utente:</strong> ${profile.full_name} (${profile.email})</p>` +
-    `<p><strong>Consenso:</strong> ${tipoLabel} v${versione}</p>` +
-    `<p><strong>Accettato il:</strong> ${dataIso}</p>` +
-    `<p><strong>Metodo:</strong> click su interfaccia web autenticata</p>` +
-    `<p class="data">Progetto ToothTalk — Documento certificato.</p></body></html>`;
-
-  const buffer = Buffer.from(html, "utf8");
-  const sha256 = createHash("sha256").update(buffer).digest("hex");
-  const storagePath = `consensi/${profile.id}/${tipo}_v${versione}_${consenso.id}.html`;
-
+  // 2. Genera ricevuta HTML firmata (SHA256) — prova dimostrabile per GDPR.
+  //    Best-effort: se la generazione, l'upload o la chiave admin falliscono,
+  //    il consenso è comunque registrato. Mai errori all'utente.
   try {
-    const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
-      contentType: "text/html; charset=utf-8", upsert: false,
-    });
-    if (eUpload) {
-      // Best-effort: se l'upload fallisce, il consenso è comunque registrato
-      console.error("Upload ricevuta consenso fallito:", eUpload.message);
-    } else {
-      // Aggiorna la riga con il path e l'hash
-      await admin.from("consensi").update({ storage_path: storagePath, sha256 }).eq("id", consenso.id);
+    const dataIso = new Date().toISOString();
+    const tipoLabel = tipo === "privacy" ? "Informativa Privacy" : tipo === "cookie" ? "Cookie Policy" : "Riconoscimento foto";
+    const html =
+      `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Ricevuta consenso — ToothTalk</title>` +
+      `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
+      `h1{font-size:1.2em}.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
+      `<h1>Ricevuta di consenso — ToothTalk</h1>` +
+      `<p><strong>Utente:</strong> ${profile.full_name} (${profile.email})</p>` +
+      `<p><strong>Consenso:</strong> ${tipoLabel} v${versione}</p>` +
+      `<p><strong>Accettato il:</strong> ${dataIso}</p>` +
+      `<p><strong>Metodo:</strong> click su interfaccia web autenticata</p>` +
+      `<p class="data">Progetto ToothTalk — Documento certificato.</p></body></html>`;
+
+    const buffer = Buffer.from(html, "utf8");
+    const sha256 = createHash("sha256").update(buffer).digest("hex");
+    const storagePath = `consensi/${profile.id}/${tipo}_v${versione}_${consenso.id}.html`;
+
+    try {
+      const admin = supabaseAdmin();
+      const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
+        contentType: "text/html; charset=utf-8", upsert: false,
+      });
+      if (eUpload) {
+        console.error("Upload ricevuta consenso fallito:", eUpload.message);
+      } else {
+        await admin.from("consensi").update({ storage_path: storagePath, sha256 }).eq("id", consenso.id);
+      }
+    } catch (e) {
+      console.error("Upload ricevuta consenso THROWS (ignorato):", e);
     }
   } catch (e) {
-    // Il consenso è già registrato nella tabella: un errore di storage non
-    // deve mai far fallire l'accettazione (il banner deve chiudersi).
-    console.error("Upload ricevuta consenso THROWS (ignorato):", e);
+    console.error("Generazione ricevuta consenso fallita (ignorata):", e);
   }
 
   revalidatePath("/");
