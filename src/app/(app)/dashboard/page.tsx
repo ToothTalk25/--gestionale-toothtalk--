@@ -3,7 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
 import AzioniProgettoRiga from "@/components/AzioniProgettoRiga";
-import type { TaskStatus } from "@/lib/types";
+import type { PoloOverview, TaskStatus } from "@/lib/types";
 
 type Riga = {
   id: string;
@@ -36,6 +36,11 @@ export default async function DashboardPage() {
     ["consegnato", "in_revisione"].includes(t.status),
   );
 
+  // Panoramica per polo (solo admin)
+  const { data: panoramicaPoli } = isAdmin
+    ? await supabase.from("v_polo_overview").select("*").order("polo_nome").returns<PoloOverview[]>()
+    : { data: null };
+
   return (
     <div className="space-y-8">
       <div>
@@ -57,6 +62,42 @@ export default async function DashboardPage() {
           valore={righe.reduce((s, t) => s + Number(t.n_consegne_originali), 0)}
         />
       </section>
+
+      {isAdmin && panoramicaPoli && panoramicaPoli.length > 0 && (
+        <section>
+          <h2 className="text-lg font-medium">Panoramica team</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {panoramicaPoli.map((p) => (
+              <Link
+                key={p.polo_id}
+                href={`/polo/${p.polo_id}`}
+                className="rounded-xl bg-white p-4 ring-1 ring-black/5 hover:ring-2 hover:ring-tt-blue/30 transition-shadow"
+              >
+                <h3 className="font-semibold text-slate-800">{p.polo_nome}</h3>
+                <p className="text-xs text-slate-400">{p.progetti_totali} progetti</p>
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <span className="text-slate-500">In lavorazione</span>
+                  <span className="text-right font-medium text-slate-700">{p.in_lavorazione}</span>
+                  <span className={`${p.in_attesa_revisione > 0 ? "text-amber-700 font-medium" : "text-slate-500"}`}>
+                    In attesa revisione
+                  </span>
+                  <span className={`text-right font-medium ${p.in_attesa_revisione > 0 ? "text-amber-700" : "text-slate-700"}`}>
+                    {p.in_attesa_revisione}
+                  </span>
+                  <span className="text-slate-500">Sigillati</span>
+                  <span className="text-right font-medium text-slate-700">{p.sigillati}</span>
+                  {p.pec_errore > 0 && (
+                    <>
+                      <span className="text-red-600 font-medium">Errore PEC</span>
+                      <span className="text-right font-medium text-red-600">{p.pec_errore}</span>
+                    </>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

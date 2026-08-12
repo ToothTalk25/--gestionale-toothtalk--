@@ -88,7 +88,7 @@ export default function UploadDeliverable({
       setFase("fatto");
       setMessaggio(
         origin === "originale"
-          ? `Deposito registrato (v${esito.dati.versionNo}). Impronta ${sha.slice(0, 12)}…`
+          ? `Deposito registrato (v${esito.dati.versionNo}).`
           : `Versione editata registrata (v${esito.dati.versionNo}).`,
       );
 
@@ -133,12 +133,8 @@ export default function UploadDeliverable({
       <button
         onClick={() => input.current?.click()}
         disabled={occupato}
-        className={`rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${
-          isAdmin
-            ? "bg-purple-600 text-white"
-            : archivio === "finale"
-              ? "bg-tt-ink text-white"
-              : "bg-tt-blue text-white"
+        className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
+          archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
         }`}
       >
         {etichette[fase]}

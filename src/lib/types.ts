@@ -340,6 +340,16 @@ export type PacchettoDaArchiviare = {
   file_da_archiviare: number;
 };
 
+export type PoloOverview = {
+  polo_id: string;
+  polo_nome: string;
+  progetti_totali: number;
+  in_lavorazione: number;
+  in_attesa_revisione: number;
+  sigillati: number;
+  pec_errore: number;
+};
+
 /** Contesto di sessione risolto lato server a ogni richiesta. */
 export type SessionContext = {
   profile: Profile;

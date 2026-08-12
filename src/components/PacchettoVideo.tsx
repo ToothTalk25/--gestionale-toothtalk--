@@ -801,9 +801,6 @@ function Slot({
             {formatBytes(elemento.size_bytes)} ·{" "}
             {new Date(elemento.uploaded_at).toLocaleString("it-IT")}
           </p>
-          <p className="mt-1 font-mono text-[10px] break-all text-slate-400">
-            {elemento.sha256}
-          </p>
 
           {onRimuovi &&
             (conferma ? (
