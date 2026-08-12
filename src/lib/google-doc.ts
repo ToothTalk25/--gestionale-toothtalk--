@@ -126,6 +126,7 @@ export async function creaDocumentiLavorazione(
   taskId: string,
   poloNome: string,
   titoloProgetto: string,
+  poloFolderId: string | null = null,
 ): Promise<void> {
   const { supabaseAdmin } = await import("@/lib/supabase/admin");
   const admin = supabaseAdmin();
@@ -135,7 +136,7 @@ export async function creaDocumentiLavorazione(
 
   try {
     const token = await tokenGoogle();
-    const cartellaPolo = await trovaOCreaCartella(token, root, poloNome);
+    const cartellaPolo = poloFolderId ?? await trovaOCreaCartella(token, root, poloNome);
     const cartellaLavorazione = await trovaOCreaCartella(token, cartellaPolo, "Documenti di lavorazione");
 
     const documenti: Array<[string, string]> = [

@@ -327,7 +327,10 @@ Deno.serve(async (req) => {
       const path = v.storage_path.split("/").map(encodeURIComponent).join("/");
       const scarica = await fetch(
         `${supabaseUrl}/storage/v1/object/${encodeURIComponent(v.bucket)}/${path}`,
-        { headers: { Authorization: `Bearer ${serviceKey}` } },
+        // Con le chiavi nel nuovo formato (sb_secret_...) lo Storage REST
+        // richiede sia Authorization sia apikey: senza apikey risponde 400
+        // "Bucket not found", un errore fuorviante che non è di permessi.
+        { headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey } },
       );
       if (!scarica.ok) {
         throw new Error(`Storage ${v.bucket}/${v.storage_path}: HTTP ${scarica.status}`);

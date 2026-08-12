@@ -23,6 +23,26 @@ const config: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           // Solo HTTPS quando pubblicato (ignorato in locale su http).
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          // Limita da dove pagina/script/stili/immagini possono essere
+          // caricati: riduce l'impatto di un eventuale XSS. 'unsafe-inline'
+          // su script/style resta necessario per l'hydration di Next.js e
+          // per le classi Tailwind; niente domini di terze parti altrove.
+          // 'unsafe-eval' solo in sviluppo: Turbopack/webpack lo usano per
+          // l'hot-reload, ma React non lo usa mai in produzione.
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; "),
+          },
         ],
       },
     ];

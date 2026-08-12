@@ -337,12 +337,26 @@ export async function richiediOtpLiberatoria(
     .rpc("verifica_token_liberatoria", { p_token: token });
   if (eTok || !richiesta?.length) return errore("Token non valido o scaduto.");
 
+  // Un solo reinvio ogni 60 secondi: senza questo, il modulo pubblico (nessun
+  // login) permetterebbe di spammare la casella del contatto a raffica.
+  const { data: precedente } = await admin
+    .from("richieste_liberatoria")
+    .select("otp_generato_at")
+    .eq("token", token)
+    .single<{ otp_generato_at: string | null }>();
+  if (precedente?.otp_generato_at) {
+    const trascorsi = Date.now() - new Date(precedente.otp_generato_at).getTime();
+    if (trascorsi < 60 * 1000) {
+      return errore(`Attendi ${Math.ceil((60 * 1000 - trascorsi) / 1000)} secondi prima di richiedere un nuovo codice.`);
+    }
+  }
+
   const otp = String(Math.floor(100000 + Math.random() * 900000));
   const { createHash } = await import("node:crypto");
   const otpHash = createHash("sha256").update(otp).digest("hex");
 
   const { error: eUp } = await admin.from("richieste_liberatoria")
-    .update({ otp_hash: otpHash, otp_generato_at: new Date().toISOString() })
+    .update({ otp_hash: otpHash, otp_generato_at: new Date().toISOString(), otp_tentativi: 0 })
     .eq("token", token);
   if (eUp) return errore("Impossibile registrare il codice.");
 
@@ -362,9 +376,12 @@ export async function firmaConOtpLiberatoria(
 
   const { data: richiesta, error: eTok } = await admin
     .from("richieste_liberatoria")
-    .select("task_id, contatto_email, otp_hash, otp_generato_at")
+    .select("task_id, contatto_email, otp_hash, otp_generato_at, otp_tentativi")
     .eq("token", token).eq("stato", "inviata")
-    .single<{ task_id: string; contatto_email: string; otp_hash: string | null; otp_generato_at: string | null }>();
+    .single<{
+      task_id: string; contatto_email: string; otp_hash: string | null;
+      otp_generato_at: string | null; otp_tentativi: number;
+    }>();
 
   if (eTok || !richiesta) return errore("Token non valido o scaduto.");
   if (!richiesta.otp_hash) return errore("Nessun codice OTP richiesto.");
@@ -372,9 +389,20 @@ export async function firmaConOtpLiberatoria(
   const generato = new Date(richiesta.otp_generato_at!).getTime();
   if (Date.now() - generato > 10 * 60 * 1000) return errore("Codice scaduto. Richiedine uno nuovo.");
 
+  // Al massimo 5 tentativi per ogni codice: oltre, va richiesto un codice
+  // nuovo — impedisce di provare a forza bruta le 6 cifre (1 su 1.000.000).
+  if (richiesta.otp_tentativi >= 5) {
+    return errore("Troppi tentativi con questo codice. Richiedi un nuovo codice.");
+  }
+
   const { createHash } = await import("node:crypto");
   const otpHash = createHash("sha256").update(otp).digest("hex");
-  if (otpHash !== richiesta.otp_hash) return errore("Codice non valido.");
+  if (otpHash !== richiesta.otp_hash) {
+    await admin.from("richieste_liberatoria")
+      .update({ otp_tentativi: richiesta.otp_tentativi + 1 })
+      .eq("token", token);
+    return errore("Codice non valido.");
+  }
 
   const taskId = richiesta.task_id;
   const data = new Date().toISOString().slice(0, 10);

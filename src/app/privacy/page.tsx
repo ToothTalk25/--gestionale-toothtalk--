@@ -6,7 +6,7 @@ export default function PrivacyPage() {
       <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
       <h1 className="mt-6 text-2xl font-semibold">Informativa privacy</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 10 agosto 2026
+        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 12 agosto 2026
       </p>
 
       <section className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
@@ -60,7 +60,10 @@ export default function PrivacyPage() {
             necessario a scaricarli e pubblicarli, e possono essere eliminati dopo
             l&apos;invio della PEC. I metadati, le impronte e i verbali PEC restano come
             registro append-only per esigenze di tutela legale, insieme alla copia
-            già presente nella casella PEC e nelle caselle dei partecipanti.
+            già presente nella casella PEC e nelle caselle dei partecipanti. Una copia
+            dei materiali sigillati e del relativo verbale viene inoltre archiviata su
+            Google Drive, in una cartella riservata al progetto e accessibile solo al
+            referente.
           </p>
         </div>
 
@@ -97,7 +100,7 @@ export default function PrivacyPage() {
         </div>
 
         <p className="pt-4 text-xs text-slate-400">
-          Ultimo aggiornamento: 10 agosto 2026 ·{" "}
+          Ultimo aggiornamento: 12 agosto 2026 ·{" "}
           <Link href="/login" className="underline">
             Torna al login
           </Link>

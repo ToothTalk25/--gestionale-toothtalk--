@@ -55,13 +55,13 @@ export async function creaTask(formData: FormData): Promise<Esito<{ id: string }
   // Crea i Google Doc di lavorazione in background
   const { data: poloRow } = await supabase
     .from("poli")
-    .select("nome")
+    .select("nome, drive_folder_id")
     .eq("id", polo_id)
-    .single<{ nome: string }>();
+    .single<{ nome: string; drive_folder_id: string | null }>();
   if (poloRow) {
     after(async () => {
       const { creaDocumentiLavorazione } = await import("@/lib/google-doc");
-      await creaDocumentiLavorazione(data.id, poloRow.nome, titolo).catch((e) => {
+      await creaDocumentiLavorazione(data.id, poloRow.nome, titolo, poloRow.drive_folder_id).catch((e) => {
         console.error("Creazione documenti di lavorazione fallita:", e);
       });
     });
