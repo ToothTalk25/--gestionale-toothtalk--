@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation";
 import { cambiaStato, impostaBlocco } from "@/app/actions";
 import { STATI_MEMBRO, STATUS_LABEL, type TaskStatus } from "@/lib/types";
 
+// "sigillato" non è tra le scelte manuali: è sempre derivato dalle RPC
+// sigilla_pacchetto/rimanda_in_composizione/annulla_pacchetto. Impostarlo
+// da qui creerebbe un badge "sigillato" senza un sigillo vero dietro
+// (nessun manifesto, nessuna PEC) — la stessa classe di bug corretta
+// nell'audit UX di questa sessione, nel caso peggiore possibile.
 const STATI_ADMIN: TaskStatus[] = [
   "da_fare",
   "consegnato",
   "in_revisione",
   "modificato_admin",
-  "sigillato",
   "pubblicato",
 ];
 
