@@ -33,18 +33,19 @@ export default async function DashboardPage() {
 
   const righe = tasks ?? [];
 
-  // Panoramica per polo: la RLS della vista restringe già ai poli visibili
-  // (tutti per l'admin, il proprio per un membro) — nessun filtro qui.
-  const { data: panoramicaPoli } = await supabase
-    .from("v_polo_overview")
-    .select("*")
-    .order("polo_nome")
-    .returns<PoloOverview[]>();
+  // Panoramica per polo: riservata all'admin.
+  const { data: panoramicaPoli } = isAdmin
+    ? await supabase.from("v_polo_overview").select("*").order("polo_nome").returns<PoloOverview[]>()
+    : { data: null };
 
-  const inAttesaRevisione = (panoramicaPoli ?? []).reduce(
-    (s, p) => s + Number(p.in_attesa_revisione),
-    0,
-  );
+  const inAttesaRevisione = isAdmin
+    ? (panoramicaPoli ?? []).reduce((s, p) => s + Number(p.in_attesa_revisione), 0)
+    : (
+        await supabase
+          .from("pacchetti_video")
+          .select("id", { count: "exact", head: true })
+          .eq("stato", "pronto")
+      ).count ?? 0;
 
   return (
     <div className="space-y-8">

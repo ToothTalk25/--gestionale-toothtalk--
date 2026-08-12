@@ -300,7 +300,9 @@ export default function PacchettoVideo({
                 etichetta={video ? "Sostituisci" : "Carica video"}
                 accept="video/*"
                 onCaricato={(v) => dopoUpload("video", v)}
-              />
+              >
+                {!video && <p className="text-xs text-slate-400">Nessun file.</p>}
+              </UploadDeliverable>
             ) : null
           }
           taskId={taskId}
@@ -323,7 +325,9 @@ export default function PacchettoVideo({
                 etichetta={copertina ? "Sostituisci" : "Carica copertina"}
                 accept="image/*"
                 onCaricato={(v) => dopoUpload("copertina", v)}
-              />
+              >
+                {!copertina && <p className="text-xs text-slate-400">Nessun file.</p>}
+              </UploadDeliverable>
             ) : null
           }
           taskId={taskId}
@@ -407,7 +411,9 @@ export default function PacchettoVideo({
                     etichetta={liberatoria ? "Sostituisci" : "Carica liberatoria"}
                     accept="application/pdf,image/*"
                     onCaricato={(v) => dopoUpload("liberatoria", v)}
-                  />
+                  >
+                    {!liberatoria && <p className="text-xs text-slate-400">Nessun file.</p>}
+                  </UploadDeliverable>
                 ) : null
               }
               taskId={taskId}
@@ -802,7 +808,7 @@ function Slot({
   return (
     <div
       className={`rounded-xl border p-3 ${
-        elemento ? "border-sky-200 bg-sky-50" : "border-slate-200"
+        elemento ? "border-sky-300 bg-sky-100" : "border-slate-200"
       }`}
     >
       <div className="flex items-start gap-2">
@@ -880,7 +886,7 @@ function Slot({
             </div>
           ) : null}
         </div>
-      ) : (
+      ) : azione ? null : (
         <p className="mt-2 text-xs text-slate-400">Nessun file.</p>
       )}
     </div>

@@ -280,36 +280,30 @@ export default async function TaskPage({
                       Prima assegna un numero video.
                     </p>
                   ) : vs.length > 0 ? (
-                    <div className="text-center">
+                    <UploadDeliverable
+                      taskId={task.id}
+                      kind={kind}
+                      isAdmin={isAdmin}
+                      locked={task.locked}
+                      esisteOriginale={vs.some((v) => v.origin === "originale")}
+                      accept={accetta}
+                    >
                       <div className="text-4xl mb-1 font-bold">{vs.length}</div>
                       <p className="text-[10px] text-slate-400">
                         {vs.length === 1 ? "file caricato" : "file caricati"}
                       </p>
-                      <div className="flex justify-center">
-                        <UploadDeliverable
-                          taskId={task.id}
-                          kind={kind}
-                          isAdmin={isAdmin}
-                          locked={task.locked}
-                          esisteOriginale={vs.some((v) => v.origin === "originale")}
-                          accept={accetta}
-                        />
-                      </div>
-                    </div>
+                    </UploadDeliverable>
                   ) : (
-                    <div className="text-center">
+                    <UploadDeliverable
+                      taskId={task.id}
+                      kind={kind}
+                      isAdmin={isAdmin}
+                      locked={task.locked}
+                      esisteOriginale={false}
+                      accept={accetta}
+                    >
                       <div className="mb-2 text-4xl text-slate-300 font-light">+</div>
-                      <div className="flex justify-center">
-                        <UploadDeliverable
-                          taskId={task.id}
-                          kind={kind}
-                          isAdmin={isAdmin}
-                          locked={task.locked}
-                          esisteOriginale={false}
-                          accept={accetta}
-                        />
-                      </div>
-                    </div>
+                    </UploadDeliverable>
                   )}
                 </div>
 

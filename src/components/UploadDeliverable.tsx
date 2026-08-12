@@ -24,6 +24,7 @@ export default function UploadDeliverable({
   etichetta,
   accept,
   onCaricato,
+  children,
 }: {
   taskId: string;
   kind: DeliverableKind;
@@ -34,12 +35,14 @@ export default function UploadDeliverable({
   etichetta?: string;
   accept?: string;
   onCaricato?: (versionId: string) => void | Promise<void>;
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [fase, setFase] = useState<Fase>("idle");
   const [progresso, setProgresso] = useState(0);
   const [messaggio, setMessaggio] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Chi ha accesso globale deposita sempre versioni derivate: la RLS impedisce di
   // scrivere un "originale", così non può fabbricare un deposito a nome
@@ -119,42 +122,59 @@ export default function UploadDeliverable({
   const occupato = fase === "hash" || fase === "upload" || fase === "registro";
 
   return (
-    <div className="text-right">
-      <input
-        ref={input}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void carica(f);
-        }}
-      />
-      <button
-        onClick={() => input.current?.click()}
-        disabled={occupato}
-        className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
-          archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
-        }`}
-      >
-        {etichette[fase]}
-      </button>
-
-      {isAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
-        <p className="mt-1 text-xs text-amber-600">
-          Nessun materiale depositato dal gruppo per questa voce.
-        </p>
-      )}
-
-      {messaggio && (
-        <p
-          className={`mt-1 max-w-xs text-xs ${
-            fase === "errore" ? "text-red-600" : "text-slate-500"
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!bloccato && !occupato) setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        if (bloccato || occupato) return;
+        const f = e.dataTransfer.files?.[0];
+        if (f) void carica(f);
+      }}
+      className={`${children ? "flex-1 flex flex-col items-center justify-center" : ""} ${dragOver ? "ring-2 ring-tt-blue bg-tt-blue/5 rounded-lg" : ""}`}
+    >
+      {children}
+      <div className="text-right">
+        <input
+          ref={input}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void carica(f);
+          }}
+        />
+        <button
+          onClick={() => input.current?.click()}
+          disabled={occupato}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
+            archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
           }`}
         >
-          {messaggio}
-        </p>
-      )}
+          {etichette[fase]}
+        </button>
+
+        {isAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
+          <p className="mt-1 text-xs text-amber-600">
+            Nessun materiale depositato dal gruppo per questa voce.
+          </p>
+        )}
+
+        {messaggio && (
+          <p
+            className={`mt-1 max-w-xs text-xs ${
+              fase === "errore" ? "text-red-600" : "text-slate-500"
+            }`}
+          >
+            {messaggio}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
