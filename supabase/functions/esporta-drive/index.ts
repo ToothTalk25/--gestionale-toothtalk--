@@ -208,14 +208,14 @@ Deno.serve(async (req) => {
 
     const { data: task, error: eT } = await supabase
       .from("tasks")
-      .select("titolo, polo_id")
+      .select("titolo, polo_id, numero_video")
       .eq("id", pacchetto.task_id)
       .single();
     if (eT || !task) throw new Error("Progetto non trovato");
 
     const { data: polo, error: eL } = await supabase
       .from("poli")
-      .select("nome")
+      .select("nome, drive_folder_id")
       .eq("id", task.polo_id)
       .single();
     if (eL || !polo) throw new Error("Gruppo non trovato");
@@ -227,58 +227,69 @@ Deno.serve(async (req) => {
       )
       .eq("pacchetto_id", pacchettoId);
 
-    // --- token Google e cartelle <root>/<Gruppo>/<Progetto>/<tipo>/
+    // --- cartella del polo: usa drive_folder_id se configurato
     const token = await tokenGoogle();
     const root = Deno.env.get("GOOGLE_DRIVE_ROOT_FOLDER");
     if (!root) throw new Error("Secret GOOGLE_DRIVE_ROOT_FOLDER assente");
-    const cartellaGruppo = await trovaOCreaCartella(token, root, polo.nome);
-    const cartellaProgetto = await trovaOCreaCartella(token, cartellaGruppo, task.titolo);
+    const cartellaPolo = polo.drive_folder_id
+      ? polo.drive_folder_id
+      : await trovaOCreaCartella(token, root, polo.nome);
 
-    // Sottocartelle per tipo, create solo quando servono davvero (una
-    // ricerca+eventuale creazione per nome, mai duplicate nella stessa
-    // esecuzione grazie alla cache locale).
-    const sottocartelle = new Map<string, string>();
-    async function cartellaFiglia(nome: string): Promise<string> {
-      const esistente = sottocartelle.get(nome);
-      if (esistente) return esistente;
-      const id = await trovaOCreaCartella(token, cartellaProgetto, nome);
-      sottocartelle.set(nome, id);
-      return id;
-    }
+    const num = task.numero_video ?? "?";
+    const nomeBase = `${num} - ${task.titolo}`.replace(SANITIZZA, "_");
 
-    // --- testi (piccoli, vanno in memoria): descrizione e titolo YouTube
-    // dentro "descrizione/", lo script dentro "script/".
+    const cartVideo = await trovaOCreaCartella(token, cartellaPolo, "Video");
+    const cartCopertine = await trovaOCreaCartella(token, cartellaPolo, "Copertine");
+    const cartLiberatorie = await trovaOCreaCartella(token, cartellaPolo, "Liberatorie");
+
+    // --- testi accumulati: scarica, appendi, ricarica nel polo
     const encoder = new TextEncoder();
-    const testi: Array<{ nome: string; testo: string; cartella: string }> = [];
-    if (pacchetto.descrizione) {
-      testi.push({ nome: "descrizione.txt", testo: pacchetto.descrizione, cartella: "descrizione" });
-    }
-    if (pacchetto.titolo_youtube) {
-      testi.push({ nome: "titolo_youtube.txt", testo: pacchetto.titolo_youtube, cartella: "descrizione" });
-    }
-    if (pacchetto.script) {
-      testi.push({ nome: "script.txt", testo: pacchetto.script, cartella: "script" });
+    const header = `#${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
+
+    const testiDaAccumulare: Array<{ nomeFile: string; contenuto: string | null }> = [
+      { nomeFile: "Descrizioni.txt", contenuto: pacchetto.descrizione },
+      { nomeFile: "Titoli YouTube.txt", contenuto: pacchetto.titolo_youtube },
+      { nomeFile: "Script.txt", contenuto: pacchetto.script },
+    ];
+
+    for (const t of testiDaAccumulare) {
+      if (!t.contenuto) continue;
+      const n = t.nomeFile.replace(SANITIZZA, "_");
+      const q = `'${cartellaPolo}' in parents and name='${n.replace(/'/g, "\\'")}' and trashed=false`;
+      const ricerca = await driveFetch(token, `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+      const trovata = (await ricerca.json()) as { files?: { id: string }[] };
+      const fileId = trovata.files?.length ? trovata.files[0].id : null;
+
+      let testoEsistente = "";
+      if (fileId) {
+        const dl = await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+        if (dl.ok) testoEsistente = await dl.text();
+      }
+
+      const nuovo = testoEsistente ? `${testoEsistente}\n\n${header}${t.contenuto}\n` : `${header}${t.contenuto}\n`;
+      const buf = encoder.encode(nuovo);
+
+      if (fileId) {
+        await driveFetch(token, `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: "PATCH", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: buf,
+        });
+      } else {
+        const metadata = { name: n, mimeType: "text/plain", parents: [cartellaPolo] };
+        const form = new FormData();
+        form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+        form.append("file", new Blob([buf], { type: "text/plain; charset=utf-8" }));
+        await driveFetch(token, "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+          method: "POST", body: form,
+        });
+      }
     }
 
-    for (const t of testi) {
-      const buf = encoder.encode(t.testo);
-      const dest = await cartellaFiglia(t.cartella);
-      await caricaResumable(
-        token,
-        dest,
-        t.nome,
-        "text/plain; charset=utf-8",
-        buf.byteLength,
-        buf,
-      );
-    }
+    // --- file binari: rinominate #N - Titolo.estensione
 
-    // --- file: stream dallo Storage direttamente su Drive, ognuno nella
-    // sottocartella del proprio ruolo (video/copertina/liberatoria).
     const CARTELLA_PER_RUOLO: Record<string, string> = {
-      video: "video",
-      copertina: "copertina",
-      liberatoria: "liberatoria",
+      video: cartVideo,
+      copertina: cartCopertine,
+      liberatoria: cartLiberatorie,
     };
     for (const el of elementi ?? []) {
       const v = el.deliverable_versions as {
@@ -290,6 +301,9 @@ Deno.serve(async (req) => {
       };
       const size = Number(v.size_bytes ?? 0);
       if (!size) throw new Error(`File senza dimensione: ${v.file_name}`);
+
+      const ext = v.file_name.includes(".") ? v.file_name.slice(v.file_name.lastIndexOf(".")) : "";
+      const nomeFinale = nomeBase + ext;
 
       const path = v.storage_path.split("/").map(encodeURIComponent).join("/");
       const scarica = await fetch(
@@ -303,16 +317,10 @@ Deno.serve(async (req) => {
         throw new Error(`Storage ${v.bucket}/${v.storage_path}: risposta senza contenuto`);
       }
 
-      const nomeCartella = CARTELLA_PER_RUOLO[el.ruolo as string] ?? "altro";
-      const dest = await cartellaFiglia(nomeCartella);
-      await caricaResumable(
-        token,
-        dest,
-        v.file_name,
-        v.mime_type ?? "application/octet-stream",
-        size,
-        scarica.body,
-      );
+      const dest = CARTELLA_PER_RUOLO[el.ruolo as string];
+      if (dest) {
+        await caricaResumable(token, dest, nomeFinale, v.mime_type ?? "application/octet-stream", size, scarica.body);
+      }
     }
 
     // --- successo
@@ -320,13 +328,13 @@ Deno.serve(async (req) => {
       .from("esportazioni_drive")
       .update({
         stato: "fatto",
-        cartella_drive_id: cartellaProgetto,
-        cartella_drive_url: `https://drive.google.com/drive/folders/${cartellaProgetto}`,
+        cartella_drive_id: cartellaPolo,
+        cartella_drive_url: `https://drive.google.com/drive/folders/${cartellaPolo}`,
         ultimo_errore: null,
       })
       .eq("pacchetto_id", pacchettoId);
 
-    return new Response(JSON.stringify({ ok: true, cartella: cartellaProgetto }), {
+    return new Response(JSON.stringify({ ok: true, cartella: cartellaPolo }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
