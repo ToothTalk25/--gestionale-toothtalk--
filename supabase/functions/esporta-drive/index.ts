@@ -98,6 +98,16 @@ async function trovaOCreaCartella(
   return data.id;
 }
 
+/** Verifica se un file con un certo nome esiste già in una cartella Drive. */
+async function esisteFile(token: string, cartella: string, nome: string): Promise<boolean> {
+  const nomePulito = nome.replace(SANITIZZA, "_");
+  const q = `'${cartella}' in parents and name='${nomePulito.replace(/'/g, "\\'")}' and trashed=false`;
+  const r = await driveFetch(token, `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+  if (!r.ok) return false;
+  const j = (await r.json()) as { files?: { id: string }[] };
+  return !!j.files?.length;
+}
+
 /**
  * Upload resumable su Drive: POST iniziale (uploadType=resumable) per
  * ottenere l'URI di sessione dall'header Location, poi PUT del contenuto.
@@ -266,6 +276,8 @@ Deno.serve(async (req) => {
         if (dl.ok) testoEsistente = await dl.text();
       }
 
+      if (testoEsistente.includes(header)) continue; // già accodato in tentativo precedente
+
       const nuovo = testoEsistente ? `${testoEsistente}\n\n${header}${t.contenuto}\n` : `${header}${t.contenuto}\n`;
       const buf = encoder.encode(nuovo);
 
@@ -305,6 +317,12 @@ Deno.serve(async (req) => {
       const ext = v.file_name.includes(".") ? v.file_name.slice(v.file_name.lastIndexOf(".")) : "";
       const nomeFinale = nomeBase + ext;
 
+      const dest = CARTELLA_PER_RUOLO[el.ruolo as string];
+      if (!dest) continue;
+
+      // Idempotenza: se il file esiste già, è stato caricato in un tentativo precedente
+      if (await esisteFile(token, dest, nomeFinale)) continue;
+
       const path = v.storage_path.split("/").map(encodeURIComponent).join("/");
       const scarica = await fetch(
         `${supabaseUrl}/storage/v1/object/${encodeURIComponent(v.bucket)}/${path}`,
@@ -317,10 +335,7 @@ Deno.serve(async (req) => {
         throw new Error(`Storage ${v.bucket}/${v.storage_path}: risposta senza contenuto`);
       }
 
-      const dest = CARTELLA_PER_RUOLO[el.ruolo as string];
-      if (dest) {
-        await caricaResumable(token, dest, nomeFinale, v.mime_type ?? "application/octet-stream", size, scarica.body);
-      }
+      await caricaResumable(token, dest, nomeFinale, v.mime_type ?? "application/octet-stream", size, scarica.body);
     }
 
     // --- successo
