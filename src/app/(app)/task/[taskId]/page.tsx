@@ -265,7 +265,7 @@ export default async function TaskPage({
 
             return (
               <div key={kind} className="group aspect-square rounded-lg bg-white p-2 ring-1 ring-black/5 flex flex-col">
-                <h3 className="text-sm font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
+                <h3 className="pt-1 text-base font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
 
                 <div className="flex-1 flex items-center justify-center">
                   {isGoogleDoc ? (
