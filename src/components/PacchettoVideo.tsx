@@ -1031,7 +1031,7 @@ function Testo({
     <div
       id={id}
       className={`rounded-xl border p-3 ${
-        valore.trim() ? "border-amber-200 bg-amber-50" : "border-slate-200"
+        valore.trim() ? "border-tt-blue/20 bg-tt-blue-50" : "border-slate-200"
       }`}
     >
       <h3 className="flex items-center gap-2 text-sm font-medium">
