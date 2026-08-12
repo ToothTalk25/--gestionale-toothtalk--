@@ -306,11 +306,12 @@ Deno.serve(async (req) => {
 
     // Trova le cartelle e i Google Docs
     const cartScript = await trovaOCreaCartella(token, cartellaGV, "Script");
-    const cartDescr = await trovaOCreaCartella(token, cartellaGV, "Descrizione e titolo youtube shorts");
+    const cartDescr = await trovaOCreaCartella(token, cartellaGV, "Descrizioni");
+    const cartTitoli = await trovaOCreaCartella(token, cartellaGV, "Titoli YouTube");
 
     const docScript = await trovaFile(token, cartScript, "SCRIPT VIDEO", "application/vnd.google-apps.document");
     const docDescr = await trovaFile(token, cartDescr, "DESCRIZIONI VIDEO", "application/vnd.google-apps.document");
-    const docTitoli = await trovaFile(token, cartDescr, "TITOLI YOUTUBE SHORTS", "application/vnd.google-apps.document");
+    const docTitoli = await trovaFile(token, cartTitoli, "TITOLI YOUTUBE SHORTS", "application/vnd.google-apps.document");
 
     const testiDaAccumulare: Array<{ docId: string | null; nomeFile: string; contenuto: string | null }> = [
       { docId: docDescr, nomeFile: "DESCRIZIONI VIDEO", contenuto: pacchetto.descrizione },
