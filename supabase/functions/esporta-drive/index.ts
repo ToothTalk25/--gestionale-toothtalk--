@@ -295,8 +295,8 @@ Deno.serve(async (req) => {
 
     // Struttura di destinazione: tutto dentro GESTIONE VIDEO
     const cartellaGV = await trovaOCreaCartella(token, cartellaPolo, "GESTIONE VIDEO");
-    const cartVideo = await trovaOCreaCartella(token, cartellaGV, "Video");
-    const cartCopertine = await trovaOCreaCartella(token, cartellaGV, "Copertine");
+    const cartVideo = await trovaOCreaCartella(token, cartellaGV, "1 - Video");
+    const cartCopertine = await trovaOCreaCartella(token, cartellaGV, "2 - Copertine");
     const cartLiberatorie = await trovaOCreaCartella(token, cartellaGV, "Liberatorie");
     const cartVerbali = await trovaOCreaCartella(token, cartellaGV, "Verbali");
 
@@ -305,9 +305,9 @@ Deno.serve(async (req) => {
     const header = `#Video ${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
 
     // Trova le cartelle e i Google Docs
-    const cartScript = await trovaOCreaCartella(token, cartellaGV, "Script");
-    const cartDescr = await trovaOCreaCartella(token, cartellaGV, "Descrizioni");
-    const cartTitoli = await trovaOCreaCartella(token, cartellaGV, "Titoli YouTube");
+    const cartScript = await trovaOCreaCartella(token, cartellaGV, "3 - Script");
+    const cartDescr = await trovaOCreaCartella(token, cartellaGV, "4 - Descrizioni");
+    const cartTitoli = await trovaOCreaCartella(token, cartellaGV, "5 - Titoli YouTube");
 
     const docScript = await trovaFile(token, cartScript, "SCRIPT VIDEO", "application/vnd.google-apps.document");
     const docDescr = await trovaFile(token, cartDescr, "DESCRIZIONI VIDEO", "application/vnd.google-apps.document");
