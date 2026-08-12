@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
+import RegistraServiceWorker from "@/components/RegistraServiceWorker";
 
 // Autoospitato da Next (nessuna richiesta a Google a runtime): quattro pesi,
 // dal Regular del corpo testo al Bold dei titoli principali.
@@ -33,7 +34,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it" className={poppins.variable}>
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <RegistraServiceWorker />
+        {children}
+      </body>
     </html>
   );
 }
