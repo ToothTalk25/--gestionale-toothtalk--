@@ -111,7 +111,7 @@ export default function PacchettoVideo({
   // progetto: il titolo, la nota e il placeholder spiegano cosa ci si
   // aspetta (narrazione integrale, domande, quiz…).
   const scriptTitolo =
-    formato?.script_richiesto === "quiz" ? "5 · Domande del test" : "5 · Script usato";
+    formato?.script_richiesto === "quiz" ? "3 · Domande del test" : "3 · Script usato";
   const scriptNota =
     formato?.istruzioni_script ?? "dev'essere ciò che si dice davvero nel video";
   const scriptPlaceholder = formato?.istruzioni_script
@@ -330,34 +330,31 @@ export default function PacchettoVideo({
         />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-4">
         <Testo
-          titolo="3 · Titolo per YouTube Shorts"
-          nota="segui lo stile editoriale del canale: breve, accattivante"
-          valore={titoloYoutube}
-          onChange={setTitoloYoutube}
+          titolo={scriptTitolo}
+          nota={scriptNota}
+          valore={script}
+          onChange={setScript}
           modificabile={componibile}
-          righe={2}
-          placeholder="Il titolo che comparirà sullo Short di YouTube…"
+          righe={8}
+          placeholder={scriptPlaceholder}
           onImporta={
-            googleDocUrls.titoloYoutube
+            googleDocUrls.script
               ? async () => {
-                  const res = await importaTestoGoogleDoc(googleDocUrls.titoloYoutube!);
-                  if (res.ok) setTitoloYoutube(res.dati.testo);
+                  const res = await importaTestoGoogleDoc(googleDocUrls.script!);
+                  if (res.ok) setScript(res.dati.testo);
                   else setErrore(res.errore);
                 }
               : undefined
           }
         />
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Testo
           titolo="4 · Descrizione da pubblicare"
           valore={descrizione}
           onChange={setDescrizione}
           modificabile={componibile}
-          righe={5}
+          righe={8}
           placeholder="La caption esatta che accompagnerà il video…"
           onImporta={
             googleDocUrls.descrizione
@@ -370,18 +367,18 @@ export default function PacchettoVideo({
           }
         />
         <Testo
-          titolo={scriptTitolo}
-          nota={scriptNota}
-          valore={script}
-          onChange={setScript}
+          titolo="5 · Titolo per YouTube Shorts"
+          nota="segui lo stile editoriale del canale: breve, accattivante"
+          valore={titoloYoutube}
+          onChange={setTitoloYoutube}
           modificabile={componibile}
-          righe={5}
-          placeholder={scriptPlaceholder}
+          righe={3}
+          placeholder="Il titolo che comparirà sullo Short di YouTube…"
           onImporta={
-            googleDocUrls.script
+            googleDocUrls.titoloYoutube
               ? async () => {
-                  const res = await importaTestoGoogleDoc(googleDocUrls.script!);
-                  if (res.ok) setScript(res.dati.testo);
+                  const res = await importaTestoGoogleDoc(googleDocUrls.titoloYoutube!);
+                  if (res.ok) setTitoloYoutube(res.dati.testo);
                   else setErrore(res.errore);
                 }
               : undefined
@@ -913,7 +910,7 @@ function Testo({
           <button
             onClick={handleImporta}
             disabled={importando}
-            className="ml-auto rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+            className="ml-auto rounded-lg bg-tt-blue px-2.5 py-1 text-[11px] font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {importando ? "…" : "⬇ Importa dal Doc"}
           </button>

@@ -251,7 +251,7 @@ export default async function TaskPage({
           </p>
         </div>
 
-        <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 lg:grid-cols-4 gap-2">
           {KIND_LAVORAZIONE.map((kind) => {
             const d = (deliverables ?? []).find((x) => x.kind === kind);
             const vs = (versioni ?? []).filter((v) => v.deliverable_id === d?.id);
@@ -264,8 +264,8 @@ export default async function TaskPage({
             const isGoogleDoc = kind === "script" || kind === "descrizione" || kind === "titolo_youtube";
 
             return (
-              <div key={kind} className="group aspect-square rounded-xl bg-white p-3 ring-1 ring-black/5 flex flex-col">
-                <h3 className="text-base font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
+              <div key={kind} className="group aspect-square rounded-lg bg-white p-2 ring-1 ring-black/5 flex flex-col">
+                <h3 className="text-sm font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
 
                 <div className="flex-1 flex items-center justify-center">
                   {isGoogleDoc ? (
