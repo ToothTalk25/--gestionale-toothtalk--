@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import UploadDeliverable from "@/components/UploadDeliverable";
+import UploadDeliverable, { type UploadDeliverableHandle } from "@/components/UploadDeliverable";
 import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
 import { impostaCoinvolgeTerzi } from "@/app/actions";
@@ -74,7 +74,10 @@ export default function PacchettoVideo({
   formato: Formato | null;
   contattoEsternoEmail: string | null;
   contattoEsternoPec: string | null;
-  verificaRiconoscimento?: { esito: string; dettaglio: string | null } | null;
+  verificaRiconoscimento: {
+    video: { esito: string; dettaglio: string | null } | null;
+    copertina: { esito: string; dettaglio: string | null } | null;
+  };
   googleDocUrls: { script: string | null; descrizione: string | null; titoloYoutube: string | null };
 }) {
   const router = useRouter();
@@ -89,6 +92,9 @@ export default function PacchettoVideo({
   const [contattoEmail, setContattoEmail] = useState(contattoEsternoEmail ?? "");
   const [contattoPec, setContattoPec] = useState(contattoEsternoPec ?? "");
   const [testiConfermati, setTestiConfermati] = useState(false);
+  const videoUploadRef = useRef<UploadDeliverableHandle>(null);
+  const copertinaUploadRef = useRef<UploadDeliverableHandle>(null);
+  const liberatoriaUploadRef = useRef<UploadDeliverableHandle>(null);
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
@@ -286,12 +292,15 @@ export default function PacchettoVideo({
       {/* ---------------------------------------------------- elementi */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Slot
+          id="video"
           titolo="1 · Video montato"
           elemento={video}
           onRimuovi={componibile && video ? () => rimuovi("video") : undefined}
+          onDropFile={componibile ? (f) => videoUploadRef.current?.handleFile(f) : undefined}
           azione={
             componibile ? (
               <UploadDeliverable
+                ref={videoUploadRef}
                 taskId={taskId}
                 kind="finale_video"
                 archivio="finale"
@@ -309,14 +318,17 @@ export default function PacchettoVideo({
           archiviabile={archiviabile}
         />
         <Slot
+          id="copertina"
           titolo="2 · Copertina"
           elemento={copertina}
           onRimuovi={
             componibile && copertina ? () => rimuovi("copertina") : undefined
           }
+          onDropFile={componibile ? (f) => copertinaUploadRef.current?.handleFile(f) : undefined}
           azione={
             componibile ? (
               <UploadDeliverable
+                ref={copertinaUploadRef}
                 taskId={taskId}
                 kind="finale_copertina"
                 archivio="finale"
@@ -337,6 +349,7 @@ export default function PacchettoVideo({
 
       <div className="mt-4 space-y-4">
         <Testo
+          id="script"
           titolo={scriptTitolo}
           nota={scriptNota}
           valore={script}
@@ -355,6 +368,7 @@ export default function PacchettoVideo({
           }
         />
         <Testo
+          id="descrizione"
           titolo="4 · Descrizione da pubblicare"
           valore={descrizione}
           onChange={setDescrizione}
@@ -372,6 +386,7 @@ export default function PacchettoVideo({
           }
         />
         <Testo
+          id="titolo_youtube"
           titolo="5 · Titolo per YouTube Shorts"
           nota="segui lo stile editoriale del canale: breve, accattivante"
           valore={titoloYoutube}
@@ -400,9 +415,11 @@ export default function PacchettoVideo({
               onRimuovi={
                 componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
               }
+              onDropFile={componibile ? (f) => liberatoriaUploadRef.current?.handleFile(f) : undefined}
               azione={
                 componibile ? (
                   <UploadDeliverable
+                    ref={liberatoriaUploadRef}
                     taskId={taskId}
                     kind="finale_liberatoria"
                     archivio="finale"
@@ -438,24 +455,50 @@ export default function PacchettoVideo({
         </p>
       )}
 
-      {isAdmin && verificaRiconoscimento?.esito === "persona_non_riconosciuta" && (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-medium text-amber-800">⚠️ Controllo automatico: possibile persona esterna</p>
-          <p className="mt-1 text-xs text-amber-700">{verificaRiconoscimento.dettaglio}</p>
-          <button
-            onClick={async () => {
-              setErrore(null);
-              const res = await correggiRiconoscimento(pacchetto!.id);
-              if (res.ok) router.refresh();
-              else setErrore(res.errore);
-            }}
-            disabled={pending}
-            className="mt-3 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-          >
-            Correggi: nessuna persona esterna
-          </button>
-        </div>
-      )}
+      {(() => {
+        const videoSospetto = verificaRiconoscimento.video?.esito === "persona_non_riconosciuta";
+        const copertinaSospetta = verificaRiconoscimento.copertina?.esito === "persona_non_riconosciuta";
+        if ((!videoSospetto && !copertinaSospetta) || coinvolgeTerzi) return null;
+
+        const titolo = videoSospetto && copertinaSospetta
+          ? "possibile persona esterna nel video e nella copertina"
+          : videoSospetto
+            ? "possibile persona esterna nel video"
+            : "possibile persona esterna nella copertina";
+
+        return (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-800">⚠️ Controllo automatico: {titolo}</p>
+            {videoSospetto && (
+              <p className="mt-1 text-xs text-amber-700">Video: {verificaRiconoscimento.video!.dettaglio}</p>
+            )}
+            {copertinaSospetta && (
+              <p className="mt-1 text-xs text-amber-700">Copertina: {verificaRiconoscimento.copertina!.dettaglio}</p>
+            )}
+            {isAdmin ? (
+              <button
+                onClick={async () => {
+                  setErrore(null);
+                  const res = await correggiRiconoscimento(pacchetto!.id);
+                  if (res.ok) router.refresh();
+                  else setErrore(res.errore);
+                }}
+                disabled={pending}
+                className="mt-3 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                Correggi: nessuna persona esterna
+              </button>
+            ) : (
+              <p className="mt-2 text-xs text-amber-700">
+                Se compare davvero una persona esterna al progetto, spunta qui sopra{" "}
+                <strong>&quot;Il video mostra una persona esterna&quot;</strong> e inserisci
+                il suo contatto: senza la liberatoria firmata non sarà possibile
+                segnalare il pacchetto come completato.
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {componibile && (
         <button
@@ -557,8 +600,9 @@ export default function PacchettoVideo({
             <div className="space-y-3">
               <p className="text-sm text-slate-500">
                 Il gruppo ha segnalato il pacchetto come completato. Rivedi il
-                materiale qui sopra: se è a posto sigilla, altrimenti rimandalo
-                in composizione.
+                materiale qui sopra: se è a posto sigilla — dopo il sigillo
+                avrai un ultimo controllo sul verbale prima di confermare
+                l&apos;invio della PEC — altrimenti rimandalo in composizione.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -570,7 +614,7 @@ export default function PacchettoVideo({
                       const esito = await sigillaPacchetto(taskId, pacchetto!.id);
                       if (!esito.ok) return setErrore(esito.errore);
                       setMessaggio(
-                        `Pacchetto sigillato. Impronta manifesto ${esito.dati.manifestHash.slice(0, 16)}…`,
+                        "Pacchetto sigillato: controlla il verbale qui sotto, poi conferma per spedire la PEC.",
                       );
                       router.refresh();
                     })
@@ -669,9 +713,22 @@ function DettaglioSigillo({
 }) {
   const [motivo, setMotivo] = useState("");
   const daSpedire = pacchetto.stato === "sigillato" || pacchetto.stato === "pec_errore";
+  const inAttesaPrimoInvio = pacchetto.stato === "sigillato";
 
   return (
     <div className="space-y-3 text-sm">
+      {inAttesaPrimoInvio && isAdmin && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+          <p className="text-sm font-medium text-amber-900">
+            Sigillato — la PEC non è ancora partita
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Controlla il verbale qui sotto: una volta confermato, &quot;Conferma
+            e spedisci la PEC&quot; invia davvero il messaggio certificato,
+            senza possibilità di annullarlo.
+          </p>
+        </div>
+      )}
       <dl className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
         <div>
           <dt className="text-xs text-slate-400">Sigillato il</dt>
@@ -680,10 +737,6 @@ function DettaglioSigillo({
               ? new Date(pacchetto.sigillato_at).toLocaleString("it-IT")
               : "—"}
           </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-slate-400">Impronta del manifesto</dt>
-          <dd className="font-mono text-xs break-all">{pacchetto.manifest_hash}</dd>
         </div>
         {pacchetto.pec_inviata_at && (
           <>
@@ -742,7 +795,7 @@ function DettaglioSigillo({
             }
             className="rounded-lg bg-tt-blue px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
-            {pacchetto.stato === "pec_errore" ? "Ritenta la PEC" : "Invia il verbale via PEC"}
+            {pacchetto.stato === "pec_errore" ? "Ritenta la PEC" : "Conferma e spedisci la PEC"}
           </button>
         )}
 
@@ -752,7 +805,7 @@ function DettaglioSigillo({
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="motivo dell'annullamento"
-              className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+              className="rounded-lg border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-tt-blue/50 focus:border-tt-blue"
             />
             <button
               disabled={pending || !motivo.trim()}
@@ -775,23 +828,28 @@ function DettaglioSigillo({
 }
 
 function Slot({
+  id,
   titolo,
   elemento,
   azione,
   onRimuovi,
+  onDropFile,
   taskId,
   archiviabile,
 }: {
+  id?: string;
   titolo: string;
   elemento?: ElementoCaricato;
   azione: React.ReactNode;
   onRimuovi?: () => void;
+  onDropFile?: (file: File) => void;
   taskId: string;
   archiviabile: boolean;
 }) {
   const [conferma, setConferma] = useState(false);
   const [confermaArchivia, setConfermaArchivia] = useState(false);
   const [erroreArchivia, setErroreArchivia] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const router = useRouter();
 
   async function archivia() {
@@ -807,8 +865,32 @@ function Slot({
 
   return (
     <div
-      className={`rounded-xl border p-3 ${
-        elemento ? "border-sky-300 bg-sky-100" : "border-slate-200"
+      id={id}
+      onDragOver={
+        onDropFile
+          ? (e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={onDropFile ? () => setDragOver(false) : undefined}
+      onDrop={
+        onDropFile
+          ? (e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) onDropFile(f);
+            }
+          : undefined
+      }
+      className={`rounded-xl border p-3 transition-colors ${
+        dragOver
+          ? "border-tt-blue bg-tt-blue/5 ring-2 ring-tt-blue"
+          : elemento
+            ? "border-sky-300 bg-sky-100"
+            : "border-slate-200"
       }`}
     >
       <div className="flex items-start gap-2">
@@ -894,6 +976,7 @@ function Slot({
 }
 
 function Testo({
+  id,
   titolo,
   nota,
   valore,
@@ -903,6 +986,7 @@ function Testo({
   placeholder,
   onImporta,
 }: {
+  id?: string;
   titolo: string;
   nota?: string;
   valore: string;
@@ -923,6 +1007,7 @@ function Testo({
 
   return (
     <div
+      id={id}
       className={`rounded-xl border p-3 ${
         valore.trim() ? "border-amber-200 bg-amber-50" : "border-slate-200"
       }`}

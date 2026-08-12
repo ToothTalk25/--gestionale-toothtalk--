@@ -10,9 +10,8 @@ const STATI_ADMIN: TaskStatus[] = [
   "consegnato",
   "in_revisione",
   "modificato_admin",
-  "approvato",
+  "sigillato",
   "pubblicato",
-  "respinto",
 ];
 
 export default function StatusControls({
@@ -72,12 +71,6 @@ export default function StatusControls({
         >
           {locked ? "Sblocca progetto" : "Blocca contenuti"}
         </button>
-      )}
-
-      {!isAdmin && (
-        <span className="ml-1 text-xs text-slate-400">
-          Approvazione e pubblicazione non sono disponibili da qui.
-        </span>
       )}
 
       {errore && <p className="w-full text-xs text-red-600">{errore}</p>}

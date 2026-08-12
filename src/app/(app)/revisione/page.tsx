@@ -12,12 +12,13 @@ import {
 } from "@/lib/types";
 
 /**
- * Coda di revisione dei video sigillati.
+ * Coda di revisione: pacchetti segnalati completi da rivedere prima del
+ * sigillo, e pacchetti già sigillati.
  *
- * Il pacchetto è già immutabile e già certificato via PEC: qui non si
- * modifica nulla, si annotano le correzioni da fare. Restano dentro la
- * piattaforma, visibili a chi partecipa al gruppo, invece di disperdersi
- * nelle conversazioni.
+ * Le correzioni si aprono solo prima di sigillare (rimandano il pacchetto in
+ * composizione). Su un video già sigillato non se ne aprono più: qui restano
+ * solo eventuali richieste aperte da prima di questa regola, o il pulsante
+ * "Annulla pacchetto" per farne comporre uno nuovo da capo.
  */
 export default async function RevisionePage() {
   await requireAdmin();
@@ -82,10 +83,10 @@ export default async function RevisionePage() {
       <header>
         <h1 className="text-2xl font-semibold">Video da rivedere</h1>
         <p className="mt-1 max-w-2xl text-sm text-slate-500">
-          Qui rivedi i pacchetti in due momenti: quando il gruppo li segnala
-          come completati (decidi tu se sigillarli o rimandarli in
-          composizione) e, dopo la certificazione PEC, per annotare le
-          correzioni che restano visibili al gruppo dentro la piattaforma.
+          Quando il gruppo segnala un pacchetto come completato, lo rivedi qui:
+          decidi se sigillarlo o, se manca qualcosa, apri una richiesta di
+          modifica — il pacchetto torna in composizione da solo. I video già
+          sigillati restano sotto, in sola consultazione.
         </p>
       </header>
 
@@ -189,6 +190,7 @@ export default async function RevisionePage() {
                 <RichiesteModifica
                   taskId={v.task_id}
                   pacchettoId={v.pacchetto_id}
+                  pacchettoStato={v.stato}
                   richieste={(richieste ?? []).filter(
                     (r) => r.task_id === v.task_id,
                   )}

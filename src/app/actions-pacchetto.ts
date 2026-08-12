@@ -16,7 +16,7 @@ import {
   type Allegato,
 } from "@/lib/pec";
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
-import { verificaPersoneVideo } from "@/lib/gemini";
+import { verificaPersoneVideo, verificaPersoneImmagine } from "@/lib/gemini";
 
 export type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -84,9 +84,14 @@ export async function collegaElemento(
 
   if (error) return errore(error.message);
 
-  // --- controllo riconoscimento automatico (solo per il video) ---
-  if (ruolo === "video") {
-    after(() => avviaVerificaPersone(taskId, pacchettoId, versionId));
+  // --- controllo riconoscimento automatico (video e copertina) ---
+  // Ognuno dei due elementi finisce pubblicato: una copertina con una
+  // persona esterna non dichiarata va bloccata allo stesso modo di un
+  // video. Ogni elemento è verificato per conto suo (vedi ruolo in
+  // verifiche_riconoscimento), così sostituire uno dei due non nasconde
+  // un vecchio esito negativo dell'altro.
+  if (ruolo === "video" || ruolo === "copertina") {
+    after(() => avviaVerificaPersone(taskId, pacchettoId, versionId, ruolo));
   }
 
   revalidatePath(`/task/${taskId}`);
@@ -94,19 +99,20 @@ export async function collegaElemento(
 }
 
 /**
- * Esegue il riconoscimento automatico (Fase D) in background.
- * Scarica il video, le foto dei membri con consenso, chiama Gemini
- * e scrive il risultato nella tabella verifiche_riconoscimento.
+ * Esegue il riconoscimento automatico (Fase D) in background, per il video
+ * o per la copertina. Scarica il file, le foto dei membri con consenso,
+ * chiama Gemini e scrive il risultato nella tabella verifiche_riconoscimento.
  */
 async function avviaVerificaPersone(
   taskId: string,
   pacchettoId: string,
   versionId: string,
+  ruolo: "video" | "copertina",
 ): Promise<void> {
   try {
     const admin = supabaseAdmin();
 
-    // 1) Recupera la versione del video e il polo del task
+    // 1) Recupera la versione del file e il polo del task
     const { data: versione } = await admin
       .from("deliverable_versions")
       .select("storage_path, bucket, mime_type")
@@ -121,14 +127,14 @@ async function avviaVerificaPersone(
       .single<{ polo_id: string }>();
     if (!task?.polo_id) return;
 
-    // 2) Scarica il video da Storage
+    // 2) Scarica il file da Storage
     const { data: blob, error: eDown } = await admin.storage
       .from(versione.bucket)
       .download(versione.storage_path);
     if (eDown || !blob) return;
 
-    const videoBuffer = Buffer.from(await blob.arrayBuffer());
-    const mimeType = versione.mime_type ?? "video/mp4";
+    const fileBuffer = Buffer.from(await blob.arrayBuffer());
+    const mimeType = versione.mime_type ?? (ruolo === "video" ? "video/mp4" : "image/jpeg");
 
     // 3) Trova i membri del polo con foto e consenso riconoscimento_foto
     const { data: membri } = await admin
@@ -139,7 +145,7 @@ async function avviaVerificaPersone(
       .returns<{ user_id: string; profiles: { id: string; foto_path: string } }[]>();
 
     if (!membri?.length) {
-      await scriviEsito(admin, pacchettoId, "errore", "Nessun membro del gruppo ha una foto profilo.");
+      await scriviEsito(admin, pacchettoId, ruolo, "errore", "Nessun membro del gruppo ha una foto profilo.");
       return;
     }
 
@@ -171,30 +177,39 @@ async function avviaVerificaPersone(
     }
 
     if (!fotoRiferimento.length) {
-      await scriviEsito(admin, pacchettoId, "errore", "Nessun membro ha dato il consenso al riconoscimento foto.");
+      await scriviEsito(admin, pacchettoId, ruolo, "errore", "Nessun membro ha dato il consenso al riconoscimento foto.");
       return;
     }
 
-    // 4) Chiama Gemini
-    const esito = await verificaPersoneVideo({ videoBuffer, videoMimeType: mimeType, fotoRiferimento });
+    // 4) Chiama Gemini (video: File API; copertina: inlineData diretto)
+    const esito =
+      ruolo === "video"
+        ? await verificaPersoneVideo({ videoBuffer: fileBuffer, videoMimeType: mimeType, fotoRiferimento })
+        : await verificaPersoneImmagine({
+            immagineBase64: fileBuffer.toString("base64"),
+            mimeType,
+            fotoRiferimento,
+          });
 
     // 5) Scrivi risultato
-    await scriviEsito(admin, pacchettoId, esito.esito, esito.dettaglio);
+    await scriviEsito(admin, pacchettoId, ruolo, esito.esito, esito.dettaglio);
   } catch (e) {
     const admin = supabaseAdmin();
-    await scriviEsito(admin, pacchettoId, "errore", e instanceof Error ? e.message : "Errore durante la verifica.");
+    await scriviEsito(admin, pacchettoId, ruolo, "errore", e instanceof Error ? e.message : "Errore durante la verifica.");
   }
 }
 
 async function scriviEsito(
   admin: ReturnType<typeof supabaseAdmin>,
   pacchettoId: string,
+  ruolo: "video" | "copertina",
   esito: string,
   dettaglio: string,
 ): Promise<void> {
   try {
     await admin.from("verifiche_riconoscimento").insert({
       pacchetto_id: pacchettoId,
+      ruolo,
       esito,
       dettaglio,
     });
@@ -263,6 +278,12 @@ export async function rimuoviElementoPacchetto(
 
 // -------------------------------------------------------------- sigillo
 
+/**
+ * Sigilla soltanto: congela il pacchetto e calcola il manifesto, ma non
+ * spedisce la PEC. Serve un'ultima occhiata al verbale prima dell'invio
+ * legale — la conferma di spedizione è un passaggio separato ed esplicito
+ * (bottone "Conferma e spedisci la PEC" qui sotto), non automatico.
+ */
 export async function sigillaPacchetto(
   taskId: string,
   pacchettoId: string,
@@ -619,12 +640,22 @@ export async function correggiRiconoscimento(pacchettoId: string): Promise<Esito
   if (!isAdmin) return errore("Operazione riservata all'amministratore.");
 
   const admin = supabaseAdmin();
-  const { error } = await admin.from("verifiche_riconoscimento").insert({
-    pacchetto_id: pacchettoId,
-    esito: "nessuna_persona_esterna",
-    dettaglio: "Corretto manualmente dall'amministratore.",
-    corretto_da: profile.id,
-  });
+  const { error } = await admin.from("verifiche_riconoscimento").insert([
+    {
+      pacchetto_id: pacchettoId,
+      ruolo: "video",
+      esito: "nessuna_persona_esterna",
+      dettaglio: "Corretto manualmente dall'amministratore.",
+      corretto_da: profile.id,
+    },
+    {
+      pacchetto_id: pacchettoId,
+      ruolo: "copertina",
+      esito: "nessuna_persona_esterna",
+      dettaglio: "Corretto manualmente dall'amministratore.",
+      corretto_da: profile.id,
+    },
+  ]);
 
   if (error) return errore(error.message);
   return { ok: true, dati: undefined };

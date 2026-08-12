@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
     // --- dati del pacchetto, del progetto e del gruppo
     const { data: pacchetto, error: eP } = await supabase
       .from("pacchetti_video")
-      .select("task_id, descrizione, script, titolo_youtube")
+      .select("task_id, descrizione, script, titolo_youtube, manifest, manifest_hash")
       .eq("id", pacchettoId)
       .single();
     if (eP || !pacchetto) throw new Error("Pacchetto non trovato");
@@ -251,6 +251,7 @@ Deno.serve(async (req) => {
     const cartVideo = await trovaOCreaCartella(token, cartellaPolo, "Video");
     const cartCopertine = await trovaOCreaCartella(token, cartellaPolo, "Copertine");
     const cartLiberatorie = await trovaOCreaCartella(token, cartellaPolo, "Liberatorie");
+    const cartVerbali = await trovaOCreaCartella(token, cartellaPolo, "Verbali");
 
     // --- testi accumulati: scarica, appendi, ricarica nel polo
     const encoder = new TextEncoder();
@@ -336,6 +337,20 @@ Deno.serve(async (req) => {
       }
 
       await caricaResumable(token, dest, nomeFinale, v.mime_type ?? "application/octet-stream", size, scarica.body);
+    }
+
+    // --- verbale (manifesto del sigillo) nella cartella Verbali
+    if (pacchetto.manifest) {
+      const nomeVerbale = nomeBase + ".json";
+      if (!(await esisteFile(token, cartVerbali, nomeVerbale))) {
+        const verbale = JSON.stringify(
+          { manifest: pacchetto.manifest, manifest_hash: pacchetto.manifest_hash ?? null },
+          null,
+          2,
+        );
+        const buf = encoder.encode(verbale);
+        await caricaResumable(token, cartVerbali, nomeVerbale, "application/json", buf.byteLength, buf);
+      }
     }
 
     // --- successo

@@ -237,3 +237,55 @@ export async function verificaPersoneVideo(opts: {
     };
   }
 }
+
+/**
+ * Stessa verifica di verificaPersoneVideo, ma su un'immagine statica (la
+ * copertina). Un'immagine di copertina resta pubblicata quanto il video: se
+ * ritrae una persona esterna non dichiarata va bloccata allo stesso modo.
+ * Nessuna File API: un'immagine di copertina è piccola, va bene inlineData.
+ */
+export async function verificaPersoneImmagine(opts: {
+  immagineBase64: string;
+  mimeType: string;
+  fotoRiferimento: { profileId: string; base64: string; mimeType: string }[];
+}): Promise<EsitoVerificaPersone> {
+  try {
+    const prompt = [
+      "Sei un assistente di riconoscimento visivo per un progetto di divulgazione odontoiatrica (ToothTalk).",
+      "Riceverai l'immagine di copertina di un video e alcune foto di riferimento dei membri noti del team.",
+      "",
+      "Tuo compito:",
+      "1. Identifica il SOGGETTO PRINCIPALE dell'immagine (la persona ritratta in primo piano, protagonista della copertina).",
+      "   Escludi persone sullo sfondo o comparse marginali.",
+      "2. Confronta il soggetto principale con le foto di riferimento.",
+      "3. Rispondi SOLO con un JSON:",
+      '   {"esito":"nessuna_persona_esterna|persona_non_riconosciuta","dettaglio":"spiegazione in italiano"}',
+      "",
+      '- "nessuna_persona_esterna" se il soggetto corrisponde a una foto di riferimento, o se nell\'immagine non compare alcuna persona riconoscibile in primo piano',
+      '- "persona_non_riconosciuta" se il soggetto NON corrisponde a nessuna foto',
+    ].join("\n");
+
+    const parts: GeminiPart[] = [
+      { inlineData: { data: opts.immagineBase64, mimeType: opts.mimeType } },
+      ...opts.fotoRiferimento.map((f) => ({
+        inlineData: { data: f.base64, mimeType: f.mimeType },
+      })),
+    ];
+
+    const risposta = await genera(prompt, parts);
+    const jsonMatch = risposta.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { esito: "errore", dettaglio: "Risposta IA non interpretabile." };
+
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<EsitoVerificaPersone>;
+    const esito =
+      parsed.esito === "nessuna_persona_esterna" || parsed.esito === "persona_non_riconosciuta"
+        ? parsed.esito : "errore";
+
+    return { esito, dettaglio: parsed.dettaglio ?? "Nessun dettaglio." };
+  } catch (e) {
+    return {
+      esito: "errore",
+      dettaglio: e instanceof Error ? e.message : "Errore imprevisto.",
+    };
+  }
+}

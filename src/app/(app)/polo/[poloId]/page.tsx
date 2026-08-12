@@ -66,6 +66,26 @@ export default async function PoloPage({
     nomiMembri.map((p) => [p.id, p.full_name ?? p.email]),
   );
 
+  // Quante richieste di modifica aperte ha ogni progetto: un progetto
+  // "Completato" con una richiesta ancora aperta non è davvero fermo.
+  const idsTask = (tasks ?? []).map((t) => t.id);
+  const { data: richiesteAperte } = idsTask.length
+    ? await supabase
+        .from("richieste_modifica")
+        .select("task_id")
+        .in("task_id", idsTask)
+        .eq("stato", "aperta")
+        .returns<{ task_id: string }[]>()
+    : { data: [] as { task_id: string }[] };
+
+  const richiesteApertePerTask = (richiesteAperte ?? []).reduce<Record<string, number>>(
+    (acc, r) => {
+      acc[r.task_id] = (acc[r.task_id] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
+
   return (
     <div className="space-y-8">
       <header>
@@ -111,6 +131,11 @@ export default async function PoloPage({
                       titolo={t.titolo}
                       poloId={poloId}
                     />
+                  )}
+                  {!!richiesteApertePerTask[t.id] && (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                      {richiesteApertePerTask[t.id]} modifica richiesta
+                    </span>
                   )}
                   <StatusBadge status={t.status} />
                 </Link>

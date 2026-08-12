@@ -20,6 +20,7 @@ export type TaskStatus =
   | "in_revisione"
   | "modificato_admin"
   | "approvato"
+  | "sigillato"
   | "pubblicato"
   | "respinto";
 
@@ -52,6 +53,7 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   in_revisione: "In revisione",
   modificato_admin: "Rielaborato",
   approvato: "Approvato",
+  sigillato: "Sigillato",
   pubblicato: "Pubblicato",
   respinto: "Da rivedere",
 };
@@ -193,7 +195,7 @@ export type PacchettoStato =
 export const PACCHETTO_LABEL: Record<PacchettoStato, string> = {
   bozza: "In composizione",
   pronto: "Pronto per la revisione",
-  sigillato: "Sigillato — da spedire",
+  sigillato: "Sigillato — PEC da inviare",
   pec_inviata: "PEC inviata",
   pec_confermata: "PEC consegnata",
   pec_errore: "Errore di spedizione",
@@ -280,6 +282,7 @@ export type AmbitoRichiesta =
   | "copertina"
   | "descrizione"
   | "script"
+  | "titolo_youtube"
   | "generale";
 
 export const AMBITO_LABEL: Record<AmbitoRichiesta, string> = {
@@ -287,6 +290,7 @@ export const AMBITO_LABEL: Record<AmbitoRichiesta, string> = {
   copertina: "Copertina",
   descrizione: "Descrizione",
   script: "Script",
+  titolo_youtube: "Titolo YouTube",
   generale: "Generale",
 };
 
@@ -296,9 +300,11 @@ export type RichiestaModifica = {
   pacchetto_id: string | null;
   ambito: AmbitoRichiesta;
   testo: string;
-  stato: "aperta" | "risolta";
+  stato: "aperta" | "da_verificare" | "risolta";
   creata_da: string | null;
   creata_at: string;
+  completata_da: string | null;
+  completata_at: string | null;
   risolta_da: string | null;
   risolta_at: string | null;
   nota_risposta: string | null;

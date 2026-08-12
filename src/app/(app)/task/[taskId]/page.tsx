@@ -6,12 +6,10 @@ import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
 import StatusControls from "@/components/StatusControls";
 import TaskTextEditor from "@/components/TaskTextEditor";
-import UploadDeliverable from "@/components/UploadDeliverable";
-import VersionList from "@/components/VersionList";
+import KindCard from "@/components/KindCard";
 import PacchettoVideo, { type ElementoCaricato } from "@/components/PacchettoVideo";
 import RichiesteModifica from "@/components/RichiesteModifica";
 import AzioniProgetto from "@/components/AzioniProgetto";
-import GoogleDocCard from "@/components/GoogleDocCard";
 import {
   KIND_LABEL,
   KIND_LAVORAZIONE,
@@ -134,15 +132,29 @@ export default async function TaskPage({
         .maybeSingle<EsportazioneDriveRow>()
     : { data: null };
 
-  // Ultimo esito riconoscimento automatico (Fase D)
-  const { data: verificaRiconoscimento } = pacchetto
+  // Ultimo esito riconoscimento automatico (Fase D), video e copertina
+  // sono verificati separatamente: un vecchio esito negativo dell'uno non
+  // deve nascondersi dietro l'ultimo esito pulito dell'altro.
+  type EsitoRiconoscimento = { esito: string; dettaglio: string | null };
+  const { data: verificaVideo } = pacchetto
     ? await supabase
         .from("verifiche_riconoscimento")
         .select("esito, dettaglio")
         .eq("pacchetto_id", pacchetto.id)
+        .eq("ruolo", "video")
         .order("creato_at", { ascending: false })
         .limit(1)
-        .maybeSingle<{ esito: string; dettaglio: string | null }>()
+        .maybeSingle<EsitoRiconoscimento>()
+    : { data: null };
+  const { data: verificaCopertina } = pacchetto
+    ? await supabase
+        .from("verifiche_riconoscimento")
+        .select("esito, dettaglio")
+        .eq("pacchetto_id", pacchetto.id)
+        .eq("ruolo", "copertina")
+        .order("creato_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<EsitoRiconoscimento>()
     : { data: null };
 
   const { data: storico } = await supabase
@@ -207,6 +219,7 @@ export default async function TaskPage({
         <RichiesteModifica
           taskId={task.id}
           pacchettoId={pacchetto?.id ?? null}
+          pacchettoStato={pacchetto?.stato ?? null}
           richieste={richieste ?? []}
           nomi={nomi}
           isAdmin={isAdmin}
@@ -264,60 +277,21 @@ export default async function TaskPage({
             const isGoogleDoc = kind === "script" || kind === "descrizione" || kind === "titolo_youtube";
 
             return (
-              <div key={kind} className="group aspect-square rounded-lg bg-white p-2 ring-1 ring-black/5 flex flex-col">
-                <h3 className="pt-2 text-base font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
-
-                <div className="flex-1 flex items-center justify-center pb-2">
-                  {isGoogleDoc ? (
-                    <GoogleDocCard
-                      taskId={task.id}
-                      kind={kind}
-                      googleDocUrl={d?.google_doc_url ?? null}
-                      isAdmin={isAdmin}
-                    />
-                  ) : mancaNumeroVideo ? (
-                    <p className="text-xs text-amber-700 text-center px-2">
-                      Prima assegna un numero video.
-                    </p>
-                  ) : vs.length > 0 ? (
-                    <UploadDeliverable
-                      taskId={task.id}
-                      kind={kind}
-                      isAdmin={isAdmin}
-                      locked={task.locked}
-                      esisteOriginale={vs.some((v) => v.origin === "originale")}
-                      accept={accetta}
-                    >
-                      <div className="text-4xl mb-1 font-bold">{vs.length}</div>
-                      <p className="text-[10px] text-slate-400">
-                        {vs.length === 1 ? "file caricato" : "file caricati"}
-                      </p>
-                    </UploadDeliverable>
-                  ) : (
-                    <UploadDeliverable
-                      taskId={task.id}
-                      kind={kind}
-                      isAdmin={isAdmin}
-                      locked={task.locked}
-                      esisteOriginale={false}
-                      accept={accetta}
-                    >
-                      <div className="mb-2 text-4xl text-slate-300 font-light">+</div>
-                    </UploadDeliverable>
-                  )}
-                </div>
-
-                {vs.length > 0 && (
-                  <div className="mt-2 max-h-24 overflow-y-auto border-t border-slate-100 pt-2">
-                    <VersionList
-                      taskId={task.id}
-                      versioni={vs}
-                      nomi={nomi}
-                      deliverableId={d?.id}
-                    />
-                  </div>
-                )}
-              </div>
+              <KindCard
+                key={kind}
+                taskId={task.id}
+                kind={kind}
+                label={KIND_LABEL[kind]}
+                isAdmin={isAdmin}
+                locked={task.locked}
+                isGoogleDoc={isGoogleDoc}
+                googleDocUrl={d?.google_doc_url ?? null}
+                mancaNumeroVideo={mancaNumeroVideo}
+                versioni={vs}
+                deliverableId={d?.id}
+                accetta={accetta}
+                nomi={nomi}
+              />
             );
           })}
         </div>
@@ -334,7 +308,7 @@ export default async function TaskPage({
         formato={task.formati ?? null}
         contattoEsternoEmail={task.contatto_esterno_email ?? null}
         contattoEsternoPec={task.contatto_esterno_pec ?? null}
-        verificaRiconoscimento={verificaRiconoscimento}
+        verificaRiconoscimento={{ video: verificaVideo ?? null, copertina: verificaCopertina ?? null }}
         googleDocUrls={{
           script: (deliverables ?? []).find(d => d.kind === "script")?.google_doc_url ?? null,
           descrizione: (deliverables ?? []).find(d => d.kind === "descrizione")?.google_doc_url ?? null,
