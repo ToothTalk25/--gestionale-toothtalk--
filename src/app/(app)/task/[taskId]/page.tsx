@@ -249,7 +249,7 @@ export default async function TaskPage({
 
             return (
               <div key={kind} className="group aspect-square rounded-xl bg-white p-3 ring-1 ring-black/5 flex flex-col">
-                <h3 className="text-sm font-medium text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
+                <h3 className="text-base font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
 
                 <div className="flex-1 flex items-center justify-center">
                   {mancaNumeroVideo ? (
@@ -258,7 +258,7 @@ export default async function TaskPage({
                     </p>
                   ) : vs.length > 0 ? (
                     <div className="text-center">
-                      <div className="text-3xl mb-1 font-semibold">{vs.length}</div>
+                      <div className="text-4xl mb-1 font-bold">{vs.length}</div>
                       <p className="text-[10px] text-slate-400">
                         {vs.length === 1 ? "file caricato" : "file caricati"}
                       </p>
@@ -275,7 +275,7 @@ export default async function TaskPage({
                     </div>
                   ) : (
                     <div className="text-center">
-                      <div className="mb-2 text-3xl text-slate-300">+</div>
+                      <div className="mb-2 text-4xl text-slate-300 font-light">+</div>
                       <div className="flex justify-center">
                         <UploadDeliverable
                           taskId={task.id}
