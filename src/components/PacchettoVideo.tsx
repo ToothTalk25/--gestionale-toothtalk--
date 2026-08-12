@@ -63,6 +63,7 @@ export default function PacchettoVideo({
   contattoEsternoPec,
   verificaRiconoscimento,
   googleDocUrls,
+  liberatoriaInfo,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -79,6 +80,7 @@ export default function PacchettoVideo({
     copertina: { esito: string; dettaglio: string | null } | null;
   };
   googleDocUrls: { script: string | null; descrizione: string | null; titoloYoutube: string | null };
+  liberatoriaInfo: { stato: string; metodo_firma: string | null } | null;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -106,13 +108,14 @@ export default function PacchettoVideo({
   const video = elementi.find((e) => e.ruolo === "video");
   const copertina = elementi.find((e) => e.ruolo === "copertina");
   const liberatoria = elementi.find((e) => e.ruolo === "liberatoria");
+  const liberatoriaOtp = liberatoriaInfo?.metodo_firma === "otp";
   const completo =
     !!video &&
     !!copertina &&
     descrizione.trim() !== "" &&
     script.trim() !== "" &&
     titoloYoutube.trim() !== "" &&
-    (!coinvolgeTerzi || !!liberatoria);
+    (!coinvolgeTerzi || (!!liberatoria && liberatoriaOtp));
 
   // Lo script cambia a seconda del formato scelto alla creazione del
   // progetto: il titolo, la nota e il placeholder spiegano cosa ci si
@@ -442,7 +445,21 @@ export default function PacchettoVideo({
               <p className="mt-1 text-xs text-slate-500">
                 {liberatoria ? "Presente ✓ — il file non è visibile qui per motivi di privacy." : "Assente"}
               </p>
+              {coinvolgeTerzi && liberatoria && (
+                <p className={`mt-1 text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
+                  {liberatoriaOtp
+                    ? "Firmata via codice OTP ✓"
+                    : "Non ancora firmata via codice OTP: il sigillo richiede la firma sicura del contatto."}
+                </p>
+              )}
             </div>
+          )}
+          {isAdmin && coinvolgeTerzi && (
+            <p className={`mt-2 text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
+              {liberatoriaOtp
+                ? "Liberatoria firmata via codice OTP ✓"
+                : "Attenzione: la liberatoria vale per il sigillo solo se firmata via codice OTP (non basta un caricamento manuale)."}
+            </p>
           )}
         </div>
       )}
@@ -582,7 +599,7 @@ export default function PacchettoVideo({
                   !descrizione.trim() && "descrizione",
                   !script.trim() && "script",
                   !titoloYoutube.trim() && "titolo YouTube",
-                  coinvolgeTerzi && !liberatoria && "liberatoria",
+                  coinvolgeTerzi && !(liberatoria && liberatoriaOtp) && "liberatoria (firma OTP)",
                 ]
                   .filter(Boolean)
                   .join(", ")}
@@ -654,7 +671,7 @@ export default function PacchettoVideo({
                     !descrizione.trim() && "descrizione",
                     !script.trim() && "script",
                     !titoloYoutube.trim() && "titolo YouTube",
-                    coinvolgeTerzi && !liberatoria && "liberatoria",
+                    coinvolgeTerzi && !(liberatoria && liberatoriaOtp) && "liberatoria (firma OTP)",
                   ]
                     .filter(Boolean)
                     .join(", ")}

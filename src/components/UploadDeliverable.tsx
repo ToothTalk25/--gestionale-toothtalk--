@@ -46,6 +46,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
 }, ref) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  const inCorso = useRef(false);
   const [fase, setFase] = useState<Fase>("idle");
   const [progresso, setProgresso] = useState(0);
   const [messaggio, setMessaggio] = useState<string | null>(null);
@@ -59,6 +60,8 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   const bloccato = !isAdmin && locked;
 
   async function carica(file: File) {
+    if (inCorso.current) return; // niente doppio upload in parallelo sullo stesso slot
+    inCorso.current = true;
     setMessaggio(null);
     try {
       setFase("hash");
@@ -102,6 +105,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       setFase("errore");
       setMessaggio(e instanceof Error ? e.message : "Errore imprevisto");
     } finally {
+      inCorso.current = false;
       if (input.current) input.current.value = "";
     }
   }

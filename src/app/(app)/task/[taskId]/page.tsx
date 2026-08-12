@@ -157,6 +157,18 @@ export default async function TaskPage({
         .maybeSingle<EsitoRiconoscimento>()
     : { data: null };
 
+  // Ultima richiesta di liberatoria: serve a far capire alla UI se il
+  // sigillo è davvero raggiungibile (solo firma OTP vale).
+  const { data: liberatoriaInfo } = pacchetto
+    ? await supabase
+        .from("richieste_liberatoria")
+        .select("stato, metodo_firma")
+        .eq("task_id", taskId)
+        .order("creato_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ stato: string; metodo_firma: string | null }>()
+    : { data: null };
+
   const { data: storico } = await supabase
     .from("task_status_history")
     .select("id, da_status, a_status, at, actor")
@@ -314,6 +326,7 @@ export default async function TaskPage({
           descrizione: (deliverables ?? []).find(d => d.kind === "descrizione")?.google_doc_url ?? null,
           titoloYoutube: (deliverables ?? []).find(d => d.kind === "titolo_youtube")?.google_doc_url ?? null,
         }}
+        liberatoriaInfo={liberatoriaInfo ?? null}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

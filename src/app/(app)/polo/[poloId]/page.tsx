@@ -74,7 +74,7 @@ export default async function PoloPage({
         .from("richieste_modifica")
         .select("task_id")
         .in("task_id", idsTask)
-        .eq("stato", "aperta")
+        .in("stato", ["aperta", "da_verificare"])
         .returns<{ task_id: string }[]>()
     : { data: [] as { task_id: string }[] };
 
