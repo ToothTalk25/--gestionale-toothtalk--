@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
@@ -50,6 +51,21 @@ export async function creaTask(formData: FormData): Promise<Esito<{ id: string }
     .single();
 
   if (error) return fallita(error, "Creazione progetto fallita");
+
+  // Crea i Google Doc di lavorazione in background
+  const { data: poloRow } = await supabase
+    .from("poli")
+    .select("nome")
+    .eq("id", polo_id)
+    .single<{ nome: string }>();
+  if (poloRow) {
+    after(async () => {
+      const { creaDocumentiLavorazione } = await import("@/lib/google-doc");
+      await creaDocumentiLavorazione(data.id, poloRow.nome, titolo).catch((e) => {
+        console.error("Creazione documenti di lavorazione fallita:", e);
+      });
+    });
+  }
 
   revalidatePath(`/polo/${polo_id}`);
   revalidatePath("/dashboard");

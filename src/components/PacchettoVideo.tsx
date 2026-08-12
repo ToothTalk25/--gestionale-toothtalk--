@@ -474,7 +474,7 @@ export default function PacchettoVideo({
           }
           className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-50"
         >
-          Salva descrizione e script
+          Salva descrizione, script e titolo
         </button>
       )}
 

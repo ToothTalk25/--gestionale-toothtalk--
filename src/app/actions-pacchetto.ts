@@ -292,6 +292,25 @@ export async function segnalaCompletato(
 ): Promise<Esito> {
   await requireSession();
   const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  // Importa automaticamente il contenuto dei Google Doc nelle caselle
+  const { data: deliverablesLavorazione } = await admin
+    .from("deliverables")
+    .select("kind, google_doc_url")
+    .eq("task_id", taskId)
+    .in("kind", ["script", "descrizione", "titolo_youtube"]);
+
+  const { leggiTestoGoogleDoc } = await import("@/lib/google-doc");
+  const aggiornamenti: Record<string, string> = {};
+  for (const d of deliverablesLavorazione ?? []) {
+    if (!d.google_doc_url) continue;
+    const res = await leggiTestoGoogleDoc(d.google_doc_url);
+    if (res.ok) aggiornamenti[d.kind] = res.testo;
+  }
+  if (Object.keys(aggiornamenti).length > 0) {
+    await admin.from("pacchetti_video").update(aggiornamenti).eq("id", pacchettoId);
+  }
 
   const { error } = await supabase.rpc("segnala_completato", {
     p_pacchetto: pacchettoId,
