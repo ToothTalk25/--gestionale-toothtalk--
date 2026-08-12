@@ -919,11 +919,9 @@ function Slot({
       className={`rounded-xl border p-3 transition-colors ${
         dragOver
           ? "border-tt-blue bg-tt-blue/5 ring-2 ring-tt-blue"
-          : !elemento
-            ? "border-slate-200"
-            : confermato
-              ? "border-tt-blue/20 bg-tt-blue-50"
-              : "border-amber-200 bg-amber-50"
+          : elemento
+            ? "border-tt-blue/20 bg-tt-blue-50"
+            : "border-slate-200"
       }`}
     >
       <div className="flex items-start gap-2">
