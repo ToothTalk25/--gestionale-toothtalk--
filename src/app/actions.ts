@@ -396,3 +396,41 @@ export async function urlFirmato(
   if (error || !data) return fallita(error, "Download non autorizzato");
   return { ok: true, dati: { url: data.signedUrl } };
 }
+
+/** Imposta o rimuove il link al Google Doc per un deliverable di tipo script o descrizione. */
+export async function impostaGoogleDocUrl(
+  taskId: string,
+  kind: DeliverableKind,
+  url: string | null,
+): Promise<Esito> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return fallita(null, "Operazione riservata all'amministratore.");
+
+  const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  // Trova o crea il deliverable
+  const { data: es } = await supabase
+    .from("deliverables")
+    .select("id")
+    .eq("task_id", taskId)
+    .eq("kind", kind)
+    .maybeSingle<{ id: string }>();
+
+  if (es) {
+    const { error } = await admin
+      .from("deliverables")
+      .update({ google_doc_url: url })
+      .eq("id", es.id);
+    if (error) return fallita(error, error.message);
+  } else {
+    const { error } = await admin
+      .from("deliverables")
+      .insert({ task_id: taskId, kind, google_doc_url: url });
+    if (error) return fallita(error, error.message);
+  }
+
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+

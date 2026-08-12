@@ -11,6 +11,7 @@ import VersionList from "@/components/VersionList";
 import PacchettoVideo, { type ElementoCaricato } from "@/components/PacchettoVideo";
 import RichiesteModifica from "@/components/RichiesteModifica";
 import AzioniProgetto from "@/components/AzioniProgetto";
+import GoogleDocCard from "@/components/GoogleDocCard";
 import {
   KIND_LABEL,
   KIND_LAVORAZIONE,
@@ -258,12 +259,21 @@ export default async function TaskPage({
               !!polo?.drive_immagini_montaggio_folder_id &&
               task.numero_video == null;
 
+            const isGoogleDoc = kind === "script" || kind === "descrizione";
+
             return (
               <div key={kind} className="group aspect-square rounded-xl bg-white p-3 ring-1 ring-black/5 flex flex-col">
                 <h3 className="text-base font-semibold text-slate-700 text-center">{KIND_LABEL[kind]}</h3>
 
                 <div className="flex-1 flex items-center justify-center">
-                  {mancaNumeroVideo ? (
+                  {isGoogleDoc ? (
+                    <GoogleDocCard
+                      taskId={task.id}
+                      kind={kind}
+                      googleDocUrl={d?.google_doc_url ?? null}
+                      isAdmin={isAdmin}
+                    />
+                  ) : mancaNumeroVideo ? (
                     <p className="text-xs text-amber-700 text-center px-2">
                       Prima assegna un numero video.
                     </p>

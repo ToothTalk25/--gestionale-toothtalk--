@@ -66,7 +66,7 @@ export const KIND_LABEL: Record<DeliverableKind, string> = {
   liberatoria: "Liberatoria privacy/immagine",
   audio: "Audio",
   altro: "Altro",
-  descrizione: "Descrizione di lavorazione",
+  descrizione: "Descrizione e titoli YouTube",
   finale_video: "Video montato (pubblicabile)",
   finale_copertina: "Copertina (pubblicabile)",
   finale_liberatoria: "Liberatoria (pubblicabile)",
@@ -153,6 +153,7 @@ export type Deliverable = {
   titolo: string | null;
   created_by: string | null;
   created_at: string;
+  google_doc_url: string | null;
 };
 
 export type DeliverableVersion = {
