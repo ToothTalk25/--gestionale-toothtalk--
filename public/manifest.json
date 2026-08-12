@@ -1,6 +1,6 @@
 {
-  "name": "ToothTalk — Gestionale",
-  "short_name": "ToothTalk",
+  "name": "Gestionale ToothTalk",
+  "short_name": "Gestionale ToothTalk",
   "description": "Spazio di lavoro dei gruppi universitari — deposito video certificato via PEC",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -8,10 +8,22 @@
   "theme_color": "#0d1b2a",
   "icons": [
     {
-      "src": "/logo-toothtalk.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

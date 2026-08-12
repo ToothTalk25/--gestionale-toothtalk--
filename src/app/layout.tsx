@@ -18,11 +18,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "ToothTalk",
+    title: "Gestionale ToothTalk",
     statusBarStyle: "black-translucent",
-  },
-  icons: {
-    apple: "/logo-toothtalk.svg",
   },
 };
 
