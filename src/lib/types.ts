@@ -84,11 +84,11 @@ export const KIND_LABEL: Record<DeliverableKind, string> = {
 export const KIND_LAVORAZIONE: DeliverableKind[] = [
   "video_grezzo",
   "immagini_montaggio",
+  "thumbnail",
+  "altro",
   "script",
   "descrizione",
   "titolo_youtube",
-  "thumbnail",
-  "altro",
 ];
 
 export type Profile = {
