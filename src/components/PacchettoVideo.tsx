@@ -12,6 +12,7 @@ import {
   annullaPacchetto,
   collegaElemento,
   correggiRiconoscimento,
+  importaTestoGoogleDoc,
   inviaPecPacchetto,
   rimandaInComposizione,
   rimuoviElementoPacchetto,
@@ -61,6 +62,7 @@ export default function PacchettoVideo({
   contattoEsternoEmail,
   contattoEsternoPec,
   verificaRiconoscimento,
+  googleDocUrls,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -73,6 +75,7 @@ export default function PacchettoVideo({
   contattoEsternoEmail: string | null;
   contattoEsternoPec: string | null;
   verificaRiconoscimento?: { esito: string; dettaglio: string | null } | null;
+  googleDocUrls: { script: string | null; descrizione: string | null; titoloYoutube: string | null };
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -336,6 +339,15 @@ export default function PacchettoVideo({
           modificabile={componibile}
           righe={2}
           placeholder="Il titolo che comparirà sullo Short di YouTube…"
+          onImporta={
+            googleDocUrls.titoloYoutube
+              ? async () => {
+                  const res = await importaTestoGoogleDoc(googleDocUrls.titoloYoutube!);
+                  if (res.ok) setTitoloYoutube(res.dati.testo);
+                  else setErrore(res.errore);
+                }
+              : undefined
+          }
         />
       </div>
 
@@ -347,6 +359,15 @@ export default function PacchettoVideo({
           modificabile={componibile}
           righe={5}
           placeholder="La caption esatta che accompagnerà il video…"
+          onImporta={
+            googleDocUrls.descrizione
+              ? async () => {
+                  const res = await importaTestoGoogleDoc(googleDocUrls.descrizione!);
+                  if (res.ok) setDescrizione(res.dati.testo);
+                  else setErrore(res.errore);
+                }
+              : undefined
+          }
         />
         <Testo
           titolo={scriptTitolo}
@@ -356,6 +377,15 @@ export default function PacchettoVideo({
           modificabile={componibile}
           righe={5}
           placeholder={scriptPlaceholder}
+          onImporta={
+            googleDocUrls.script
+              ? async () => {
+                  const res = await importaTestoGoogleDoc(googleDocUrls.script!);
+                  if (res.ok) setScript(res.dati.testo);
+                  else setErrore(res.errore);
+                }
+              : undefined
+          }
         />
       </div>
 
@@ -854,6 +884,7 @@ function Testo({
   modificabile,
   righe,
   placeholder,
+  onImporta,
 }: {
   titolo: string;
   nota?: string;
@@ -862,13 +893,30 @@ function Testo({
   modificabile: boolean;
   righe: number;
   placeholder?: string;
+  onImporta?: () => void;
 }) {
+  const [importando, setImportando] = useState(false);
+
+  async function handleImporta() {
+    if (!onImporta) return;
+    setImportando(true);
+    await onImporta();
+    setImportando(false);
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 p-3">
-      <h3 className="text-sm font-medium">
-        {titolo}
-        {nota && (
-          <span className="ml-2 font-normal text-xs text-slate-400">{nota}</span>
+      <h3 className="flex items-center gap-2 text-sm font-medium">
+        <span>{titolo}</span>
+        {nota && <span className="font-normal text-xs text-slate-400">{nota}</span>}
+        {modificabile && onImporta && (
+          <button
+            onClick={handleImporta}
+            disabled={importando}
+            className="ml-auto rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+          >
+            {importando ? "…" : "⬇ Importa dal Doc"}
+          </button>
         )}
       </h3>
       {modificabile ? (

@@ -32,6 +32,7 @@ export type DeliverableKind =
   | "audio"
   | "altro"
   | "descrizione"
+  | "titolo_youtube"
   // Materiali del pacchetto pubblicabile: archivio separato, certificati PEC.
   | "finale_video"
   | "finale_copertina"
@@ -66,7 +67,8 @@ export const KIND_LABEL: Record<DeliverableKind, string> = {
   liberatoria: "Liberatoria privacy/immagine",
   audio: "Audio",
   altro: "Altro",
-  descrizione: "Descrizione e titoli YouTube",
+  descrizione: "Descrizione di lavorazione",
+  titolo_youtube: "Titolo YouTube Shorts",
   finale_video: "Video montato (pubblicabile)",
   finale_copertina: "Copertina (pubblicabile)",
   finale_liberatoria: "Liberatoria (pubblicabile)",
@@ -84,6 +86,7 @@ export const KIND_LAVORAZIONE: DeliverableKind[] = [
   "immagini_montaggio",
   "script",
   "descrizione",
+  "titolo_youtube",
   "thumbnail",
   "altro",
 ];

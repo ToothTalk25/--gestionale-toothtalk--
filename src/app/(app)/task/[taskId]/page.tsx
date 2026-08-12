@@ -261,7 +261,7 @@ export default async function TaskPage({
               !!polo?.drive_immagini_montaggio_folder_id &&
               task.numero_video == null;
 
-            const isGoogleDoc = kind === "script" || kind === "descrizione";
+            const isGoogleDoc = kind === "script" || kind === "descrizione" || kind === "titolo_youtube";
 
             return (
               <div key={kind} className="group aspect-square rounded-xl bg-white p-3 ring-1 ring-black/5 flex flex-col">
@@ -341,6 +341,11 @@ export default async function TaskPage({
         contattoEsternoEmail={task.contatto_esterno_email ?? null}
         contattoEsternoPec={task.contatto_esterno_pec ?? null}
         verificaRiconoscimento={verificaRiconoscimento}
+        googleDocUrls={{
+          script: (deliverables ?? []).find(d => d.kind === "script")?.google_doc_url ?? null,
+          descrizione: (deliverables ?? []).find(d => d.kind === "descrizione")?.google_doc_url ?? null,
+          titoloYoutube: (deliverables ?? []).find(d => d.kind === "titolo_youtube")?.google_doc_url ?? null,
+        }}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

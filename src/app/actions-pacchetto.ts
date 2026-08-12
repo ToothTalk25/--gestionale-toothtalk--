@@ -611,3 +611,15 @@ export async function correggiRiconoscimento(pacchettoId: string): Promise<Esito
   return { ok: true, dati: undefined };
 }
 
+/** Importa il testo di un Google Doc collegato (usato per script/descrizione/titolo). */
+export async function importaTestoGoogleDoc(url: string): Promise<
+  { ok: true; dati: { testo: string } } | { ok: false; errore: string }
+> {
+  await requireSession();
+  const { leggiTestoGoogleDoc } = await import("@/lib/google-doc");
+  const res = await leggiTestoGoogleDoc(url);
+  if (!res.ok) return errore(res.errore);
+  return { ok: true, dati: { testo: res.testo } };
+}
+
+
