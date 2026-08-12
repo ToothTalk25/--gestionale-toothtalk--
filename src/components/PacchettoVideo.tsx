@@ -301,6 +301,7 @@ export default function PacchettoVideo({
           id="video"
           titolo="1 · Video montato"
           elemento={video}
+          confermato={testiConfermati || !inBozza}
           onRimuovi={componibile && video ? () => rimuovi("video") : undefined}
           onDropFile={componibile ? (f) => videoUploadRef.current?.handleFile(f) : undefined}
           azione={
@@ -327,6 +328,7 @@ export default function PacchettoVideo({
           id="copertina"
           titolo="2 · Copertina"
           elemento={copertina}
+          confermato={testiConfermati || !inBozza}
           onRimuovi={
             componibile && copertina ? () => rimuovi("copertina") : undefined
           }
@@ -421,6 +423,7 @@ export default function PacchettoVideo({
             <Slot
               titolo="6 · Liberatoria privacy/immagine"
               elemento={liberatoria}
+              confermato={testiConfermati || !inBozza}
               onRimuovi={
                 componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
               }
@@ -861,6 +864,7 @@ function Slot({
   onDropFile,
   taskId,
   archiviabile,
+  confermato,
 }: {
   id?: string;
   titolo: string;
@@ -870,6 +874,8 @@ function Slot({
   onDropFile?: (file: File) => void;
   taskId: string;
   archiviabile: boolean;
+  /** true quando il testo è confermato come versione definitiva o il pacchetto non è più in bozza. */
+  confermato: boolean;
 }) {
   const [conferma, setConferma] = useState(false);
   const [confermaArchivia, setConfermaArchivia] = useState(false);
@@ -913,9 +919,11 @@ function Slot({
       className={`rounded-xl border p-3 transition-colors ${
         dragOver
           ? "border-tt-blue bg-tt-blue/5 ring-2 ring-tt-blue"
-          : elemento
-            ? "border-sky-300 bg-sky-100"
-            : "border-slate-200"
+          : !elemento
+            ? "border-slate-200"
+            : confermato
+              ? "border-tt-blue/20 bg-tt-blue-50"
+              : "border-amber-200 bg-amber-50"
       }`}
     >
       <div className="flex items-start gap-2">
