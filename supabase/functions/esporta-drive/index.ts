@@ -108,6 +108,51 @@ async function esisteFile(token: string, cartella: string, nome: string): Promis
   return !!j.files?.length;
 }
 
+/** Trova un file per nome dentro una cartella (o null). */
+async function trovaFile(token: string, cartella: string, nome: string, mimeType: string): Promise<string | null> {
+  const q = `'${cartella}' in parents and name='${nome.replace(/'/g, "\\'")}' and mimeType='${mimeType}' and trashed=false`;
+  const r = await driveFetch(token, `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+  if (!r.ok) return null;
+  const j = (await r.json()) as { files?: { id: string }[] };
+  return j.files?.length ? j.files[0].id : null;
+}
+
+/** Scarica il contenuto testuale di un file (drive export per i Google Doc). */
+async function leggiTestoFile(token: string, fileId: string, mimeType: string): Promise<string> {
+  const url =
+    mimeType === "application/vnd.google-apps.document"
+      ? `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain`
+      : `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  const dl = await driveFetch(token, url);
+  if (!dl.ok) return "";
+  return await dl.text();
+}
+
+/**
+ * Accoda testo in fondo a un Google Doc nativo con la Docs API.
+ * Se il testo contiene già l'header, non fa nulla (idempotente).
+ */
+async function appendiAlGoogleDoc(token: string, docId: string, header: string, contenuto: string): Promise<void> {
+  const esistente = await leggiTestoFile(token, docId, "application/vnd.google-apps.document");
+  if (esistente.includes(header)) return; // già accodato
+
+  const get = await driveFetch(token, `https://docs.googleapis.com/v1/documents/${docId}`);
+  if (!get.ok) throw new Error(`Leggi Google Doc ${docId}: HTTP ${get.status}`);
+  const doc = (await get.json()) as { body?: { content?: { endIndex?: number }[] } };
+  const content = doc.body?.content ?? [];
+  const endIndex = content.length ? (content[content.length - 1].endIndex ?? 1) : 1;
+
+  const testo = `${header}${contenuto}\n`;
+  const res = await driveFetch(token, `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: [{ insertText: { location: { index: Math.max(endIndex - 1, 0) }, text: testo } }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Append Google Doc ${docId}: HTTP ${res.status}`);
+}
+
 /**
  * Upload resumable su Drive: POST iniziale (uploadType=resumable) per
  * ottenere l'URI di sessione dall'header Location, poi PUT del contenuto.
@@ -255,48 +300,31 @@ Deno.serve(async (req) => {
     const cartLiberatorie = await trovaOCreaCartella(token, cartellaGV, "Liberatorie");
     const cartVerbali = await trovaOCreaCartella(token, cartellaGV, "Verbali");
 
-    // --- testi accumulati: scarica, appendi, ricarica in GESTIONE VIDEO
+    // --- testi accumulati: append nei Google Docs di GESTIONE VIDEO
     const encoder = new TextEncoder();
     const header = `#Video ${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
 
-    const testiDaAccumulare: Array<{ nomeFile: string; contenuto: string | null }> = [
-      { nomeFile: "Descrizioni.txt", contenuto: pacchetto.descrizione },
-      { nomeFile: "Titoli YouTube.txt", contenuto: pacchetto.titolo_youtube },
-      { nomeFile: "Script.txt", contenuto: pacchetto.script },
+    // Trova le cartelle e i Google Docs
+    const cartScript = await trovaOCreaCartella(token, cartellaGV, "Script");
+    const cartDescr = await trovaOCreaCartella(token, cartellaGV, "Descrizione e titolo youtube shorts");
+
+    const docScript = await trovaFile(token, cartScript, "SCRIPT VIDEO", "application/vnd.google-apps.document");
+    const docDescr = await trovaFile(token, cartDescr, "DESCRIZIONI VIDEO", "application/vnd.google-apps.document");
+    const docTitoli = await trovaFile(token, cartDescr, "TITOLI YOUTUBE SHORTS", "application/vnd.google-apps.document");
+
+    const testiDaAccumulare: Array<{ docId: string | null; nomeFile: string; contenuto: string | null }> = [
+      { docId: docDescr, nomeFile: "DESCRIZIONI VIDEO", contenuto: pacchetto.descrizione },
+      { docId: docTitoli, nomeFile: "TITOLI YOUTUBE SHORTS", contenuto: pacchetto.titolo_youtube },
+      { docId: docScript, nomeFile: "SCRIPT VIDEO", contenuto: pacchetto.script },
     ];
 
     for (const t of testiDaAccumulare) {
       if (!t.contenuto) continue;
-      const n = t.nomeFile.replace(SANITIZZA, "_");
-      const q = `'${cartellaGV}' in parents and name='${n.replace(/'/g, "\\'")}' and trashed=false`;
-      const ricerca = await driveFetch(token, `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`);
-      const trovata = (await ricerca.json()) as { files?: { id: string }[] };
-      const fileId = trovata.files?.length ? trovata.files[0].id : null;
-
-      let testoEsistente = "";
-      if (fileId) {
-        const dl = await driveFetch(token, `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
-        if (dl.ok) testoEsistente = await dl.text();
+      if (!t.docId) {
+        console.log(`Google Doc ${t.nomeFile} non trovato in GESTIONE VIDEO: salto`);
+        continue;
       }
-
-      if (testoEsistente.includes(header)) continue; // già accodato in tentativo precedente
-
-      const nuovo = testoEsistente ? `${testoEsistente}\n\n${header}${t.contenuto}\n` : `${header}${t.contenuto}\n`;
-      const buf = encoder.encode(nuovo);
-
-      if (fileId) {
-        await driveFetch(token, `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-          method: "PATCH", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: buf,
-        });
-      } else {
-        const metadata = { name: n, mimeType: "text/plain", parents: [cartellaGV] };
-        const form = new FormData();
-        form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-        form.append("file", new Blob([buf], { type: "text/plain; charset=utf-8" }));
-        await driveFetch(token, "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-          method: "POST", body: form,
-        });
-      }
+      await appendiAlGoogleDoc(token, t.docId, header, t.contenuto);
     }
 
     // --- file binari: rinominate #N - Titolo.estensione
