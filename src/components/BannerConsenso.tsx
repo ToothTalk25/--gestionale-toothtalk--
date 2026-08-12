@@ -45,19 +45,27 @@ export default function BannerConsenso() {
 
   async function accetta(tutto: boolean) {
     setErroreUi(null);
+    let tuttoOk = true;
     try {
       const r1 = await registraConsenso("privacy");
-      if (!r1.ok) setErroreUi(r1.errore);
+      if (!r1.ok) {
+        setErroreUi(r1.errore);
+        tuttoOk = false;
+      }
       if (tutto) {
         const r2 = await registraConsenso("cookie");
-        if (!r2.ok) setErroreUi((e) => e ? e + " · " + r2.errore : r2.errore);
+        if (!r2.ok) {
+          setErroreUi((e) => (e ? e + " · " : "") + r2.errore);
+          tuttoOk = false;
+        }
       }
     } catch (e) {
       setErroreUi("Errore interno: " + (e instanceof Error ? e.message : String(e)));
+      tuttoOk = false;
     }
-    // Chiudi comunque: il consenso è registrato a monte; un fallimento del
-    // banner non deve impedire l'uso del gestionale.
-    setStato("nascosto");
+    // Chiudi SOLO se il consenso è stato davvero registrato: un'accettazione
+    // non salvata non è un'accettazione.
+    if (tuttoOk) setStato("nascosto");
   }
 
   return (
