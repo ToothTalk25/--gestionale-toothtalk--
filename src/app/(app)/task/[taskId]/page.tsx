@@ -233,52 +233,73 @@ export default async function TaskPage({
           <h2 className="text-lg font-medium">Video in lavorazione</h2>
           <p className="text-sm text-slate-500">
             Lo spazio di lavoro condiviso: girato grezzo, bozze, materiali di
-            servizio. Chiunque partecipi al progetto può caricare, scaricare,
-            correggere ed eliminare questi file liberamente — servono a lavorare
-            insieme senza rimbalzarsi cartelle e messaggi.{" "}
-            <em>Niente di quello che sta qui viene inviato via PEC.</em>
+            servizio. Trascina o clicca su ogni card per caricare.
           </p>
         </div>
 
-        {KIND_LAVORAZIONE.map((kind) => {
-          const d = (deliverables ?? []).find((x) => x.kind === kind);
-          const vs = (versioni ?? []).filter((v) => v.deliverable_id === d?.id);
-          const accetta = kind === "immagini_montaggio" ? "image/*" : undefined;
-          const mancaNumeroVideo =
-            kind === "immagini_montaggio" &&
-            !!polo?.drive_immagini_montaggio_folder_id &&
-            task.numero_video == null;
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {KIND_LAVORAZIONE.map((kind) => {
+            const d = (deliverables ?? []).find((x) => x.kind === kind);
+            const vs = (versioni ?? []).filter((v) => v.deliverable_id === d?.id);
+            const accetta = kind === "immagini_montaggio" ? "image/*" : undefined;
+            const mancaNumeroVideo =
+              kind === "immagini_montaggio" &&
+              !!polo?.drive_immagini_montaggio_folder_id &&
+              task.numero_video == null;
 
-          return (
-            <div key={kind} className="rounded-2xl bg-white p-5 ring-1 ring-black/5">
-              <div className="flex flex-wrap items-center gap-3">
-                <h3 className="flex-1 font-medium">{KIND_LABEL[kind]}</h3>
-                {mancaNumeroVideo ? (
-                  <p className="text-xs text-amber-700">
-                    Prima assegna un numero video a questo progetto: serve alla
-                    cartella Drive dove finiscono le immagini.
-                  </p>
-                ) : (
-                  <UploadDeliverable
-                    taskId={task.id}
-                    kind={kind}
-                    isAdmin={isAdmin}
-                    locked={task.locked}
-                    esisteOriginale={vs.some((v) => v.origin === "originale")}
-                    accept={accetta}
-                  />
+            return (
+              <div key={kind} className="group aspect-square rounded-2xl bg-white p-4 ring-1 ring-black/5 flex flex-col">
+                <h3 className="text-sm font-medium text-slate-700">{KIND_LABEL[kind]}</h3>
+
+                <div className="flex-1 flex items-center justify-center">
+                  {mancaNumeroVideo ? (
+                    <p className="text-xs text-amber-700 text-center px-2">
+                      Prima assegna un numero video.
+                    </p>
+                  ) : vs.length > 0 ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-1">{vs.length}</div>
+                      <p className="text-xs text-slate-400">
+                        {vs.length === 1 ? "file caricato" : "file caricati"}
+                      </p>
+                      <UploadDeliverable
+                        taskId={task.id}
+                        kind={kind}
+                        isAdmin={isAdmin}
+                        locked={task.locked}
+                        esisteOriginale={vs.some((v) => v.origin === "originale")}
+                        accept={accetta}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="mb-3 text-4xl text-slate-300">+</div>
+                      <UploadDeliverable
+                        taskId={task.id}
+                        kind={kind}
+                        isAdmin={isAdmin}
+                        locked={task.locked}
+                        esisteOriginale={false}
+                        accept={accetta}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {vs.length > 0 && (
+                  <div className="mt-2 border-t border-slate-100 pt-2">
+                    <VersionList
+                      taskId={task.id}
+                      versioni={vs}
+                      nomi={nomi}
+                      deliverableId={d?.id}
+                    />
+                  </div>
                 )}
               </div>
-
-              <VersionList
-                taskId={task.id}
-                versioni={vs}
-                nomi={nomi}
-                deliverableId={d?.id}
-              />
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </section>
 
       <PacchettoVideo
