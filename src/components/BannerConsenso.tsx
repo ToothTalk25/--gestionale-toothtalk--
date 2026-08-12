@@ -13,6 +13,7 @@ import { COOKIE_VERSION, PRIVACY_VERSION } from "@/lib/types";
  */
 export default function BannerConsenso() {
   const [stato, setStato] = useState<"caricamento" | "visibile" | "nascosto">("caricamento");
+  const [erroreUi, setErroreUi] = useState<string | null>(null);
 
   useEffect(() => {
     let attivo = true;
@@ -43,8 +44,19 @@ export default function BannerConsenso() {
   if (stato !== "visibile") return null;
 
   async function accetta(tutto: boolean) {
-    await registraConsenso("privacy");
-    if (tutto) await registraConsenso("cookie");
+    setErroreUi(null);
+    try {
+      const r1 = await registraConsenso("privacy");
+      if (!r1.ok) setErroreUi(r1.errore);
+      if (tutto) {
+        const r2 = await registraConsenso("cookie");
+        if (!r2.ok) setErroreUi((e) => e ? e + " · " + r2.errore : r2.errore);
+      }
+    } catch (e) {
+      setErroreUi("Errore interno: " + (e instanceof Error ? e.message : String(e)));
+    }
+    // Chiudi comunque: il consenso è registrato a monte; un fallimento del
+    // banner non deve impedire l'uso del gestionale.
     setStato("nascosto");
   }
 
@@ -65,18 +77,23 @@ export default function BannerConsenso() {
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <button
+            type="button"
             onClick={() => accetta(false)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
           >
             Solo necessari
           </button>
           <button
+            type="button"
             onClick={() => accetta(true)}
             className="rounded-lg bg-tt-ink px-4 py-1.5 text-xs font-medium text-white hover:opacity-90"
           >
             Accetta tutto
           </button>
         </div>
+        {erroreUi && (
+          <p className="w-full text-xs text-red-600">Consenso registrato, ma: {erroreUi}</p>
+        )}
       </div>
     </div>
   );
