@@ -130,27 +130,42 @@ async function leggiTestoFile(token: string, fileId: string, mimeType: string): 
 
 /**
  * Accoda testo in fondo a un Google Doc nativo con la Docs API.
- * Se il testo contiene già l'header, non fa nulla (idempotente).
+ * L'intestazione ("Video N - Titolo - Data") viene scritta come paragrafo di
+ * stile HEADING_2: così compare nell'indice a sinistra del documento, ed è
+ * possibile saltare direttamente alla sezione del video da pubblicare.
+ * Se il testo contiene già l'intestazione, non fa nulla (idempotente).
  */
-async function appendiAlGoogleDoc(token: string, docId: string, header: string, contenuto: string): Promise<void> {
+async function appendiAlGoogleDoc(token: string, docId: string, intestazione: string, contenuto: string): Promise<void> {
   const esistente = await leggiTestoFile(token, docId, "application/vnd.google-apps.document");
-  if (esistente.includes(header)) return; // già accodato
+  if (esistente.includes(intestazione)) return; // già accodato
 
   const get = await driveFetch(token, `https://docs.googleapis.com/v1/documents/${docId}`);
   if (!get.ok) throw new Error(`Leggi Google Doc ${docId}: HTTP ${get.status}`);
   const doc = (await get.json()) as { body?: { content?: { endIndex?: number }[] } };
   const content = doc.body?.content ?? [];
   const endIndex = content.length ? (content[content.length - 1].endIndex ?? 1) : 1;
+  const inizio = Math.max(endIndex - 1, 0);
 
-  const testo = `${header}${contenuto}\n`;
+  const rigaIntestazione = `${intestazione}\n`;
+  const testo = `${rigaIntestazione}${contenuto}\n`;
+
   const res = await driveFetch(token, `https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      requests: [{ insertText: { location: { index: Math.max(endIndex - 1, 0) }, text: testo } }],
+      requests: [
+        { insertText: { location: { index: inizio }, text: testo } },
+        {
+          updateParagraphStyle: {
+            range: { startIndex: inizio, endIndex: inizio + rigaIntestazione.length },
+            paragraphStyle: { namedStyleType: "HEADING_2" },
+            fields: "namedStyleType",
+          },
+        },
+      ],
     }),
   });
-  if (!res.ok) throw new Error(`Append Google Doc ${docId}: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Append Google Doc ${docId}: HTTP ${res.status} ${await res.text()}`);
 }
 
 /**
@@ -302,7 +317,11 @@ Deno.serve(async (req) => {
 
     // --- testi accumulati: append nei Google Docs di GESTIONE VIDEO
     const encoder = new TextEncoder();
-    const header = `#Video ${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
+    const manifestSigillo = pacchetto.manifest as { sigillato_at?: string } | null;
+    const dataSigillo = new Date(manifestSigillo?.sigillato_at ?? Date.now()).toLocaleDateString("it-IT");
+    // Intestazione scritta come HEADING_2 nel Google Doc: compare nell'indice
+    // a sinistra, per saltare subito alla sezione del video da pubblicare.
+    const intestazione = `Video ${num} - ${task.titolo} - ${dataSigillo}`;
 
     // Trova le cartelle e i Google Docs
     const cartScript = await trovaOCreaCartella(token, cartellaGV, "3 - Script");
@@ -325,7 +344,7 @@ Deno.serve(async (req) => {
         console.log(`Google Doc ${t.nomeFile} non trovato in GESTIONE VIDEO: salto`);
         continue;
       }
-      await appendiAlGoogleDoc(token, t.docId, header, t.contenuto);
+      await appendiAlGoogleDoc(token, t.docId, intestazione, t.contenuto);
     }
 
     // --- file binari: rinominate #N - Titolo.estensione
