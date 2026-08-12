@@ -13,7 +13,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ToothTalk — Gestionale",
+  title: "Gestionale ToothTalk",
   description:
     "Gestionale interno ToothTalk: spazio di lavoro dei gruppi universitari e archivio dei materiali depositati",
   manifest: "/manifest.json",
