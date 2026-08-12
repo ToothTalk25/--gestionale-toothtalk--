@@ -361,7 +361,7 @@ export default function PacchettoVideo({
           valore={script}
           onChange={setScript}
           modificabile={componibile}
-          confermato={!inBozza}
+          confermato={testiConfermati}
           righe={8}
           placeholder={scriptPlaceholder}
           onImporta={
@@ -380,7 +380,7 @@ export default function PacchettoVideo({
           valore={descrizione}
           onChange={setDescrizione}
           modificabile={componibile}
-          confermato={!inBozza}
+          confermato={testiConfermati}
           righe={8}
           placeholder="La caption esatta che accompagnerà il video…"
           onImporta={
@@ -400,7 +400,7 @@ export default function PacchettoVideo({
           valore={titoloYoutube}
           onChange={setTitoloYoutube}
           modificabile={componibile}
-          confermato={!inBozza}
+          confermato={testiConfermati}
           righe={3}
           placeholder="Il titolo che comparirà sullo Short di YouTube…"
           onImporta={
