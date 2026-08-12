@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
     const size = Number(versione.size_bytes ?? 0);
     if (!size) throw new Error(`File senza dimensione: ${versione.file_name}`);
 
-    const nomeCartella = `Video ${numeroVideo} — ${titolo}`.replace(SANITIZZA, "_");
+    const nomeCartella = `Video ${numeroVideo} - ${titolo}`.replace(SANITIZZA, "_");
     const token = await tokenGoogle();
     const cartella = await trovaOCreaCartella(token, cartellaDriveId, nomeCartella);
 

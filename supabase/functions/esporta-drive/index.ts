@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
       : await trovaOCreaCartella(token, root, polo.nome);
 
     const num = task.numero_video ?? "?";
-    const nomeBase = `${num} - ${task.titolo}`.replace(SANITIZZA, "_");
+    const nomeBase = `Video ${num} - ${task.titolo}`.replace(SANITIZZA, "_");
 
     const cartVideo = await trovaOCreaCartella(token, cartellaPolo, "Video");
     const cartCopertine = await trovaOCreaCartella(token, cartellaPolo, "Copertine");
@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
 
     // --- testi accumulati: scarica, appendi, ricarica nel polo
     const encoder = new TextEncoder();
-    const header = `#${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
+    const header = `#Video ${num} - ${task.titolo}\n${"=".repeat(40)}\n`;
 
     const testiDaAccumulare: Array<{ nomeFile: string; contenuto: string | null }> = [
       { nomeFile: "Descrizioni.txt", contenuto: pacchetto.descrizione },
