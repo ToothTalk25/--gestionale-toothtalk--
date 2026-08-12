@@ -29,7 +29,15 @@ export default function GoogleDocCard({
     });
   }
 
-  if (!googleDocUrl && !isAdmin) return null;
+  if (!googleDocUrl && !isAdmin) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-[10px] text-slate-400 text-center px-2">
+          Nessun documento collegato
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-2">
