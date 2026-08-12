@@ -64,6 +64,7 @@ export default function PacchettoVideo({
   verificaRiconoscimento,
   googleDocUrls,
   liberatoriaInfo,
+  haRichiesteAperte,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -81,6 +82,7 @@ export default function PacchettoVideo({
   };
   googleDocUrls: { script: string | null; descrizione: string | null; titoloYoutube: string | null };
   liberatoriaInfo: { stato: string; metodo_firma: string | null } | null;
+  haRichiesteAperte: boolean;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -115,6 +117,7 @@ export default function PacchettoVideo({
     descrizione.trim() !== "" &&
     script.trim() !== "" &&
     titoloYoutube.trim() !== "" &&
+    !haRichiesteAperte &&
     (!coinvolgeTerzi || (!!liberatoria && liberatoriaOtp));
 
   // Lo script cambia a seconda del formato scelto alla creazione del
@@ -600,6 +603,7 @@ export default function PacchettoVideo({
                   !script.trim() && "script",
                   !titoloYoutube.trim() && "titolo YouTube",
                   coinvolgeTerzi && !(liberatoria && liberatoriaOtp) && "liberatoria (firma OTP)",
+                  haRichiesteAperte && "richieste di modifica da risolvere",
                 ]
                   .filter(Boolean)
                   .join(", ")}
@@ -672,6 +676,7 @@ export default function PacchettoVideo({
                     !script.trim() && "script",
                     !titoloYoutube.trim() && "titolo YouTube",
                     coinvolgeTerzi && !(liberatoria && liberatoriaOtp) && "liberatoria (firma OTP)",
+                    haRichiesteAperte && "richieste di modifica da risolvere",
                   ]
                     .filter(Boolean)
                     .join(", ")}

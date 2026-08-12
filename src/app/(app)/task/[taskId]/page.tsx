@@ -332,6 +332,7 @@ export default async function TaskPage({
           titoloYoutube: (deliverables ?? []).find(d => d.kind === "titolo_youtube")?.google_doc_url ?? null,
         }}
         liberatoriaInfo={liberatoriaInfo ?? null}
+        haRichiesteAperte={(richieste ?? []).some((r) => r.stato === "aperta" || r.stato === "da_verificare")}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
