@@ -11,6 +11,7 @@ import { aggiornaContattoEsterno, aggiornaContattoPec, inviaRichiestaLiberatoria
 import {
   annullaPacchetto,
   collegaElemento,
+  correggiRiconoscimento,
   inviaPecPacchetto,
   rimandaInComposizione,
   rimuoviElementoPacchetto,
@@ -56,6 +57,7 @@ export default function PacchettoVideo({
   formato,
   contattoEsternoEmail,
   contattoEsternoPec,
+  verificaRiconoscimento,
 }: {
   taskId: string;
   pacchetto: PacchettoVideoRow | null;
@@ -67,6 +69,7 @@ export default function PacchettoVideo({
   formato: Formato | null;
   contattoEsternoEmail: string | null;
   contattoEsternoPec: string | null;
+  verificaRiconoscimento?: { esito: string; dettaglio: string | null } | null;
 }) {
   const router = useRouter();
   const [descrizione, setDescrizione] = useState(pacchetto?.descrizione ?? "");
@@ -389,6 +392,25 @@ export default function PacchettoVideo({
           deposito. Quando lo segnalano come completato, lo rivedi qui e decidi
           tu: sigillarlo o rimandarlo in composizione.
         </p>
+      )}
+
+      {isAdmin && verificaRiconoscimento?.esito === "persona_non_riconosciuta" && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">⚠️ Controllo automatico: possibile persona esterna</p>
+          <p className="mt-1 text-xs text-amber-700">{verificaRiconoscimento.dettaglio}</p>
+          <button
+            onClick={async () => {
+              setErrore(null);
+              const res = await correggiRiconoscimento(pacchetto!.id);
+              if (res.ok) router.refresh();
+              else setErrore(res.errore);
+            }}
+            disabled={pending}
+            className="mt-3 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            Correggi: nessuna persona esterna
+          </button>
+        </div>
       )}
 
       {componibile && (

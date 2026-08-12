@@ -131,6 +131,17 @@ export default async function TaskPage({
         .maybeSingle<EsportazioneDriveRow>()
     : { data: null };
 
+  // Ultimo esito riconoscimento automatico (Fase D)
+  const { data: verificaRiconoscimento } = pacchetto
+    ? await supabase
+        .from("verifiche_riconoscimento")
+        .select("esito, dettaglio")
+        .eq("pacchetto_id", pacchetto.id)
+        .order("creato_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ esito: string; dettaglio: string | null }>()
+    : { data: null };
+
   const { data: storico } = await supabase
     .from("task_status_history")
     .select("id, da_status, a_status, at, actor")
@@ -317,6 +328,7 @@ export default async function TaskPage({
         formato={task.formati ?? null}
         contattoEsternoEmail={task.contatto_esterno_email ?? null}
         contattoEsternoPec={task.contatto_esterno_pec ?? null}
+        verificaRiconoscimento={verificaRiconoscimento}
       />
 
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

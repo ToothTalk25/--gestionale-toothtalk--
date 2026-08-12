@@ -17,7 +17,7 @@ import {
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
 import { verificaPersoneVideo } from "@/lib/gemini";
 
-type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
+export type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
 function errore(msg: string): Esito<never> {
   return { ok: false, errore: msg };
@@ -594,3 +594,21 @@ export async function richiediEsportazioneDrive(
   revalidatePath(`/task/[taskId]`, "page");
   return { ok: true, dati: undefined };
 }
+
+/** Correzione manuale admin: segna il riconoscimento come ok. */
+export async function correggiRiconoscimento(pacchettoId: string): Promise<Esito> {
+  const { profile, isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'amministratore.");
+
+  const admin = supabaseAdmin();
+  const { error } = await admin.from("verifiche_riconoscimento").insert({
+    pacchetto_id: pacchettoId,
+    esito: "nessuna_persona_esterna",
+    dettaglio: "Corretto manualmente dall'amministratore.",
+    corretto_da: profile.id,
+  });
+
+  if (error) return errore(error.message);
+  return { ok: true, dati: undefined };
+}
+

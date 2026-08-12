@@ -168,7 +168,7 @@ export async function caricaFoto(storagePath: string): Promise<Esito> {
 }
 
 /** Registra il consenso GDPR (privacy o cookie) per l'utente corrente. */
-export async function registraConsenso(tipo: "privacy" | "cookie"): Promise<Esito> {
+export async function registraConsenso(tipo: "privacy" | "cookie" | "riconoscimento_foto"): Promise<Esito> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
   const admin = supabaseAdmin();
@@ -185,7 +185,7 @@ export async function registraConsenso(tipo: "privacy" | "cookie"): Promise<Esit
 
   // 2. Genera ricevuta HTML firmata (SHA256) — prova dimostrabile per GDPR
   const dataIso = new Date().toISOString();
-  const tipoLabel = tipo === "privacy" ? "Informativa Privacy" : "Cookie Policy";
+  const tipoLabel = tipo === "privacy" ? "Informativa Privacy" : tipo === "cookie" ? "Cookie Policy" : "Riconoscimento foto";
   const html =
     `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Ricevuta consenso — ToothTalk</title>` +
     `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +

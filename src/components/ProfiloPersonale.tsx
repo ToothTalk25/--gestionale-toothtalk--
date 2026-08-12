@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
-import { aggiornaAnagrafica, caricaAccordo, caricaFoto } from "@/app/actions-profilo";
+import { aggiornaAnagrafica, caricaAccordo, caricaFoto, registraConsenso } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 
@@ -42,6 +42,30 @@ export default function ProfiloPersonale({
     esito: string | null;
     note: string | null;
   }>({ esito: profile.accordo_verificato, note: profile.accordo_verifica_note });
+
+  // Consenso riconoscimento foto
+  const [consensoRiconoscimento, setConsensoRiconoscimento] = useState(false);
+  const [consensoCaricato, setConsensoCaricato] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: auth } = await supabaseBrowser().auth.getUser();
+      if (!auth.user) return;
+      const { data } = await supabaseBrowser()
+        .from("consensi")
+        .select("id")
+        .eq("user_id", auth.user.id)
+        .eq("tipo", "riconoscimento_foto")
+        .limit(1);
+      setConsensoRiconoscimento((data ?? []).length > 0);
+      setConsensoCaricato(true);
+    })();
+  }, []);
+
+  async function daiConsensoRiconoscimento() {
+    const esito = await registraConsenso("riconoscimento_foto");
+    if (esito.ok) setConsensoRiconoscimento(true);
+  }
 
   function salvaAnagrafica() {
     setErrore(null);
@@ -184,6 +208,23 @@ export default function ProfiloPersonale({
               Formati accettati: JPG, PNG o WebP. Dimensione massima 5 MB,
               consigliata quadrata e almeno 400×400 px.
             </p>
+
+            {consensoCaricato && fotoPath && (
+              <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consensoRiconoscimento}
+                  onChange={() => !consensoRiconoscimento && daiConsensoRiconoscimento()}
+                  disabled={consensoRiconoscimento}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+                />
+                <span className="text-xs text-slate-600 leading-relaxed">
+                  {consensoRiconoscimento
+                    ? "Hai autorizzato l'uso di questa foto per il controllo automatico."
+                    : "Autorizzo l'uso di questa foto per il controllo automatico che verifica se un video mostra persone esterne al progetto."}
+                </span>
+              </label>
+            )}
           </section>
         )}
 
