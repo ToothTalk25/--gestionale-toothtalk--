@@ -117,7 +117,10 @@ export async function caricaFileGemini(buffer: Buffer, mimeType: string): Promis
   const size = bytes.byteLength;
 
   // 1) Start: ottieni l'URL di upload
-  const startRes = await fetch(`${BASE_URL}/upload/v1beta/files?key=${key}`, {
+  // Nota: l'endpoint di upload vive sotto /upload/v1beta/, non sotto
+  // BASE_URL (che è già .../v1beta) — concatenarli duplicherebbe "v1beta"
+  // nel path e darebbe 404.
+  const startRes = await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${key}`, {
     method: "POST",
     headers: {
       "X-Goog-Upload-Protocol": "resumable",
