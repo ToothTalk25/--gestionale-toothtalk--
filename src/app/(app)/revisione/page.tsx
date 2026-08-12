@@ -2,8 +2,10 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import RichiesteModifica from "@/components/RichiesteModifica";
+import BottoneArchiviaTutto from "@/components/BottoneArchiviaTutto";
 import {
   PACCHETTO_LABEL,
+  type PacchettoDaArchiviare,
   type PacchettoPronto,
   type RichiestaModifica,
   type VideoDaRivedere,
@@ -67,6 +69,13 @@ export default async function RevisionePage() {
   );
 
   const daFare = lista.filter((v) => v.richieste_aperte > 0);
+
+  // Pacchetti sigillati con file ancora su Storage (da archiviare)
+  const { data: daArchiviare } = await supabase
+    .from("v_pacchetti_da_archiviare")
+    .select("*")
+    .order("sigillato_at", { ascending: true })
+    .returns<PacchettoDaArchiviare[]>();
 
   return (
     <div className="space-y-8">
@@ -191,6 +200,33 @@ export default async function RevisionePage() {
             </article>
           ))}
         </div>
+      )}
+
+      {(daArchiviare ?? []).length > 0 && (
+        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+          <h2 className="text-lg font-medium">Da archiviare</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Pacchetti già sigillati e certificati via PEC: puoi liberare spazio
+            su Supabase una volta che sono al sicuro su Drive e hard disk esterno.
+          </p>
+          <div className="mt-4 divide-y divide-slate-100">
+            {(daArchiviare ?? []).map((p) => (
+              <div key={p.pacchetto_id} className="flex items-center gap-4 py-2.5 first:pt-0 last:pb-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    <Link href={`/task/${p.task_id}`} className="hover:underline">
+                      {p.progetto}
+                    </Link>
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {p.gruppo} · sigillato il {p.sigillato_at ? new Date(p.sigillato_at).toLocaleDateString("it-IT") : "—"} · {p.file_da_archiviare} file
+                  </p>
+                </div>
+                <BottoneArchiviaTutto taskId={p.task_id} pacchettoId={p.pacchetto_id} />
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

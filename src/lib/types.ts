@@ -327,6 +327,16 @@ export type PacchettoPronto = {
   sigillato_at: string | null;
 };
 
+export type PacchettoDaArchiviare = {
+  pacchetto_id: string;
+  task_id: string;
+  progetto: string;
+  gruppo: string;
+  stato: PacchettoStato;
+  sigillato_at: string | null;
+  file_da_archiviare: number;
+};
+
 /** Contesto di sessione risolto lato server a ogni richiesta. */
 export type SessionContext = {
   profile: Profile;

@@ -141,6 +141,39 @@ export async function archiviaFileFinale(
   return { ok: true, dati: undefined };
 }
 
+
+/** Archivia in blocco tutti i file di un pacchetto sigillato (uno per ruolo). */
+export async function archiviaPacchettoCompleto(
+  taskId: string,
+  pacchettoId: string,
+): Promise<Esito> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return fallita({ message: "Accesso negato" }, "Solo chi ha accesso globale può archiviare.");
+
+  const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  const { data: versioni } = await supabase
+    .from("pacchetto_elementi")
+    .select("deliverable_versions!inner(id, storage_path, bucket, archiviato_esterno)")
+    .eq("pacchetto_id", pacchettoId);
+
+  const daArchiviare = (versioni ?? [])
+    .map((v) => v.deliverable_versions as unknown as { id: string; storage_path: string; bucket: string; archiviato_esterno: boolean })
+    .filter((v) => v.bucket === "finali" && !v.archiviato_esterno);
+
+  for (const v of daArchiviare) {
+    const { error } = await supabase.rpc("archivia_file_finale", { p_version: v.id });
+    if (!error) {
+      await admin.storage.from(v.bucket).remove([v.storage_path]).catch(() => {});
+    }
+  }
+
+  revalidatePath("/revisione");
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true, dati: undefined };
+}
+
 /**
  * Il gruppo dichiara se il video mostra una persona esterna al progetto
  * (es. un'intervista). Se sì, la liberatoria diventa obbligatoria nel
