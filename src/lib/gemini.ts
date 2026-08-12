@@ -12,6 +12,7 @@ import "server-only";
  */
 
 const MODELLO = "gemini-flash-latest";
+const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 function apiKey(): string | null {
   return process.env.GEMINI_API_KEY || null;
@@ -21,14 +22,18 @@ export function geminiConfigurato(): boolean {
   return apiKey() !== null;
 }
 
-type Risposta = { testo: string };
+type GeminiPart = {
+  inlineData?: { data: string; mimeType: string };
+  fileData?: { fileUri: string; mimeType: string };
+  text?: string;
+};
 
-async function genera(prompt: string, parts: { inlineData?: { data: string; mimeType: string }; text?: string }[]) {
+async function genera(prompt: string, parts: GeminiPart[]): Promise<string> {
   const key = apiKey();
   if (!key) throw new Error("GEMINI_API_KEY non configurata.");
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODELLO}:generateContent?key=${key}`,
+    `${BASE_URL}/models/${MODELLO}:generateContent?key=${key}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,6 +97,123 @@ export async function verificaAccordoFirmato(opts: {
     return {
       esito: "non_valutato",
       note: e instanceof Error ? e.message : "Errore imprevisto durante la verifica.",
+    };
+  }
+}
+
+// ------------------------------------------------------------------ File API (upload resumable)
+
+/**
+ * Carica un file (es. video) sulla Gemini File API con upload resumable.
+ * Restituisce il fileUri da usare in generateContent come fileData.
+ */
+export async function caricaFileGemini(buffer: Buffer, mimeType: string): Promise<string> {
+  const key = apiKey();
+  if (!key) throw new Error("GEMINI_API_KEY non configurata.");
+
+  const bytes = new Uint8Array(buffer);
+  const size = bytes.byteLength;
+
+  // 1) Start: ottieni l'URL di upload
+  const startRes = await fetch(`${BASE_URL}/upload/v1beta/files?key=${key}`, {
+    method: "POST",
+    headers: {
+      "X-Goog-Upload-Protocol": "resumable",
+      "X-Goog-Upload-Command": "start",
+      "X-Goog-Upload-Header-Content-Length": String(size),
+      "X-Goog-Upload-Header-Content-Type": mimeType,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ file: { display_name: `upload_${Date.now()}` } }),
+  });
+
+  if (!startRes.ok) {
+    const err = await startRes.text();
+    throw new Error(`Gemini File API start: HTTP ${startRes.status} ${err}`);
+  }
+
+  const uploadUrl = startRes.headers.get("x-goog-upload-url");
+  if (!uploadUrl) throw new Error("Gemini File API: x-goog-upload-url mancante");
+
+  // 2) Upload + finalize
+  const uploadRes = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Length": String(size),
+      "X-Goog-Upload-Command": "upload, finalize",
+      "X-Goog-Upload-Offset": "0",
+    },
+    body: bytes,
+  });
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text();
+    throw new Error(`Gemini File API upload: HTTP ${uploadRes.status} ${err}`);
+  }
+
+  const fileInfo = (await uploadRes.json()) as {
+    file?: { uri?: string; name?: string; state?: string };
+  };
+  if (!fileInfo.file?.uri) throw new Error("Gemini File API: fileUri mancante");
+  return fileInfo.file.uri;
+}
+
+// ------------------------------------------------------------------ Verifica persone video
+
+export type EsitoVerificaPersone = {
+  esito: "nessuna_persona_esterna" | "persona_non_riconosciuta" | "errore";
+  dettaglio: string;
+};
+
+/**
+ * Confronta il soggetto principale del video con le foto profilo dei membri
+ * del gruppo. Se trova una persona non riconosciuta, segnala.
+ */
+export async function verificaPersoneVideo(opts: {
+  videoBuffer: Buffer;
+  videoMimeType: string;
+  fotoRiferimento: { profileId: string; base64: string; mimeType: string }[];
+}): Promise<EsitoVerificaPersone> {
+  try {
+    const fileUri = await caricaFileGemini(opts.videoBuffer, opts.videoMimeType);
+
+    const prompt = [
+      "Sei un assistente di riconoscimento visivo per un progetto di divulgazione odontoiatrica (ToothTalk).",
+      "Riceverai un video e alcune foto di riferimento dei membri noti del team.",
+      "",
+      "Tuo compito:",
+      "1. Identifica il SOGGETTO PRINCIPALE del video (chi parla alla telecamera, chi viene intervistato).",
+      "   Escludi ESPLICITAMENTE persone sullo sfondo, passanti, o comparse occasionali.",
+      "2. Confronta il soggetto principale con le foto di riferimento.",
+      "3. Rispondi SOLO con un JSON:",
+      '   {"esito":"nessuna_persona_esterna|persona_non_riconosciuta","dettaglio":"spiegazione in italiano"}',
+      "",
+      '- "nessuna_persona_esterna" se il soggetto corrisponde a una foto di riferimento',
+      '- "persona_non_riconosciuta" se il soggetto NON corrisponde a nessuna foto',
+      "- Ignora persone sullo sfondo e passanti.",
+    ].join("\n");
+
+    const parts: GeminiPart[] = [
+      { fileData: { fileUri, mimeType: opts.videoMimeType } },
+      ...opts.fotoRiferimento.map((f) => ({
+        inlineData: { data: f.base64, mimeType: f.mimeType },
+      })),
+    ];
+
+    const risposta = await genera(prompt, parts);
+    const jsonMatch = risposta.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { esito: "errore", dettaglio: "Risposta IA non interpretabile." };
+
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<EsitoVerificaPersone>;
+    const esito =
+      parsed.esito === "nessuna_persona_esterna" || parsed.esito === "persona_non_riconosciuta"
+        ? parsed.esito : "errore";
+
+    return { esito, dettaglio: parsed.dettaglio ?? "Nessun dettaglio." };
+  } catch (e) {
+    return {
+      esito: "errore",
+      dettaglio: e instanceof Error ? e.message : "Errore imprevisto.",
     };
   }
 }
