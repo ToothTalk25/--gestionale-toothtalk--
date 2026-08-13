@@ -58,10 +58,13 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={accedi}
-      className="flex min-h-screen w-full flex-col px-6 pb-8 pt-14 sm:min-h-0 sm:max-w-sm sm:rounded-2xl sm:bg-white sm:p-8 sm:px-8 sm:py-8 sm:shadow-sm sm:ring-1 sm:ring-black/5"
+      className="flex min-h-screen w-full flex-col px-6 py-8 sm:min-h-0 sm:max-w-sm sm:rounded-2xl sm:bg-white sm:p-8 sm:px-8 sm:py-8 sm:shadow-sm sm:ring-1 sm:ring-black/5"
     >
-      {/* Logo in alto, non più a crescere: il blocco campi+registrati sta
-          subito sotto, non a metà schermo. */}
+      {/* Blocco logo+campi+registrati centrato nello spazio disponibile,
+          con le stesse proporzioni interne di prima; solo Privacy resta
+          sempre in fondo (è fuori da questo contenitore che cresce). */}
+      <div className="flex flex-1 flex-col justify-center sm:flex-none">
+      {/* Logo in alto al blocco. */}
       <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-10 w-auto sm:h-9" />
         <p className="mt-2 text-sm text-slate-500">Gestionale interno</p>
@@ -146,9 +149,10 @@ export default function LoginForm() {
           </div>
         )}
       </div>
+      </div>
 
-      {/* Solo Privacy e cookie resta ancorata in fondo. */}
-      <p className="mt-auto pt-8 text-center text-xs text-slate-400 sm:mt-4 sm:pt-0">
+      {/* Privacy e cookie: resta in fondo, fuori dal blocco centrato sopra. */}
+      <p className="text-center text-xs text-slate-400 sm:mt-4">
         <Link href="/privacy" className="hover:text-slate-600">
           Privacy e cookie policy
         </Link>
