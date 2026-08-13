@@ -455,6 +455,20 @@ export async function impostaGoogleDocUrl(
   const { isAdmin } = await requireSession();
   if (!isAdmin) return fallita(null, "Operazione riservata all'amministratore.");
 
+  // Solo URL Google Docs legittimi: niente javascript:, niente schemi
+  // arbitrari, niente host di terze parti. React scapa già il valore nel
+  // rendering, ma questa validazione impedisce di salvare link pericolosi.
+  if (url !== null) {
+    const u = url.trim();
+    if (
+      !u.startsWith("https://docs.google.com/document/") &&
+      !u.startsWith("https://docs.google.com/document/u/")
+    ) {
+      return fallita(null, "Inserisci un link valido di Google Documenti (docs.google.com/document/...).");
+    }
+    url = u;
+  }
+
   const supabase = await supabaseServer();
   const admin = supabaseAdmin();
 
