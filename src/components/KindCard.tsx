@@ -98,7 +98,7 @@ export default function KindCard({
               accept={accetta}
               cardIntera
             >
-              <div className="text-4xl mb-1 font-bold text-center sm:text-center">{versioni.length}</div>
+              <div className="text-4xl mb-1 font-semibold text-center sm:text-center">{versioni.length}</div>
               <p className="text-[10px] text-slate-400 text-center sm:text-center">
                 {versioni.length === 1 ? "file caricato" : "file caricati"}
               </p>

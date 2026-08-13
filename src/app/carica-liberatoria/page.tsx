@@ -66,7 +66,7 @@ function CaricaLiberatoriaForm() {
       <div className="mx-auto max-w-sm px-4 py-20">
         <div className="rounded-lg border border-green-200 bg-green-50 p-8 text-center">
           <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-xl font-bold text-green-800">Fatto!</h2>
+          <h2 className="text-xl font-semibold text-green-800">Fatto!</h2>
           <p className="mt-2 text-sm text-green-700">{messaggio!.testo}</p>
         </div>
       </div>
@@ -76,7 +76,7 @@ function CaricaLiberatoriaForm() {
   return (
     <div className="mx-auto max-w-sm px-4 py-10">
       <form ref={formRef} onSubmit={e => e.preventDefault()}>
-        <h1 className="text-2xl font-bold text-gray-800">Liberatoria Privacy</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">Liberatoria Privacy</h1>
         <p className="mt-2 text-sm text-gray-600">
           Firma digitale tramite codice monouso. Riceverai un codice di 6 cifre alla tua email.
         </p>

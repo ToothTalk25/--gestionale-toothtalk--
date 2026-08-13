@@ -7,7 +7,7 @@ import RegistraServiceWorker from "@/components/RegistraServiceWorker";
 // dal Regular del corpo testo al Bold dei titoli principali.
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   variable: "--font-poppins",
   display: "swap",
 });
