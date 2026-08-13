@@ -138,7 +138,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   const occupato = fase === "hash" || fase === "upload" || fase === "registro";
 
   const controlli = (
-    <div className={cardIntera ? "text-center" : "text-right"}>
+    <div className="text-center">
       <input
         ref={input}
         type="file"
