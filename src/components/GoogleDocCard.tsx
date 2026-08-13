@@ -65,7 +65,7 @@ export default function GoogleDocCard({
 
   if (googleDocUrl) {
     return (
-      <div className={compatto ? "text-right" : "text-center"}>
+      <div className="text-center">
         <div className={compatto ? "mb-1 text-xl" : "mb-1 text-4xl"}>📄</div>
         <a
           href={googleDocUrl}
@@ -76,7 +76,7 @@ export default function GoogleDocCard({
           Apri Google Doc ↗
         </a>
         {isAdmin && (
-          <div className={compatto ? "flex justify-end" : "flex justify-center"}>
+          <div className="flex justify-center">
             <button
               onClick={() => {
                 setModifica(true);
@@ -94,9 +94,9 @@ export default function GoogleDocCard({
 
   if (isAdmin) {
     return (
-      <div className={compatto ? "text-right" : "text-center"}>
+      <div className="text-center">
         <div className={compatto ? "mb-1 text-xl text-slate-300 font-light" : "mb-2 text-4xl text-slate-300 font-light"}>📄</div>
-        <div className={compatto ? "flex justify-end" : "flex justify-center"}>
+        <div className="flex justify-center">
           <button
             onClick={() => setModifica(true)}
             className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white"
