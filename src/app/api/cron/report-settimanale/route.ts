@@ -81,7 +81,7 @@ export async function GET() {
     const daSigillareLista = daSigillare ?? [];
     const pecLista = pecDaInviare ?? [];
     const modLista = (richiesteModifica ?? []).map((r: any) => ({
-      gruppo: r.titolo?.poli?.nome ?? "—",
+      gruppo: r.gruppo?.poli?.nome ?? "—",
       progetto: r.titolo?.titolo ?? "—",
       stato: r.stato,
     }));
