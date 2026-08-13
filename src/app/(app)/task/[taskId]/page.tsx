@@ -205,12 +205,14 @@ export default async function TaskPage({
               {new Date(task.updated_at).toLocaleString("it-IT")}
             </p>
           </div>
-          <StatusBadge status={task.status} />
-          <NumeroVideoEditor
-            taskId={task.id}
-            numeroVideo={task.numero_video ?? null}
-            isAdmin={isAdmin}
-          />
+          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+            <StatusBadge status={task.status} />
+            <NumeroVideoEditor
+              taskId={task.id}
+              numeroVideo={task.numero_video ?? null}
+              isAdmin={isAdmin}
+            />
+          </div>
         </div>
 
         {task.locked && (
