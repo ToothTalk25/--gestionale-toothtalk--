@@ -58,12 +58,12 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={accedi}
-      className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm ring-1 ring-black/5"
+      className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-8"
     >
-      <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
-      <p className="mt-2 text-sm text-slate-500">Gestionale interno</p>
+      <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-7 w-auto sm:h-9" />
+      <p className="mt-1.5 text-sm text-slate-500 sm:mt-2">Gestionale interno</p>
 
-      <label className="mt-6 block text-sm font-medium">Email</label>
+      <label className="mt-4 block text-sm font-medium sm:mt-6">Email</label>
       <input
         type="email"
         required
@@ -73,7 +73,7 @@ export default function LoginForm() {
         autoComplete="email"
       />
 
-      <label className="mt-4 block text-sm font-medium">Password</label>
+      <label className="mt-3 block text-sm font-medium sm:mt-4">Password</label>
       <input
         type="password"
         required
@@ -88,12 +88,12 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={inCorso}
-        className="mt-6 w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="mt-4 w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50 sm:mt-6"
       >
         {inCorso ? "Accesso…" : "Accedi"}
       </button>
 
-      <div className="mt-4 flex items-center justify-between text-xs">
+      <div className="mt-3 flex items-center justify-between text-xs sm:mt-4">
         <Link href="/registrati" className="text-tt-blue hover:underline">
           Registrati
         </Link>
@@ -137,7 +137,7 @@ export default function LoginForm() {
         </div>
       )}
 
-      <p className="mt-4 text-center text-xs text-slate-400">
+      <p className="mt-3 text-center text-xs text-slate-400 sm:mt-4">
         <Link href="/privacy" className="hover:text-slate-600">
           Privacy e cookie policy
         </Link>
