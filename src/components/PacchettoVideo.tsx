@@ -162,7 +162,7 @@ export default function PacchettoVideo({
 
   return (
     <section className="rounded-2xl bg-white p-6 ring-2 ring-tt-ink/10">
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap">
         <div className="flex-1">
           <h2 className="text-lg font-medium">Video completo</h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
