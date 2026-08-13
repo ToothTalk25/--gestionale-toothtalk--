@@ -86,19 +86,31 @@ export default function KindCard({
       {/* ================= MOBILE: card compatta a una colonna ================= */}
       <div className="flex flex-col items-start gap-1.5 sm:hidden">
         <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
-        <Contenuto
-          ref={refMobile}
-          isGoogleDoc={isGoogleDoc}
-          googleDocUrl={googleDocUrl}
-          mancaNumeroVideo={mancaNumeroVideo}
-          versioni={versioni}
-          taskId={taskId}
-          kind={kind}
-          isAdmin={isAdmin}
-          locked={locked}
-          accetta={accetta}
-          compatto
-        />
+        <div className="flex w-full items-start gap-2">
+          {/* Marcatore piccolo sotto il titolo, solo per gli slot di upload
+              (non per i Google Doc, dove tutto va a destra): "+" se vuoto,
+              il numero se ci sono già file, come nella card desktop. */}
+          {!isGoogleDoc && !mancaNumeroVideo && (
+            <span className="shrink-0 pt-0.5 text-base font-light leading-none text-slate-300" aria-hidden>
+              {versioni.length > 0 ? versioni.length : "+"}
+            </span>
+          )}
+          <div className="ml-auto">
+            <Contenuto
+              ref={refMobile}
+              isGoogleDoc={isGoogleDoc}
+              googleDocUrl={googleDocUrl}
+              mancaNumeroVideo={mancaNumeroVideo}
+              versioni={versioni}
+              taskId={taskId}
+              kind={kind}
+              isAdmin={isAdmin}
+              locked={locked}
+              accetta={accetta}
+              compatto
+            />
+          </div>
+        </div>
       </div>
 
       {/* ================= DESKTOP: card quadrata invariata ================= */}
@@ -156,7 +168,15 @@ function Contenuto({
   compatto?: boolean;
 }) {
   if (isGoogleDoc) {
-    return <GoogleDocCard taskId={taskId} kind={kind} googleDocUrl={googleDocUrl} isAdmin={isAdmin} />;
+    return (
+      <GoogleDocCard
+        taskId={taskId}
+        kind={kind}
+        googleDocUrl={googleDocUrl}
+        isAdmin={isAdmin}
+        compatto={compatto}
+      />
+    );
   }
   if (mancaNumeroVideo) {
     return <p className="text-xs text-amber-700">Prima assegna un numero video.</p>;

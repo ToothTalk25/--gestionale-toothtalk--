@@ -10,11 +10,14 @@ export default function GoogleDocCard({
   kind,
   googleDocUrl,
   isAdmin,
+  compatto = false,
 }: {
   taskId: string;
   kind: DeliverableKind;
   googleDocUrl: string | null;
   isAdmin: boolean;
+  /** true nella card compatta mobile: tutto (icona, bottone, "Cambia link") va a destra e più piccolo. */
+  compatto?: boolean;
 }) {
   const router = useRouter();
   const [url, setUrl] = useState(googleDocUrl ?? "");
@@ -62,8 +65,8 @@ export default function GoogleDocCard({
 
   if (googleDocUrl) {
     return (
-      <div className="text-center">
-        <div className="mb-1 text-4xl">📄</div>
+      <div className={compatto ? "text-right" : "text-center"}>
+        <div className={compatto ? "mb-1 text-xl" : "mb-1 text-4xl"}>📄</div>
         <a
           href={googleDocUrl}
           target="_blank"
@@ -73,7 +76,7 @@ export default function GoogleDocCard({
           Apri Google Doc ↗
         </a>
         {isAdmin && (
-          <div className="flex justify-center">
+          <div className={compatto ? "flex justify-end" : "flex justify-center"}>
             <button
               onClick={() => {
                 setModifica(true);
@@ -91,9 +94,9 @@ export default function GoogleDocCard({
 
   if (isAdmin) {
     return (
-      <div className="text-center">
-        <div className="mb-2 text-4xl text-slate-300 font-light">📄</div>
-        <div className="flex justify-center">
+      <div className={compatto ? "text-right" : "text-center"}>
+        <div className={compatto ? "mb-1 text-xl text-slate-300 font-light" : "mb-2 text-4xl text-slate-300 font-light"}>📄</div>
+        <div className={compatto ? "flex justify-end" : "flex justify-center"}>
           <button
             onClick={() => setModifica(true)}
             className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white"
@@ -106,9 +109,11 @@ export default function GoogleDocCard({
   }
 
   return (
-    <div className="text-center">
-      <div className="mb-1 text-4xl text-slate-300 font-light">📄</div>
-      <p className="text-[10px] text-slate-400 px-2">Nessun documento collegato</p>
+    <div className={compatto ? "text-right" : "text-center"}>
+      <div className={compatto ? "mb-1 text-xl text-slate-300 font-light" : "mb-1 text-4xl text-slate-300 font-light"}>📄</div>
+      <p className={compatto ? "max-w-[10rem] text-[10px] text-slate-400" : "px-2 text-[10px] text-slate-400"}>
+        Nessun documento collegato
+      </p>
     </div>
   );
 }
