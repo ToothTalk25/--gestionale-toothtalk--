@@ -37,6 +37,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Feedback al tocco: senza questo, -webkit-tap-highlight-color: transparent
+   (sopra) toglie ogni segnale visivo di "ho premuto qui" — ogni bottone e
+   link si scurisce leggermente mentre è premuto, come in una vera app. */
+button:not(:disabled):active,
+a:active {
+  filter: brightness(0.92);
+}
+
 /* L'header sticky in standalone deve stare sotto la notch, non dentro. */
 @media (display-mode: standalone) {
   body {
