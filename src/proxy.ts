@@ -55,11 +55,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // manifest.json e sw.js devono restare raggiungibili senza sessione: il
-  // browser li richiede per valutare l'installabilità della PWA, prima
-  // ancora che chi guarda abbia fatto login (o senza mai farlo, se guarda
-  // solo la scheda del browser).
-  // /api/* è escluso: ci stanno gli endpoint dei cron Vercel, chiamati senza
-  // sessione (la loro autorizzazione è gestita dentro, via service role).
-  matcher: ["/((?!_next|favicon.ico|manifest.json|sw.js|api/|\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // manifest.json, sw.js, /api/* e gli asset statici devono restare
+  // raggiungibili senza sessione: i cron Vercel chiamano /api senza login,
+  // il browser chiede manifest/sw per la PWA, e le immagini non vanno
+  // intercettate dal redirect di autenticazione.
+  matcher: [
+    "^/((?!api|_next|favicon\\.ico|manifest\\.json|sw\\.js|[^?]*\\.(?:svg|png|jpg|jpeg|gif|webp)($|\\?)).*)",
+  ],
 };
