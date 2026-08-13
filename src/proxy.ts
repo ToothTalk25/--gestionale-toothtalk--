@@ -32,15 +32,19 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Rinnova il token di sessione a ogni richiesta.
+  // Rinnova il token di sessione a ogni richiesta. getUser() farebbe una
+  // chiamata HTTP a Supabase su OGNI richiesta (anche su ogni asset) e in
+  // mobile la latenza si sente subito: getSession() legge solo i cookie
+  // locali, è istantaneo. La validazione reale del token la fa la pagina
+  // (getSessionContext), dove la sessione arriva comunque già fresca.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const path = request.nextUrl.pathname;
   const pubblica = PUBBLICHE.some((p) => path.startsWith(p));
 
-  if (!user && !pubblica) {
+  if (!session && !pubblica) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);

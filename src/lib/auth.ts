@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import type { Polo, Profile, SessionContext } from "@/lib/types";
 
@@ -15,8 +16,13 @@ export function ordinaPoli(poli: Polo[]): Polo[] {
  * Risolve utente + ruolo + poli di appartenenza.
  * È l'unico punto in cui l'app decide "chi sei"; le autorizzazioni vere
  * restano comunque nel database (RLS), questo serve solo a disegnare la UI.
+ *
+ * Avvolta in React cache(): se layout e pagina la chiamano entrambi nello
+ * stesso render, getUser() (che fa una chiamata HTTP a Supabase) parte una
+ * sola volta, non una per componente. È la differenza fra 3 e 1 chiamata
+ * di rete per ogni navigazione.
  */
-export async function getSessionContext(): Promise<SessionContext | null> {
+export const getSessionContext = cache(async function getSessionContext(): Promise<SessionContext | null> {
   const supabase = await supabaseServer();
 
   const { data: auth } = await supabase.auth.getUser();
@@ -46,7 +52,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     poli: ordinaPoli(poli ?? []),
     isAdmin: profile.role === "admin",
   };
-}
+});
 
 export async function requireSession(): Promise<SessionContext> {
   const ctx = await getSessionContext();
