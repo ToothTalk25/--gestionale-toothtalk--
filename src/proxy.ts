@@ -61,5 +61,5 @@ export const config = {
   // solo la scheda del browser).
   // /api/* è escluso: ci stanno gli endpoint dei cron Vercel, chiamati senza
   // sessione (la loro autorizzazione è gestita dentro, via service role).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|api/.*|\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next|favicon.ico|manifest.json|sw.js|api/|\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
