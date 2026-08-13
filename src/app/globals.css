@@ -26,6 +26,25 @@ body {
   background: var(--color-tt-sand);
   color: var(--color-tt-ink);
   font-family: var(--font-sans);
+  /* Su iOS standalone (Aggiungi a Home) il contenuto si estende sotto il
+     notch e la barra home: le safe-area evitano che finisca nascosto. */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Scroll "da app": niente rimbalzo oltre i bordi e sfondo sempre colorato. */
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* L'header sticky in standalone deve stare sotto la notch, non dentro. */
+@media (display-mode: standalone) {
+  body {
+    padding-top: 0;
+  }
+  header.sticky {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /*

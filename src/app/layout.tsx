@@ -17,10 +17,17 @@ export const metadata: Metadata = {
   description:
     "Gestionale interno ToothTalk: spazio di lavoro dei gruppi universitari e archivio dei materiali depositati",
   manifest: "/manifest.json",
+  applicationName: "Gestionale ToothTalk",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     title: "Gestionale ToothTalk",
     statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 
@@ -28,6 +35,8 @@ export const viewport: Viewport = {
   themeColor: "#0d1b2a",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 
