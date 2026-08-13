@@ -40,6 +40,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it" className={poppins.variable}>
+      <head>
+        {/* PWA iOS: questi tag Next.js non li genera da solo. "capable" è
+            quello che fa aprire l'app a schermo intero SENZA barra URL quando
+            viene aggiunta a Home; status-bar-style rende lo sfondo della
+            status bar trasparente col logo. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body className="min-h-screen antialiased">
         <RegistraServiceWorker />
         {children}

@@ -1,6 +1,6 @@
 {
   "name": "Gestionale ToothTalk",
-  "short_name": "Gestionale ToothTalk",
+  "short_name": "ToothTalk",
   "description": "Spazio di lavoro dei gruppi universitari — deposito video certificato via PEC",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -24,6 +24,11 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ]
 }
