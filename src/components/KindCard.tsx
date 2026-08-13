@@ -39,10 +39,20 @@ export default function KindCard({
   accetta?: string;
   nomi: Record<string, string>;
 }) {
-  const ref = useRef<UploadDeliverableHandle>(null);
+  const refMobile = useRef<UploadDeliverableHandle>(null);
+  const refDesktop = useRef<UploadDeliverableHandle>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const droppabile = !isGoogleDoc && !mancaNumeroVideo;
+
+  function consegna(file: File) {
+    // Su mobile il blocco compatto è quello visibile, su desktop quello
+    // quadrato: scegli il ref del viewport corrente (entrambi sono montati,
+    // solo uno è visibile via CSS).
+    const mobile = typeof window !== "undefined" && !window.matchMedia("(min-width: 640px)").matches;
+    const target = mobile ? refMobile.current : refDesktop.current;
+    target?.handleFile(file);
+  }
 
   return (
     <div
@@ -61,7 +71,7 @@ export default function KindCard({
               e.preventDefault();
               setDragOver(false);
               const f = e.dataTransfer.files?.[0];
-              if (f) ref.current?.handleFile(f);
+              if (f) consegna(f);
             }
           : undefined
       }
@@ -73,50 +83,40 @@ export default function KindCard({
             : "bg-white ring-black/5"
       }`}
     >
-      <div className="flex items-center gap-3 sm:block">
-        {/* Su mobile l'area stato/azione sta a sinistra in una riga orizzontale:
-            icona o contatore + etichetta leggibile. Da sm: torna verticale come oggi. */}
-        <div className="flex-1 sm:flex-none sm:pt-2">
-          <h3 className="text-base font-semibold text-slate-700 text-center sm:text-center">{label}</h3>
-        </div>
+      {/* ================= MOBILE: card compatta a una colonna ================= */}
+      <div className="flex flex-col items-start gap-1.5 sm:hidden">
+        <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
+        <Contenuto
+          ref={refMobile}
+          isGoogleDoc={isGoogleDoc}
+          googleDocUrl={googleDocUrl}
+          mancaNumeroVideo={mancaNumeroVideo}
+          versioni={versioni}
+          taskId={taskId}
+          kind={kind}
+          isAdmin={isAdmin}
+          locked={locked}
+          accetta={accetta}
+          compatto
+        />
+      </div>
 
-        <div className="flex-1 sm:block sm:flex-1 sm:flex sm:items-center sm:justify-center sm:pb-2">
-          {isGoogleDoc ? (
-            <GoogleDocCard taskId={taskId} kind={kind} googleDocUrl={googleDocUrl} isAdmin={isAdmin} />
-          ) : mancaNumeroVideo ? (
-            <p className="text-xs text-amber-700 text-center px-2">
-              Prima assegna un numero video.
-            </p>
-          ) : versioni.length > 0 ? (
-            <UploadDeliverable
-              ref={ref}
-              taskId={taskId}
-              kind={kind}
-              isAdmin={isAdmin}
-              locked={locked}
-              esisteOriginale={versioni.some((v) => v.origin === "originale")}
-              accept={accetta}
-              cardIntera
-            >
-              <div className="text-4xl mb-1 font-semibold text-center sm:text-center">{versioni.length}</div>
-              <p className="text-[10px] text-slate-400 text-center sm:text-center">
-                {versioni.length === 1 ? "file caricato" : "file caricati"}
-              </p>
-            </UploadDeliverable>
-          ) : (
-            <UploadDeliverable
-              ref={ref}
-              taskId={taskId}
-              kind={kind}
-              isAdmin={isAdmin}
-              locked={locked}
-              esisteOriginale={false}
-              accept={accetta}
-              cardIntera
-            >
-              <div className="mb-2 text-4xl text-slate-300 font-light text-center sm:text-center">+</div>
-            </UploadDeliverable>
-          )}
+      {/* ================= DESKTOP: card quadrata invariata ================= */}
+      <div className="hidden sm:block">
+        <h3 className="pt-2 text-base font-semibold text-slate-700 text-center">{label}</h3>
+        <div className="flex-1 flex items-center justify-center pb-2">
+          <Contenuto
+            ref={refDesktop}
+            isGoogleDoc={isGoogleDoc}
+            googleDocUrl={googleDocUrl}
+            mancaNumeroVideo={mancaNumeroVideo}
+            versioni={versioni}
+            taskId={taskId}
+            kind={kind}
+            isAdmin={isAdmin}
+            locked={locked}
+            accetta={accetta}
+          />
         </div>
       </div>
 
@@ -126,5 +126,80 @@ export default function KindCard({
         </div>
       )}
     </div>
+  );
+}
+
+/** Blocco azione/stato, condiviso fra i due layout (mobile compatto / desktop). */
+function Contenuto({
+  ref,
+  isGoogleDoc,
+  googleDocUrl,
+  mancaNumeroVideo,
+  versioni,
+  taskId,
+  kind,
+  isAdmin,
+  locked,
+  accetta,
+  compatto = false,
+}: {
+  ref: React.RefObject<UploadDeliverableHandle | null>;
+  isGoogleDoc: boolean;
+  googleDocUrl: string | null;
+  mancaNumeroVideo: boolean;
+  versioni: DeliverableVersion[];
+  taskId: string;
+  kind: DeliverableKind;
+  isAdmin: boolean;
+  locked: boolean;
+  accetta?: string;
+  compatto?: boolean;
+}) {
+  if (isGoogleDoc) {
+    return <GoogleDocCard taskId={taskId} kind={kind} googleDocUrl={googleDocUrl} isAdmin={isAdmin} />;
+  }
+  if (mancaNumeroVideo) {
+    return <p className="text-xs text-amber-700">Prima assegna un numero video.</p>;
+  }
+  if (versioni.length > 0) {
+    return (
+      <UploadDeliverable
+        ref={ref}
+        taskId={taskId}
+        kind={kind}
+        isAdmin={isAdmin}
+        locked={locked}
+        esisteOriginale={versioni.some((v) => v.origin === "originale")}
+        accept={accetta}
+        cardIntera={!compatto}
+      >
+        {compatto ? (
+          <span className="text-xs text-slate-400">
+            {versioni.length === 1 ? "1 file caricato" : `${versioni.length} file caricati`}
+          </span>
+        ) : (
+          <>
+            <div className="text-4xl mb-1 font-semibold text-center">{versioni.length}</div>
+            <p className="text-[10px] text-slate-400 text-center">
+              {versioni.length === 1 ? "file caricato" : "file caricati"}
+            </p>
+          </>
+        )}
+      </UploadDeliverable>
+    );
+  }
+  return (
+    <UploadDeliverable
+      ref={ref}
+      taskId={taskId}
+      kind={kind}
+      isAdmin={isAdmin}
+      locked={locked}
+      esisteOriginale={false}
+      accept={accetta}
+      cardIntera={!compatto}
+    >
+      {!compatto && <div className="mb-2 text-4xl text-slate-300 font-light text-center">+</div>}
+    </UploadDeliverable>
   );
 }
