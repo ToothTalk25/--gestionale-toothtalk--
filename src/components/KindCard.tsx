@@ -83,33 +83,32 @@ export default function KindCard({
             : "bg-white ring-black/5"
       }`}
     >
-      {/* ================= MOBILE: card compatta a una colonna ================= */}
-      <div className="flex flex-col items-start gap-1.5 sm:hidden">
-        <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
-        <div className="flex w-full items-start gap-2">
-          {/* Marcatore piccolo sotto il titolo, solo per gli slot di upload
-              (non per i Google Doc, dove tutto va a destra): "+" se vuoto,
-              il numero se ci sono già file, come nella card desktop. */}
+      {/* ================= MOBILE: card compatta divisa a metà ================= */}
+      <div className="flex items-center gap-2 sm:hidden">
+        {/* Metà sinistra: titolo + "+"/numero, centrati insieme. */}
+        <div className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-center">
+          <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
           {!isGoogleDoc && !mancaNumeroVideo && (
-            <span className="shrink-0 pt-0.5 text-base font-light leading-none text-slate-300" aria-hidden>
+            <span className="text-2xl font-light leading-none text-slate-300" aria-hidden>
               {versioni.length > 0 ? versioni.length : "+"}
             </span>
           )}
-          <div className="ml-auto">
-            <Contenuto
-              ref={refMobile}
-              isGoogleDoc={isGoogleDoc}
-              googleDocUrl={googleDocUrl}
-              mancaNumeroVideo={mancaNumeroVideo}
-              versioni={versioni}
-              taskId={taskId}
-              kind={kind}
-              isAdmin={isAdmin}
-              locked={locked}
-              accetta={accetta}
-              compatto
-            />
-          </div>
+        </div>
+        {/* Metà destra: bottone/stato, staccati dal bordo della card. */}
+        <div className="flex-1 pr-1">
+          <Contenuto
+            ref={refMobile}
+            isGoogleDoc={isGoogleDoc}
+            googleDocUrl={googleDocUrl}
+            mancaNumeroVideo={mancaNumeroVideo}
+            versioni={versioni}
+            taskId={taskId}
+            kind={kind}
+            isAdmin={isAdmin}
+            locked={locked}
+            accetta={accetta}
+            compatto
+          />
         </div>
       </div>
 
