@@ -18,9 +18,6 @@ export const metadata: Metadata = {
     "Gestionale interno ToothTalk: spazio di lavoro dei gruppi universitari e archivio dei materiali depositati",
   manifest: "/manifest.json",
   applicationName: "Gestionale ToothTalk",
-  icons: {
-    apple: "/apple-touch-icon.png",
-  },
   appleWebApp: {
     capable: true,
     title: "Gestionale ToothTalk",
