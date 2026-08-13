@@ -1,13 +1,13 @@
 "use client";
 
-import { createSHA256 } from "hash-wasm";
-
 /**
  * SHA-256 del file calcolato nel browser in streaming.
  *
- * Perché non crypto.subtle.digest: richiede l'intero file in memoria, e qui
- * si caricano video grezzi da diversi GB. hash-wasm aggiorna a blocchi di
- * 8 MB con memoria costante.
+ * Usa hash-wasm (SHA-256 standard, identico a `shasum -a 256`): l'impronta
+ * deve combaciare con quella ricalcolata lato server/PEC per avere valore
+ * probatorio. hash-wasm è importato DINAMICAMENTE solo quando parte un
+ * upload: così i suoi ~2MB di WASM non appesantiscono i bundle caricati
+ * all'apertura delle pagine (l'upload avviene sempre dopo un click).
  *
  * L'impronta è ciò che rende dimostrabile "questo è esattamente il file che
  * ho consegnato il giorno X": viene sigillata nel registro insieme al
@@ -17,6 +17,7 @@ export async function sha256File(
   file: File,
   onProgress?: (frazione: number) => void,
 ): Promise<string> {
+  const { createSHA256 } = await import("hash-wasm");
   const hasher = await createSHA256();
   hasher.init();
 
