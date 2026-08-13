@@ -58,17 +58,17 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={accedi}
-      className="flex min-h-screen w-full flex-col px-6 py-10 sm:min-h-0 sm:max-w-sm sm:rounded-2xl sm:bg-white sm:p-8 sm:px-8 sm:py-8 sm:shadow-sm sm:ring-1 sm:ring-black/5"
+      className="flex min-h-screen w-full flex-col px-6 pb-8 pt-14 sm:min-h-0 sm:max-w-sm sm:rounded-2xl sm:bg-white sm:p-8 sm:px-8 sm:py-8 sm:shadow-sm sm:ring-1 sm:ring-black/5"
     >
-      {/* Zona superiore: logo centrato, cresce fino a occupare la metà dello
-          schermo. Da sm: torna un semplice blocco in alto, come nella card. */}
-      <div className="flex flex-1 flex-col items-center justify-center text-center sm:flex-none sm:items-start sm:text-left">
+      {/* Logo in alto, non più a crescere: il blocco campi+registrati sta
+          subito sotto, non a metà schermo. */}
+      <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-10 w-auto sm:h-9" />
         <p className="mt-2 text-sm text-slate-500">Gestionale interno</p>
       </div>
 
-      {/* Zona centrale: campi. */}
-      <div className="sm:mt-6">
+      {/* Campi, subito sotto il logo. */}
+      <div className="mt-8 sm:mt-6">
         <label className="block text-sm font-medium">Email</label>
         <input
           type="email"
@@ -100,8 +100,8 @@ export default function LoginForm() {
         </button>
       </div>
 
-      {/* Zona inferiore: link, sempre in fondo (mt-auto) su mobile. */}
-      <div className="mt-auto pt-8 sm:mt-4 sm:pt-0">
+      {/* Registrati / Password dimenticata, subito sotto il bottone. */}
+      <div className="mt-4">
         <div className="flex items-center justify-between text-xs">
           <Link href="/registrati" className="text-tt-blue hover:underline">
             Registrati
@@ -145,13 +145,14 @@ export default function LoginForm() {
             {messaggio && <p className="text-xs text-emerald-600">{messaggio}</p>}
           </div>
         )}
-
-        <p className="mt-4 text-center text-xs text-slate-400">
-          <Link href="/privacy" className="hover:text-slate-600">
-            Privacy e cookie policy
-          </Link>
-        </p>
       </div>
+
+      {/* Solo Privacy e cookie resta ancorata in fondo. */}
+      <p className="mt-auto pt-8 text-center text-xs text-slate-400 sm:mt-4 sm:pt-0">
+        <Link href="/privacy" className="hover:text-slate-600">
+          Privacy e cookie policy
+        </Link>
+      </p>
     </form>
   );
 }
