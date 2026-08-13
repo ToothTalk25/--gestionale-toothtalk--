@@ -104,7 +104,7 @@ export default async function VerbalePage({
               </dl>
             ) : (
               <>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 break-all text-xs text-slate-400">
                   SHA-256 <span className="font-mono">{e.sha256}</span> — {e.caratteri}{" "}
                   caratteri (UTF-8)
                 </p>

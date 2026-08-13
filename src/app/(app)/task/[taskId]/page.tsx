@@ -32,45 +32,134 @@ export default async function TaskPage({
   const { profile, isAdmin } = await requireSession();
   const supabase = await supabaseServer();
 
-  const { data: task } = await supabase
-    .from("tasks")
-    .select(
-      "*, formati(id, slug, nome, richiede_liberatoria, script_richiesto, istruzioni_script)",
-    )
-    .eq("id", taskId)
-    .single<Task & { formati: Formato | null }>();
+  type ElementoRaw = {
+    ruolo: "video" | "copertina" | "liberatoria";
+    deliverable_versions: {
+      version_id: string;
+      file_name: string;
+      sha256: string;
+      size_bytes: number | null;
+      uploaded_at: string;
+      archiviato_esterno: boolean;
+    };
+  };
+  type EsitoRiconoscimento = { esito: string; dettaglio: string | null };
+
+  // Tutte le query di questa pagina dipendono solo da taskId (nessuna
+  // aspetta il risultato di un'altra) tranne polo/versioni/profili/i dati
+  // legati al pacchetto: lanciarle in sequenza con await, una alla volta,
+  // significava un giro di rete Supabase dopo l'altro — su una connessione
+  // debole si sentiva parecchio nel cambio pagina. Raggruppate per onda:
+  // ogni onda parte in parallelo, la successiva usa solo dati già arrivati.
+  const [
+    { data: task },
+    { data: deliverables },
+    { data: richieste },
+    { data: pacchetto },
+    { data: storico },
+  ] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(
+        "*, formati(id, slug, nome, richiede_liberatoria, script_richiesto, istruzioni_script)",
+      )
+      .eq("id", taskId)
+      .single<Task & { formati: Formato | null }>(),
+    supabase.from("deliverables").select("*").eq("task_id", taskId).returns<Deliverable[]>(),
+    supabase
+      .from("richieste_modifica")
+      .select("*")
+      .eq("task_id", taskId)
+      .order("creata_at", { ascending: false })
+      .returns<RichiestaModifica[]>(),
+    // Pacchetto pubblicabile: separato dai materiali di lavorazione.
+    supabase
+      .from("pacchetti_video")
+      .select("*")
+      .eq("task_id", taskId)
+      .neq("stato", "annullato")
+      .maybeSingle<PacchettoVideoRow>(),
+    supabase
+      .from("task_status_history")
+      .select("id, da_status, a_status, at, actor")
+      .eq("task_id", taskId)
+      .order("at", { ascending: false })
+      .limit(20),
+  ]);
 
   if (!task) notFound();
 
-  const { data: polo } = await supabase
-    .from("poli")
-    .select("nome, drive_immagini_montaggio_folder_id")
-    .eq("id", task.polo_id)
-    .single<{ nome: string; drive_immagini_montaggio_folder_id: string | null }>();
-
-  const { data: deliverables } = await supabase
-    .from("deliverables")
-    .select("*")
-    .eq("task_id", taskId)
-    .returns<Deliverable[]>();
-
   const ids = (deliverables ?? []).map((d) => d.id);
 
-  const { data: versioni } = ids.length
-    ? await supabase
-        .from("deliverable_versions")
-        .select("*")
-        .in("deliverable_id", ids)
-        .order("version_no", { ascending: true })
-        .returns<DeliverableVersion[]>()
-    : { data: [] as DeliverableVersion[] };
+  const [{ data: polo }, { data: versioni }, { data: elementiRaw }, { data: esportazione }, { data: verificaVideo }, { data: verificaCopertina }, { data: liberatoriaInfo }] =
+    await Promise.all([
+      supabase
+        .from("poli")
+        .select("nome, drive_immagini_montaggio_folder_id")
+        .eq("id", task.polo_id)
+        .single<{ nome: string; drive_immagini_montaggio_folder_id: string | null }>(),
+      ids.length
+        ? supabase
+            .from("deliverable_versions")
+            .select("*")
+            .in("deliverable_id", ids)
+            .order("version_no", { ascending: true })
+            .returns<DeliverableVersion[]>()
+        : Promise.resolve({ data: [] as DeliverableVersion[] }),
+      pacchetto
+        ? supabase
+            .from("pacchetto_elementi")
+            .select("ruolo, deliverable_versions!inner(version_id:id, file_name, sha256, size_bytes, uploaded_at, archiviato_esterno)")
+            .eq("pacchetto_id", pacchetto.id)
+            .returns<ElementoRaw[]>()
+        : Promise.resolve({ data: [] as ElementoRaw[] }),
+      // Stato della copia su Google Drive (RLS: accesso globale o membri del gruppo).
+      pacchetto
+        ? supabase.from("esportazioni_drive").select("*").eq("pacchetto_id", pacchetto.id).maybeSingle<EsportazioneDriveRow>()
+        : Promise.resolve({ data: null }),
+      // Ultimo esito riconoscimento automatico (Fase D), video e copertina
+      // sono verificati separatamente: un vecchio esito negativo dell'uno non
+      // deve nascondersi dietro l'ultimo esito pulito dell'altro.
+      pacchetto
+        ? supabase
+            .from("verifiche_riconoscimento")
+            .select("esito, dettaglio")
+            .eq("pacchetto_id", pacchetto.id)
+            .eq("ruolo", "video")
+            .order("creato_at", { ascending: false })
+            .limit(1)
+            .maybeSingle<EsitoRiconoscimento>()
+        : Promise.resolve({ data: null }),
+      pacchetto
+        ? supabase
+            .from("verifiche_riconoscimento")
+            .select("esito, dettaglio")
+            .eq("pacchetto_id", pacchetto.id)
+            .eq("ruolo", "copertina")
+            .order("creato_at", { ascending: false })
+            .limit(1)
+            .maybeSingle<EsitoRiconoscimento>()
+        : Promise.resolve({ data: null }),
+      // Esiste una richiesta di liberatoria firmata via OTP per questo progetto?
+      // Stessa condizione esatta controllata da sigilla_pacchetto (0052): non la
+      // più recente in assoluto, perché ogni invio crea una nuova riga e una
+      // vecchia già firmata resterebbe valida anche se ne esiste una più nuova
+      // ancora in sospeso — prendere solo "l'ultima" farebbe dire alla UI che il
+      // sigillo è bloccato quando il server lo permetterebbe comunque.
+      supabase
+        .from("richieste_liberatoria")
+        .select("stato, metodo_firma")
+        .eq("task_id", taskId)
+        .eq("stato", "caricata")
+        .eq("metodo_firma", "otp")
+        .limit(1)
+        .maybeSingle<{ stato: string; metodo_firma: string | null }>(),
+    ]);
 
-  const { data: richieste } = await supabase
-    .from("richieste_modifica")
-    .select("*")
-    .eq("task_id", taskId)
-    .order("creata_at", { ascending: false })
-    .returns<RichiestaModifica[]>();
+  const elementiPacchetto: ElementoCaricato[] = (elementiRaw ?? []).map((e) => ({
+    ruolo: e.ruolo,
+    ...e.deliverable_versions,
+  }));
 
   // Una sola query per tutti i nomi che compaiono nella pagina: chi ha
   // caricato file e chi ha aperto o chiuso una richiesta.
@@ -90,97 +179,6 @@ export default async function TaskPage({
   const nomi = Object.fromEntries(
     (profili ?? []).map((p) => [p.id, p.full_name ?? p.email]),
   );
-
-  // Pacchetto pubblicabile: separato dai materiali di lavorazione.
-  const { data: pacchetto } = await supabase
-    .from("pacchetti_video")
-    .select("*")
-    .eq("task_id", taskId)
-    .neq("stato", "annullato")
-    .maybeSingle<PacchettoVideoRow>();
-
-  type ElementoRaw = {
-    ruolo: "video" | "copertina" | "liberatoria";
-    deliverable_versions: {
-      version_id: string;
-      file_name: string;
-      sha256: string;
-      size_bytes: number | null;
-      uploaded_at: string;
-      archiviato_esterno: boolean;
-    };
-  };
-
-  const { data: elementiRaw } = pacchetto
-    ? await supabase
-        .from("pacchetto_elementi")
-        .select("ruolo, deliverable_versions!inner(version_id:id, file_name, sha256, size_bytes, uploaded_at, archiviato_esterno)")
-        .eq("pacchetto_id", pacchetto.id)
-        .returns<ElementoRaw[]>()
-    : { data: [] as ElementoRaw[] };
-
-  const elementiPacchetto: ElementoCaricato[] = (elementiRaw ?? []).map((e) => ({
-    ruolo: e.ruolo,
-    ...e.deliverable_versions,
-  }));
-
-  // Stato della copia su Google Drive (RLS: accesso globale o membri del gruppo).
-  const { data: esportazione } = pacchetto
-    ? await supabase
-        .from("esportazioni_drive")
-        .select("*")
-        .eq("pacchetto_id", pacchetto.id)
-        .maybeSingle<EsportazioneDriveRow>()
-    : { data: null };
-
-  // Ultimo esito riconoscimento automatico (Fase D), video e copertina
-  // sono verificati separatamente: un vecchio esito negativo dell'uno non
-  // deve nascondersi dietro l'ultimo esito pulito dell'altro.
-  type EsitoRiconoscimento = { esito: string; dettaglio: string | null };
-  const { data: verificaVideo } = pacchetto
-    ? await supabase
-        .from("verifiche_riconoscimento")
-        .select("esito, dettaglio")
-        .eq("pacchetto_id", pacchetto.id)
-        .eq("ruolo", "video")
-        .order("creato_at", { ascending: false })
-        .limit(1)
-        .maybeSingle<EsitoRiconoscimento>()
-    : { data: null };
-  const { data: verificaCopertina } = pacchetto
-    ? await supabase
-        .from("verifiche_riconoscimento")
-        .select("esito, dettaglio")
-        .eq("pacchetto_id", pacchetto.id)
-        .eq("ruolo", "copertina")
-        .order("creato_at", { ascending: false })
-        .limit(1)
-        .maybeSingle<EsitoRiconoscimento>()
-    : { data: null };
-
-  // Esiste una richiesta di liberatoria firmata via OTP per questo progetto?
-  // Stessa condizione esatta controllata da sigilla_pacchetto (0052): non la
-  // più recente in assoluto, perché ogni invio crea una nuova riga e una
-  // vecchia già firmata resterebbe valida anche se ne esiste una più nuova
-  // ancora in sospeso — prendere solo "l'ultima" farebbe dire alla UI che il
-  // sigillo è bloccato quando il server lo permetterebbe comunque.
-  const { data: liberatoriaInfo } = pacchetto
-    ? await supabase
-        .from("richieste_liberatoria")
-        .select("stato, metodo_firma")
-        .eq("task_id", taskId)
-        .eq("stato", "caricata")
-        .eq("metodo_firma", "otp")
-        .limit(1)
-        .maybeSingle<{ stato: string; metodo_firma: string | null }>()
-    : { data: null };
-
-  const { data: storico } = await supabase
-    .from("task_status_history")
-    .select("id, da_status, a_status, at, actor")
-    .eq("task_id", taskId)
-    .order("at", { ascending: false })
-    .limit(20);
 
   return (
     <div className="space-y-8">
