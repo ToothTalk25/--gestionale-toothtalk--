@@ -63,9 +63,10 @@ export default function LoginForm() {
       {/* Blocco logo+campi+registrati centrato nello spazio disponibile,
           con le stesse proporzioni interne di prima; solo Privacy resta
           sempre in fondo (è fuori da questo contenitore che cresce). */}
-      <div className="flex flex-1 flex-col justify-center pb-10 sm:flex-none sm:pb-0">
-      {/* Logo in alto al blocco. */}
-      <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+      <div className="flex flex-1 flex-col justify-center sm:flex-none">
+      {/* Solo il logo (con la scritta sotto) nudgiato un filo più in alto,
+          il resto del blocco resta dov'era. */}
+      <div className="-mt-4 flex flex-col items-center text-center sm:mt-0 sm:items-start sm:text-left">
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-10 w-auto sm:h-9" />
         <p className="mt-2 text-sm text-slate-500">Gestionale interno</p>
       </div>
