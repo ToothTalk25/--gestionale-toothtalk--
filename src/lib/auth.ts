@@ -25,15 +25,21 @@ export function ordinaPoli(poli: Polo[]): Polo[] {
 export const getSessionContext = cache(async function getSessionContext(): Promise<SessionContext | null> {
   const supabase = await supabaseServer();
 
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return null;
+  // getSession() legge il JWT locale (istantaneo): l'id utente è già nel
+  // token, niente chiamata HTTP a Supabase. La validazione reale resta
+  // comunque nella RLS su ogni query e nel check profile.attivo qui sotto:
+  // un token revocato o un profilo disattivato non passa.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user) return null;
 
   const { data: profile } = await supabase
     .from("profiles")
     .select(
       "id, email, pec, full_name, role, attivo, universita, foto_path, accordo_path, accordo_sha256, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_verificato_at",
     )
-    .eq("id", auth.user.id)
+    .eq("id", session.user.id)
     .single<Profile>();
 
   if (!profile || !profile.attivo) return null;
