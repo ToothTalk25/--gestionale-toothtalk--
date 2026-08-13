@@ -9,6 +9,13 @@ const PUBBLICHE = ["/login", "/auth"];
 // Gira su OGNI richiesta: rinnova il token di sessione Supabase e respinge
 // verso /login chi non è autenticato, prima ancora che una pagina venga resa.
 export async function proxy(request: NextRequest) {
+  // Gli endpoint /api/* (cron Vercel) sono chiamati senza sessione: il
+  // matcher non li esclude in modo affidabile, quindi li lasciamo passare
+  // subito, prima di ogni controllo di autenticazione.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -60,6 +67,6 @@ export const config = {
   // il browser chiede manifest/sw per la PWA, e le immagini non vanno
   // intercettate dal redirect di autenticazione.
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
