@@ -117,11 +117,20 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   }
 
   const base = etichetta ?? (isAdmin ? "Carica versione editata" : "Carica file");
+  const baseCorto = etichetta ?? (isAdmin ? "Carica versione" : "Carica file");
   const etichette: Record<Fase, string> = {
     idle: base,
     hash: `Calcolo impronta ${Math.round(progresso * 100)}%`,
     upload: "Caricamento…",
     registro: "Sigillo in corso…",
+    fatto: "Sostituisci",
+    errore: "Riprova",
+  };
+  const etichetteCorte: Record<Fase, string> = {
+    idle: baseCorto,
+    hash: `Impronta ${Math.round(progresso * 100)}%`,
+    upload: "Caricamento…",
+    registro: "Sigillo…",
     fatto: "Sostituisci",
     errore: "Riprova",
   };
@@ -143,13 +152,13 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       <button
         onClick={() => input.current?.click()}
         disabled={occupato}
-        className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
+        className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
           archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
         }`}
       >
-        {etichette[fase]}
+        <span className="sm:hidden">{etichetteCorte[fase]}</span>
+        <span className="hidden sm:inline">{etichette[fase]}</span>
       </button>
-
       {isAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
         <p className="mx-auto mt-1.5 max-w-[11rem] text-[11px] leading-tight text-amber-600">
           Nessun materiale depositato dal gruppo.

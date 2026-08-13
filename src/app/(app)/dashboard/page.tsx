@@ -124,7 +124,7 @@ export default async function DashboardPage() {
               <li key={t.id}>
                 <Link
                   href={`/task/${t.id}`}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-slate-50"
                 >
                   <span className="w-24 shrink-0 text-xs font-medium text-slate-400">
                     {t.polo_nome}
