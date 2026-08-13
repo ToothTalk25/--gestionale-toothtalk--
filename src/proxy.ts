@@ -59,5 +59,7 @@ export const config = {
   // browser li richiede per valutare l'installabilità della PWA, prima
   // ancora che chi guarda abbia fatto login (o senza mai farlo, se guarda
   // solo la scheda del browser).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // /api/* è escluso: ci stanno gli endpoint dei cron Vercel, chiamati senza
+  // sessione (la loro autorizzazione è gestita dentro, via service role).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|api/.*|\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
