@@ -65,7 +65,7 @@ export default function KindCard({
             }
           : undefined
       }
-      className={`group aspect-square rounded-lg p-2 ring-1 flex flex-col transition-colors ${
+      className={`group rounded-lg p-2 ring-1 flex flex-col transition-colors sm:aspect-square ${
         dragOver
           ? "ring-2 ring-tt-blue bg-tt-blue/5"
           : versioni.length > 0
@@ -73,45 +73,51 @@ export default function KindCard({
             : "bg-white ring-black/5"
       }`}
     >
-      <h3 className="pt-2 text-base font-semibold text-slate-700 text-center">{label}</h3>
+      <div className="flex items-center gap-3 sm:block">
+        {/* Su mobile l'area stato/azione sta a sinistra in una riga orizzontale:
+            icona o contatore + etichetta leggibile. Da sm: torna verticale come oggi. */}
+        <div className="flex-1 sm:flex-none sm:pt-2">
+          <h3 className="text-base font-semibold text-slate-700 text-center sm:text-center">{label}</h3>
+        </div>
 
-      <div className="flex-1 flex items-center justify-center pb-2">
-        {isGoogleDoc ? (
-          <GoogleDocCard taskId={taskId} kind={kind} googleDocUrl={googleDocUrl} isAdmin={isAdmin} />
-        ) : mancaNumeroVideo ? (
-          <p className="text-xs text-amber-700 text-center px-2">
-            Prima assegna un numero video.
-          </p>
-        ) : versioni.length > 0 ? (
-          <UploadDeliverable
-            ref={ref}
-            taskId={taskId}
-            kind={kind}
-            isAdmin={isAdmin}
-            locked={locked}
-            esisteOriginale={versioni.some((v) => v.origin === "originale")}
-            accept={accetta}
-            cardIntera
-          >
-            <div className="text-4xl mb-1 font-bold">{versioni.length}</div>
-            <p className="text-[10px] text-slate-400">
-              {versioni.length === 1 ? "file caricato" : "file caricati"}
+        <div className="flex-1 sm:block sm:flex-1 sm:flex sm:items-center sm:justify-center sm:pb-2">
+          {isGoogleDoc ? (
+            <GoogleDocCard taskId={taskId} kind={kind} googleDocUrl={googleDocUrl} isAdmin={isAdmin} />
+          ) : mancaNumeroVideo ? (
+            <p className="text-xs text-amber-700 text-center px-2">
+              Prima assegna un numero video.
             </p>
-          </UploadDeliverable>
-        ) : (
-          <UploadDeliverable
-            ref={ref}
-            taskId={taskId}
-            kind={kind}
-            isAdmin={isAdmin}
-            locked={locked}
-            esisteOriginale={false}
-            accept={accetta}
-            cardIntera
-          >
-            <div className="mb-2 text-4xl text-slate-300 font-light">+</div>
-          </UploadDeliverable>
-        )}
+          ) : versioni.length > 0 ? (
+            <UploadDeliverable
+              ref={ref}
+              taskId={taskId}
+              kind={kind}
+              isAdmin={isAdmin}
+              locked={locked}
+              esisteOriginale={versioni.some((v) => v.origin === "originale")}
+              accept={accetta}
+              cardIntera
+            >
+              <div className="text-4xl mb-1 font-bold text-center sm:text-center">{versioni.length}</div>
+              <p className="text-[10px] text-slate-400 text-center sm:text-center">
+                {versioni.length === 1 ? "file caricato" : "file caricati"}
+              </p>
+            </UploadDeliverable>
+          ) : (
+            <UploadDeliverable
+              ref={ref}
+              taskId={taskId}
+              kind={kind}
+              isAdmin={isAdmin}
+              locked={locked}
+              esisteOriginale={false}
+              accept={accetta}
+              cardIntera
+            >
+              <div className="mb-2 text-4xl text-slate-300 font-light text-center sm:text-center">+</div>
+            </UploadDeliverable>
+          )}
+        </div>
       </div>
 
       {versioni.length > 0 && (
