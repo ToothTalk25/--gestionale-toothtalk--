@@ -34,8 +34,8 @@ export default function NavLink({
       href={href}
       className={
         attivo
-          ? "rounded-md bg-tt-blue-50 px-2.5 py-1.5 font-medium text-tt-blue"
-          : "rounded-md px-2.5 py-1.5 text-slate-600 hover:text-tt-ink hover:bg-slate-50"
+          ? "shrink-0 rounded-md bg-tt-blue-50 px-2.5 py-1.5 font-medium text-tt-blue"
+          : "shrink-0 rounded-md px-2.5 py-1.5 text-slate-600 hover:text-tt-ink hover:bg-slate-50"
       }
     >
       {children}
