@@ -1,8 +1,7 @@
 {
   "crons": [
-    { "path": "/api/ping", "schedule": "*/10 * * * *" },
     { "path": "/api/cron/report-settimanale", "schedule": "0 8 * * 1" },
-    { "path": "/api/cron/liberatorie-scadute", "schedule": "0 * * * *" },
-    { "path": "/api/cron/retry-drive", "schedule": "0 * * * *" }
+    { "path": "/api/cron/liberatorie-scadute", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/retry-drive", "schedule": "0 10 * * *" }
   ]
 }
