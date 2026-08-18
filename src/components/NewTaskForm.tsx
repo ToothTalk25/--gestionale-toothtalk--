@@ -41,7 +41,13 @@ export default function NewTaskForm({
             return;
           }
           setAperto(false);
-          router.push(`/task/${esito.dati.id}`);
+          if (esito.dati.avvisi.length) {
+            router.push(
+              `/task/${esito.dati.id}?avviso=${encodeURIComponent(esito.dati.avvisi.join(" · "))}`,
+            );
+          } else {
+            router.push(`/task/${esito.dati.id}`);
+          }
         })
       }
       className="space-y-3 rounded-xl bg-white p-5 ring-1 ring-black/5"

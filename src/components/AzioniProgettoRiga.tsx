@@ -17,6 +17,7 @@ export default function AzioniProgettoRiga({
   const [inModifica, setInModifica] = useState(false);
   const [nuovoTitolo, setNuovoTitolo] = useState(titolo);
   const [errore, setErrore] = useState<string | null>(null);
+  const [messaggio, setMessaggio] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   function salvaTitolo(e: React.MouseEvent) {
@@ -29,12 +30,14 @@ export default function AzioniProgettoRiga({
     }
     start(async () => {
       setErrore(null);
+      setMessaggio(null);
       const esito = await aggiornaTesti(taskId, { titolo: t });
       if (!esito.ok) {
         setErrore(esito.errore);
         return;
       }
       setInModifica(false);
+      if (esito.dati.avvisi.length) setMessaggio(esito.dati.avvisi.join(" · "));
       router.refresh();
     });
   }
@@ -89,6 +92,7 @@ export default function AzioniProgettoRiga({
           Annulla
         </button>
         {errore && <span className="text-xs text-red-600">{errore}</span>}
+        {messaggio && <span className="text-xs text-emerald-700">{messaggio}</span>}
       </span>
     );
   }

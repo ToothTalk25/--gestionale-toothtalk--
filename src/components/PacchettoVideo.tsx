@@ -369,9 +369,11 @@ export default function PacchettoVideo({
           onImporta={
             googleDocUrls.script
               ? async () => {
-                  const res = await importaTestoGoogleDoc(googleDocUrls.script!);
-                  if (res.ok) setScript(res.dati.testo);
-                  else setErrore(res.errore);
+                  const res = await importaTestoGoogleDoc(googleDocUrls.script!, "script");
+                  if (res.ok) {
+                    setScript(res.dati.testo);
+                    if (res.dati.avvisi.length) setMessaggio(res.dati.avvisi.join(" · "));
+                  } else setErrore(res.errore);
                 }
               : undefined
           }
@@ -388,9 +390,11 @@ export default function PacchettoVideo({
           onImporta={
             googleDocUrls.descrizione
               ? async () => {
-                  const res = await importaTestoGoogleDoc(googleDocUrls.descrizione!);
-                  if (res.ok) setDescrizione(res.dati.testo);
-                  else setErrore(res.errore);
+                  const res = await importaTestoGoogleDoc(googleDocUrls.descrizione!, "descrizione");
+                  if (res.ok) {
+                    setDescrizione(res.dati.testo);
+                    if (res.dati.avvisi.length) setMessaggio(res.dati.avvisi.join(" · "));
+                  } else setErrore(res.errore);
                 }
               : undefined
           }
@@ -408,9 +412,11 @@ export default function PacchettoVideo({
           onImporta={
             googleDocUrls.titoloYoutube
               ? async () => {
-                  const res = await importaTestoGoogleDoc(googleDocUrls.titoloYoutube!);
-                  if (res.ok) setTitoloYoutube(res.dati.testo);
-                  else setErrore(res.errore);
+                  const res = await importaTestoGoogleDoc(googleDocUrls.titoloYoutube!, "titolo_youtube");
+                  if (res.ok) {
+                    setTitoloYoutube(res.dati.testo);
+                    if (res.dati.avvisi.length) setMessaggio(res.dati.avvisi.join(" · "));
+                  } else setErrore(res.errore);
                 }
               : undefined
           }
@@ -540,7 +546,11 @@ export default function PacchettoVideo({
               });
               if (!esito.ok) setErrore(esito.errore);
               else {
-                setMessaggio("Testi salvati.");
+                setMessaggio(
+                  esito.dati.avvisi.length
+                    ? esito.dati.avvisi.join(" · ")
+                    : "Testi salvati.",
+                );
                 router.refresh();
               }
             })

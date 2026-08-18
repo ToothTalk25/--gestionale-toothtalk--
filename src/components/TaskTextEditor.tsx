@@ -50,7 +50,7 @@ export default function TaskTextEditor({
                 typeof campo,
                 string
               >);
-              setEsito(r.ok ? "Salvato." : r.errore);
+              setEsito(r.ok ? (r.dati.avvisi.length ? r.dati.avvisi.join(" · ") : "Salvato.") : r.errore);
               if (r.ok) router.refresh();
             })
           }

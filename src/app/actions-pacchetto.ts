@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
+import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
 import {
   budgetAllegati,
   corpoHtml,
@@ -30,9 +31,28 @@ function errore(msg: string): Esito<never> {
 export async function salvaPacchetto(
   taskId: string,
   campi: { descrizione?: string; script?: string; titolo_youtube?: string },
-): Promise<Esito<{ pacchettoId: string }>> {
+): Promise<Esito<{ pacchettoId: string; avvisi: string[] }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
+
+  // Regole di forma uniformi sui testi pubblicabili.
+  const avvisi: string[] = [];
+  const normalizzati: typeof campi = {};
+  if (campi.descrizione !== undefined) {
+    const { valore, diff } = normalizzaConDiff("descrizione", campi.descrizione);
+    normalizzati.descrizione = valore ?? "";
+    if (diff) avvisi.push(messaggioDiff(diff));
+  }
+  if (campi.script !== undefined) {
+    const { valore, diff } = normalizzaConDiff("script", campi.script);
+    normalizzati.script = valore ?? "";
+    if (diff) avvisi.push(messaggioDiff(diff));
+  }
+  if (campi.titolo_youtube !== undefined) {
+    const { valore, diff } = normalizzaConDiff("titolo_youtube", campi.titolo_youtube);
+    normalizzati.titolo_youtube = valore ?? "";
+    if (diff) avvisi.push(messaggioDiff(diff));
+  }
 
   const { data: esistente } = await supabase
     .from("pacchetti_video")
@@ -44,12 +64,12 @@ export async function salvaPacchetto(
   if (!esistente) {
     const { data, error } = await supabase
       .from("pacchetti_video")
-      .insert({ task_id: taskId, ...campi, created_by: profile.id })
+      .insert({ task_id: taskId, ...normalizzati, created_by: profile.id })
       .select("id")
       .single();
     if (error) return errore(error.message);
     revalidatePath(`/task/${taskId}`);
-    return { ok: true, dati: { pacchettoId: data.id } };
+    return { ok: true, dati: { pacchettoId: data.id, avvisi } };
   }
 
   if (esistente.stato !== "bozza") {
@@ -58,12 +78,12 @@ export async function salvaPacchetto(
 
   const { error } = await supabase
     .from("pacchetti_video")
-    .update(campi)
+    .update(normalizzati)
     .eq("id", esistente.id);
   if (error) return errore(error.message);
 
   revalidatePath(`/task/${taskId}`);
-  return { ok: true, dati: { pacchettoId: esistente.id } };
+  return { ok: true, dati: { pacchettoId: esistente.id, avvisi } };
 }
 
 /** Aggancia al pacchetto la versione esatta appena caricata. */
@@ -668,14 +688,21 @@ export async function correggiRiconoscimento(pacchettoId: string): Promise<Esito
 }
 
 /** Importa il testo di un Google Doc collegato (usato per script/descrizione/titolo). */
-export async function importaTestoGoogleDoc(url: string): Promise<
-  { ok: true; dati: { testo: string } } | { ok: false; errore: string }
+export async function importaTestoGoogleDoc(
+  url: string,
+  campo: "script" | "descrizione" | "titolo_youtube" = "descrizione",
+): Promise<
+  { ok: true; dati: { testo: string; avvisi: string[] } } | { ok: false; errore: string }
 > {
   await requireSession();
   const { leggiTestoGoogleDoc } = await import("@/lib/google-doc");
   const res = await leggiTestoGoogleDoc(url);
   if (!res.ok) return errore(res.errore);
-  return { ok: true, dati: { testo: res.testo } };
+
+  // Il testo importato viene subito portato alla forma standard.
+  const { valore, diff } = normalizzaConDiff(campo, res.testo);
+  const avvisi = diff ? [messaggioDiff(diff)] : [];
+  return { ok: true, dati: { testo: valore ?? "", avvisi } };
 }
 
 

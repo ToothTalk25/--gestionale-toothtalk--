@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
+import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
 import type { Archivio, DeliverableKind, TaskStatus, VersionOrigin } from "@/lib/types";
 
 /** Il bucket è determinato dal server, mai scelto dal client. */
@@ -32,17 +33,26 @@ function fallita(e: { message: string } | null, fallback: string): Esito<never> 
 
 // ------------------------------------------------------------------ task
 
-export async function creaTask(formData: FormData): Promise<Esito<{ id: string }>> {
+export async function creaTask(formData: FormData): Promise<Esito<{ id: string; avvisi: string[] }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
   const polo_id = String(formData.get("polo_id") ?? "");
-  const titolo = String(formData.get("titolo") ?? "").trim();
-  const script = String(formData.get("script") ?? "").trim() || null;
   const scadenza = String(formData.get("scadenza") ?? "").trim() || null;
   const formato_id = String(formData.get("formato_id") ?? "").trim() || null;
 
+  // Regole di forma uniformi: il titolo scritto in modo libero viene portato
+  // alla forma standard (maiuscola iniziale, niente punto finale, una riga).
+  const titoloRaw = String(formData.get("titolo") ?? "").trim();
+  const scriptRaw = String(formData.get("script") ?? "").trim() || null;
+  const { valore: titolo, diff: diffTitolo } = normalizzaConDiff("titolo", titoloRaw);
+  const { valore: script, diff: diffScript } = normalizzaConDiff("script", scriptRaw);
+
   if (!titolo) return { ok: false, errore: "Il titolo è obbligatorio." };
+
+  const avvisi = [diffTitolo, diffScript]
+    .filter((d): d is Exclude<typeof d, null> => d !== null)
+    .map(messaggioDiff);
 
   const { data, error } = await supabase
     .from("tasks")
@@ -69,18 +79,34 @@ export async function creaTask(formData: FormData): Promise<Esito<{ id: string }
 
   revalidatePath(`/polo/${polo_id}`);
   revalidatePath("/dashboard");
-  return { ok: true, dati: { id: data.id } };
+  return { ok: true, dati: { id: data.id, avvisi } };
 }
 
 export async function aggiornaTesti(
   taskId: string,
   campi: { titolo?: string; script?: string | null; note_admin?: string | null; numero_video?: number | null },
-): Promise<Esito> {
+): Promise<Esito<{ avvisi: string[] }>> {
   const supabase = await supabaseServer();
-  const { error } = await supabase.from("tasks").update(campi).eq("id", taskId);
+
+  const aggiornati: typeof campi = {};
+  const avvisi: string[] = [];
+  if (campi.titolo !== undefined) {
+    const { valore, diff } = normalizzaConDiff("titolo", campi.titolo);
+    aggiornati.titolo = valore ?? "";
+    if (diff) avvisi.push(messaggioDiff(diff));
+  }
+  if (campi.script !== undefined) {
+    const { valore, diff } = normalizzaConDiff("script", campi.script);
+    aggiornati.script = valore;
+    if (diff) avvisi.push(messaggioDiff(diff));
+  }
+  if (campi.note_admin !== undefined) aggiornati.note_admin = campi.note_admin;
+  if (campi.numero_video !== undefined) aggiornati.numero_video = campi.numero_video;
+
+  const { error } = await supabase.from("tasks").update(aggiornati).eq("id", taskId);
   if (error) return fallita(error, "Aggiornamento fallito");
   revalidatePath(`/task/${taskId}`);
-  return { ok: true, dati: undefined };
+  return { ok: true, dati: { avvisi } };
 }
 
 /**

@@ -25,8 +25,10 @@ import {
 
 export default async function TaskPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ taskId: string }>;
+  searchParams: Promise<{ avviso?: string }>;
 }) {
   const { taskId } = await params;
   const { profile, isAdmin } = await requireSession();
@@ -176,12 +178,19 @@ export default async function TaskPage({
     profili = (res.data ?? []) as { id: string; full_name: string | null; email: string }[];
   }
 
+  const { avviso } = await searchParams;
+
   const nomi = Object.fromEntries(
     (profili ?? []).map((p) => [p.id, p.full_name ?? p.email]),
   );
 
   return (
     <div className="space-y-8">
+      {avviso && (
+        <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
+          {avviso}
+        </div>
+      )}
       <SegnalaPolo poloId={task.polo_id} />
       <header className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
         <div className="flex flex-wrap items-start gap-3">

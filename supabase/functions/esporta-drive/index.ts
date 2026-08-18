@@ -306,7 +306,9 @@ Deno.serve(async (req) => {
       : await trovaOCreaCartella(token, root, polo.nome);
 
     const num = task.numero_video ?? "?";
-    const nomeBase = `Video ${num} - ${task.titolo}`.replace(SANITIZZA, "_");
+    // Trattino lungo, come i file già presenti nelle cartelle su Drive:
+    // "Video 1 — Titolo". Coerente con i nomi sistemati a mano.
+    const nomeBase = `Video ${num} — ${task.titolo}`.replace(SANITIZZA, "_");
 
     // Struttura di destinazione: tutto dentro GESTIONE VIDEO
     const cartellaGV = await trovaOCreaCartella(token, cartellaPolo, "GESTIONE VIDEO");
