@@ -29,6 +29,21 @@ type Consenso = {
   sha256: string | null;
 };
 
+type ConsensoRegistro = {
+  id: string;
+  task_id: string | null;
+  user_id: string | null;
+  tipo_soggetto: string;
+  tipo: string;
+  nome_soggetto: string;
+  email_soggetto: string | null;
+  sha256: string;
+  metodo_firma: string | null;
+  firmato_at: string;
+  is_revoked: boolean;
+  revocato_at: string | null;
+};
+
 type Audit = {
   id: number;
   at: string;
@@ -52,6 +67,7 @@ export default async function AdminPage() {
     { data: membri },
     { data: consensi },
     { data: materialiPerUtente },
+    { data: registoConsensi },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -109,6 +125,14 @@ export default async function AdminPage() {
       .from("deliverable_versions")
       .select("uploaded_by")
       .returns<{ uploaded_by: string }[]>(),
+    supabaseAdmin()
+      .from("consents_and_releases")
+      .select(
+        "id, task_id, user_id, tipo_soggetto, tipo, nome_soggetto, email_soggetto, sha256, metodo_firma, firmato_at, is_revoked, revocato_at",
+      )
+      .order("firmato_at", { ascending: false })
+      .limit(200)
+      .returns<ConsensoRegistro[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -343,6 +367,88 @@ export default async function AdminPage() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ---------- Registro liberatorie e accordi ---------- */}
+      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Registro liberatorie e accordi</h2>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+            {(registoConsensi ?? []).length} documenti
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">
+          Registro granulare (consents_and_releases): liberatorie firmate e
+          accordi di collaborazione, con impronta SHA-256 e stato di revoca.
+          Append-only: nessun documento viene mai cancellato.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-slate-400">
+              <tr>
+                <th className="py-2 pr-4">Soggetto</th>
+                <th className="py-2 pr-4">Tipo</th>
+                <th className="py-2 pr-4">Task</th>
+                <th className="py-2 pr-4">Firma</th>
+                <th className="py-2 pr-4">SHA-256</th>
+                <th className="py-2">Stato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(registoConsensi ?? []).map((r) => (
+                <tr key={r.id} className="border-t border-slate-100">
+                  <td className="py-2 pr-4 text-xs">
+                    <span className="font-medium">{r.nome_soggetto}</span>
+                    {r.email_soggetto && (
+                      <div className="text-slate-400">{r.email_soggetto}</div>
+                    )}
+                  </td>
+                  <td className="py-2 pr-4 text-xs">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                      {r.tipo === "accordo_collaboratore"
+                        ? "Accordo collaboratore"
+                        : r.tipo_soggetto === "minore"
+                          ? "Liberatoria minore"
+                          : "Liberatoria"}
+                    </span>
+                    {r.metodo_firma && (
+                      <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
+                        {r.metodo_firma}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-4 text-xs text-slate-500">
+                    {r.task_id ? r.task_id.slice(0, 8) : "—"}
+                  </td>
+                  <td className="py-2 pr-4 text-xs text-slate-500">
+                    {new Date(r.firmato_at).toLocaleString("it-IT")}
+                  </td>
+                  <td className="py-2 pr-4 font-mono text-xs text-slate-400">
+                    {r.sha256.slice(0, 16)}…
+                  </td>
+                  <td className="py-2 text-xs">
+                    {r.is_revoked ? (
+                      <span className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700">
+                        Revocato
+                      </span>
+                    ) : (
+                      <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700">
+                        Valido
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {(registoConsensi ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center text-xs text-slate-400">
+                    Nessun documento firmato ancora.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

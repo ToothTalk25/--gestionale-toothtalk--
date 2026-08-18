@@ -9,6 +9,54 @@ function errore(msg: string): { ok: false; errore: string } {
   return { ok: false, errore: msg };
 }
 
+/**
+ * Registra il documento firmato nel registro granulare consents_and_releases
+ * (GDPR Art. 5, 6, 7). Append-only: la riga resta, la revoca si marca.
+ * Best-effort: la firma è già archiviata e tracciata nelle tabelle
+ * richieste_liberatoria/deliverable_versions; questo è un indice granulare
+ * di consultazione, quindi un errore qui non blocca mai il flusso.
+ */
+async function registraNelRegistroConsensi(params: {
+  admin: ReturnType<typeof supabaseAdmin>;
+  taskId: string;
+  richiestaId?: string;
+  tipoSoggetto: "maggiorenne" | "minore" | "collaboratore";
+  nome: string;
+  email?: string | null;
+  storagePath: string;
+  sha256: string;
+  metodo: "otp" | "canvas" | "upload_manuale";
+}): Promise<void> {
+  try {
+    let richiestaId: string | null = params.richiestaId ?? null;
+    if (!richiestaId) {
+      const { data } = await params.admin
+        .from("richieste_liberatoria")
+        .select("id")
+        .eq("task_id", params.taskId)
+        .order("creato_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      richiestaId = data?.id ?? null;
+    }
+
+    await params.admin.from("consents_and_releases").insert({
+      task_id: params.taskId,
+      richiesta_id: richiestaId,
+      tipo_soggetto: params.tipoSoggetto,
+      tipo: "liberatoria",
+      nome_soggetto: params.nome,
+      email_soggetto: params.email ?? null,
+      storage_path: params.storagePath,
+      sha256: params.sha256,
+      metodo_firma: params.metodo,
+      firmato_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Registrazione consents_and_releases fallita (ignorata):", e);
+  }
+}
+
 // ------------------------------------------------------------------ email
 
 async function inviaEmailLink(destinatario: string, token: string, usaPec: boolean): Promise<void> {
@@ -292,6 +340,22 @@ export async function firmaLiberatoriaOnline(
   });
   if (eReg) return errore("Token non valido o gia usato: " + eReg.message);
 
+  // Registro granulare consents_and_releases (GDPR).
+  const { data: richiestaRow } = await admin
+    .from("richieste_liberatoria")
+    .select("id, contatto_email")
+    .eq("task_id", task_id)
+    .eq("stato", "caricata")
+    .order("caricato_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; contatto_email: string }>();
+  await registraNelRegistroConsensi({
+    admin, taskId: task_id, richiestaId: richiestaRow?.id ?? undefined,
+    tipoSoggetto: "maggiorenne", nome,
+    email: richiestaRow?.contatto_email ?? td?.contatto_esterno_email,
+    storagePath, sha256, metodo: "canvas",
+  });
+
   // Conferma al firmatario: se ha PEC, riceverà la PEC di sigillo.
   // Se ha solo email, gli mandiamo subito una ricevuta con l'impronta.
   if (!haPec) {
@@ -454,6 +518,13 @@ export async function firmaConOtpLiberatoria(
     p_token: token, p_version: versione.id, p_metodo: "otp",
   });
   if (eReg) return errore("Token non valido o gia usato.");
+
+  // Registro granulare consents_and_releases (GDPR).
+  await registraNelRegistroConsensi({
+    admin, taskId, tipoSoggetto: "maggiorenne", nome,
+    email: richiesta.contatto_email,
+    storagePath, sha256, metodo: "otp",
+  });
 
   const { data: td } = await admin.from("tasks")
     .select("contatto_esterno_pec").eq("id", taskId)

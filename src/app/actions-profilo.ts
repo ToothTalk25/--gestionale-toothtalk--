@@ -303,6 +303,24 @@ export async function caricaAccordo(
     .eq("id", profile.id);
   if (error) return errore(error.message);
 
+  // Registro granulare consents_and_releases (GDPR): accordo collaboratore.
+  try {
+    await supabaseAdmin().from("consents_and_releases").insert({
+      task_id: null,
+      user_id: profile.id,
+      tipo_soggetto: "collaboratore",
+      tipo: "accordo_collaboratore",
+      nome_soggetto: nome,
+      email_soggetto: profile.email,
+      storage_path: storagePath,
+      sha256,
+      metodo_firma: null,
+      firmato_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Registrazione accordo in consents_and_releases fallita (ignorata):", e);
+  }
+
   // --- controllo IA sull'accordo (segnalazione, mai blocco) ------------
   const verifica = await verificaAccordoFirmato({
     pdfBase64: buffer.toString("base64"),
