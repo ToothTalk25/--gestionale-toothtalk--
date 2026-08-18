@@ -493,8 +493,9 @@ export async function urlFirmato(
   // I bucket "profili" non seguono questa convenzione: contengono
   // {user_id}/foto|accordo/... e sono coperti dalle loro policy dedicate,
   // quindi restano validi solo i bucket delle consegne.
+  let poloId: string | null = null;
   if (bucket === "originali" || bucket === "finali" || bucket === "revisioni") {
-    const poloId = path.split("/")[0] ?? "";
+    poloId = path.split("/")[0] ?? "";
     const accessibile = profile.role === "admin" || poli.some((p) => p.id === poloId);
     if (!accessibile || !poloId) {
       return fallita({ message: "Accesso negato" }, "Download non autorizzato");
@@ -507,6 +508,35 @@ export async function urlFirmato(
     .createSignedUrl(path, secondi, { download: true });
 
   if (error || !data) return fallita(error, "Download non autorizzato");
+
+  // Tracciabilità dei media (Accountability): ogni accesso a un file
+  // sensibile viene registrato nell'audit log a catena, con l'impronta
+  // SHA-256 del file quando il path risolve a una versione del registro
+  // (così l'evento resta collegato al materiale specifico).
+  if (bucket === "originali" || bucket === "finali" || bucket === "revisioni") {
+    try {
+      const { data: versione } = await supabase
+        .from("deliverable_versions")
+        .select("sha256")
+        .eq("bucket", bucket)
+        .eq("storage_path", path)
+        .limit(1)
+        .maybeSingle<{ sha256: string }>();
+      await supabase.from("audit_log").insert({
+        actor: profile.id,
+        actor_role: profile.role,
+        action: "download_file",
+        entity_type: "deliverable_versions",
+        entity_id: null,
+        polo_id: poloId ?? undefined,
+        meta: { bucket, storage_path: path, sha256: versione?.sha256 ?? null },
+      });
+    } catch (e) {
+      // L'audit non deve mai bloccare il download.
+      console.error("Audit download fallito (ignorato):", e);
+    }
+  }
+
   return { ok: true, dati: { url: data.signedUrl } };
 }
 
