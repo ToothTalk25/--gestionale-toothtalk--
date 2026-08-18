@@ -402,3 +402,68 @@ export async function scaricaRicevutaConsenso(consensoId: string): Promise<Esito
   if (!data?.signedUrl) return errore("Impossibile generare il link.");
   return { ok: true, dati: data.signedUrl };
 }
+
+/**
+ * Portabilità dei dati personali (GDPR Art. 20): esporta in un unico file
+ * JSON tutti i dati dell'utente corrente — profilo, consensi (incluso lo
+ * stato di revoca), appartenenze ai poli, e l'elenco dei materiali che ha
+ * depositato (senza i file: quelli restano nell'archivio di tutela legale).
+ * Il file viene generato al volo e restituito come testo (il browser lo
+ * salva). Non tocca né cancella nulla: è una copia per l'interessato.
+ */
+export async function esportaDatiPersonali(): Promise<Esito<{ nome: string; contenuto: string }>> {
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  const [consensi, memberships, poli, materiali] = await Promise.all([
+    supabase.from("consensi").select("tipo, versione, accettato_at, revocato_at")
+      .eq("user_id", profile.id).order("accettato_at", { ascending: true }),
+    supabase.from("memberships").select("polo_id, poli(nome)")
+      .eq("user_id", profile.id),
+    supabase.from("poli").select("id, nome").order("nome"),
+    admin.from("deliverable_versions")
+      .select("file_name, mime_type, size_bytes, sha256, uploaded_at, deliverables!inner(kind, task_id)")
+      .eq("uploaded_by", profile.id)
+      .order("uploaded_at", { ascending: true })
+      .returns<{
+        file_name: string; mime_type: string | null; size_bytes: number | null;
+        sha256: string; uploaded_at: string; deliverables: { kind: string; task_id: string };
+      }[]>(),
+  ]);
+
+  const nomiPoli = new Map((poli.data ?? []).map((p) => [p.id, p.nome]));
+  const pacchetto = {
+    generato_il: new Date().toISOString(),
+    emittente: "ToothTalk — gestionale interno",
+    normativa: "Esportazione ai sensi dell'art. 20 GDPR (diritto alla portabilità)",
+    interessato: {
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name,
+      universita: profile.universita,
+      ruolo: profile.role,
+    },
+    consensi: (consensi.data ?? []).map((c) => ({
+      tipo: c.tipo, versione: c.versione, accettato_at: c.accettato_at,
+      revocato_at: c.revocato_at ?? null,
+    })),
+    appartenenza_poli: (memberships.data ?? []).map((m) => ({
+      polo: nomiPoli.get(m.polo_id) ?? m.polo_id,
+    })),
+    materiali_depositati: (materiali.data ?? []).map((v) => ({
+      kind: v.deliverables.kind,
+      file_name: v.file_name,
+      mime_type: v.mime_type,
+      size_bytes: v.size_bytes,
+      sha256: v.sha256,
+      upload_at: v.uploaded_at,
+    })),
+    nota:
+      "I file multimediali e i documenti firmati non sono inclusi: fanno parte dell'archivio di tutela legale conservato per il periodo di prescrizione (art. 17(3)(e) GDPR).",
+  };
+
+  const nome = `toothtalk-dati-personali-${profile.id.slice(0, 8)}.json`;
+  return { ok: true, dati: { nome, contenuto: JSON.stringify(pacchetto, null, 2) } };
+}
+

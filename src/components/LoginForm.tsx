@@ -161,6 +161,10 @@ export default function LoginForm() {
       <p className="text-center text-xs text-slate-400 sm:mt-4">
         <Link href="/privacy" className="hover:text-slate-600">
           Privacy e cookie policy
+        </Link>{" "}
+        ·{" "}
+        <Link href="/termini" className="hover:text-slate-600">
+          Termini di servizio
         </Link>
       </p>
     </form>

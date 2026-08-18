@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
-import { aggiornaAnagrafica, caricaAccordo, caricaFoto, registraConsenso, revocaConsenso } from "@/app/actions-profilo";
+import { aggiornaAnagrafica, caricaAccordo, caricaFoto, registraConsenso, revocaConsenso, esportaDatiPersonali } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 
@@ -70,6 +70,25 @@ export default function ProfiloPersonale({
       );
       router.refresh();
     }
+  }
+
+  async function esportaDati() {
+    setErroreRevoca(null);
+    setMessaggioRevoca(null);
+    const esito = await esportaDatiPersonali();
+    if (!esito.ok) {
+      setErroreRevoca(esito.errore);
+      return;
+    }
+    // Salva il JSON come file scaricabile (portabilità GDPR).
+    const blob = new Blob([esito.dati.contenuto], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = esito.dati.nome;
+    a.click();
+    URL.revokeObjectURL(url);
+    setMessaggioRevoca("File esportato: controlla i download del browser.");
   }
 
   useEffect(() => {
@@ -276,6 +295,13 @@ export default function ProfiloPersonale({
               className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
             >
               Revoca consenso cookie
+            </button>
+            <button
+              onClick={esportaDati}
+              disabled={revocaInCorso}
+              className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+            >
+              Esporta i miei dati (GDPR)
             </button>
           </div>
           {messaggioRevoca && (
