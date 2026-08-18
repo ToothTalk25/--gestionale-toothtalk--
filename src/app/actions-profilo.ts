@@ -225,6 +225,19 @@ export async function registraConsenso(tipo: "privacy" | "cookie" | "riconoscime
   return { ok: true, dati: undefined };
 }
 
+/** Revoca il consenso GDPR (privacy o cookie) per l'utente corrente. Append-only: la revoca viene registrata sulle righe esistenti, mai cancellate. Non tocca le liberatorie già firmate (prova legale). */
+export async function revocaConsenso(tipo: "privacy" | "cookie"): Promise<Esito> {
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+
+  const { error } = await supabase.rpc("revoca_consenso", { p_tipo: tipo });
+  if (error) return errore(error.message);
+
+  revalidatePath("/");
+  revalidatePath("/profilo");
+  return { ok: true, dati: undefined };
+}
+
 /**
  * Registra l'accordo editoriale caricato e lo spedisce subito via PEC a chi
  * ha accesso globale, con copia al partecipante sulla sua casella. È il

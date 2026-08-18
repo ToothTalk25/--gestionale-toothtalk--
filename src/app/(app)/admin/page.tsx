@@ -7,6 +7,7 @@ import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import FotoProfilo from "@/components/FotoProfilo";
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
 import ScaricaRicevuta from "@/components/ScaricaRicevuta";
+import ProfiliUscenti from "@/components/ProfiliUscenti";
 
 type Confronto = {
   deliverable_id: string;
@@ -50,6 +51,7 @@ export default async function AdminPage() {
     { data: inviti },
     { data: membri },
     { data: consensi },
+    { data: materialiPerUtente },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -66,7 +68,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato",
+        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo",
       )
       .order("role")
       .returns<
@@ -80,6 +82,7 @@ export default async function AdminPage() {
           accordo_path: string | null;
           accordo_caricato_at: string | null;
           accordo_verificato: string | null;
+          attivo: boolean;
         }[]
       >(),
     supabase
@@ -102,6 +105,10 @@ export default async function AdminPage() {
       .select("id, user_id, tipo, versione, accettato_at, storage_path, sha256")
       .order("accettato_at", { ascending: false })
       .returns<Consenso[]>(),
+    supabaseAdmin()
+      .from("deliverable_versions")
+      .select("uploaded_by")
+      .returns<{ uploaded_by: string }[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -111,6 +118,12 @@ export default async function AdminPage() {
   const poliDi: Record<string, string[]> = {};
   for (const m of membri ?? []) {
     (poliDi[m.user_id] ??= []).push(m.poli.nome);
+  }
+
+  // Conteggio materiali depositati per utente (per i riquadri "profili uscenti").
+  const materialiDi: Record<string, number> = {};
+  for (const v of materialiPerUtente ?? []) {
+    materialiDi[v.uploaded_by] = (materialiDi[v.uploaded_by] ?? 0) + 1;
   }
 
   return (
@@ -274,6 +287,13 @@ export default async function AdminPage() {
           <code className="rounded bg-slate-100 px-1">npm run utente</code>
         </p>
       </section>
+
+      {/* ---------- Profili uscenti ---------- */}
+      <ProfiliUscenti
+        profili={profili ?? []}
+        poliDi={poliDi}
+        materialiDi={materialiDi}
+      />
 
       {/* ---------- Consensi GDPR ---------- */}
       <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">

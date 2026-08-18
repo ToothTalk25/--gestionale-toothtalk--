@@ -56,6 +56,15 @@ export async function GET(request: NextRequest) {
       .in("stato", ["aperta", "da_verificare"])
       .order("creata_at");
 
+    // 2d. Profili uscenti: promemoria (solo informativo, nessuna azione automatica)
+    const { data: uscenti } = await admin
+      .from("profiles")
+      .select("id, email, updated_at")
+      .eq("attivo", false)
+      .lt("updated_at", new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
+      .order("updated_at", { ascending: false })
+      .limit(50);
+
     // 3. Conteggi
     const { count: inRevisione } = await admin
       .from("pacchetti_video")
@@ -123,6 +132,21 @@ export async function GET(request: NextRequest) {
     }
 
     righe.push("");
+    // Promemoria profili uscenti (SOLO informativo, nessuna azione automatica)
+    const uscentiLista = uscenti ?? [];
+    if (uscentiLista.length > 0) {
+      righe.push(`Profili uscenti da oltre 180 giorni: ${uscentiLista.length}`);
+      for (const u of uscentiLista.slice(0, 5)) {
+        const giorni = Math.floor(
+          (Date.now() - new Date(u.updated_at).getTime()) / (24 * 60 * 60 * 1000),
+        );
+        righe.push(`  • ${u.email} — inattivo da ~${giorni} giorni`);
+      }
+      righe.push(
+        "Nessuna cancellazione automatica: gestione manuale dal Registro (sezione 'Profili uscenti').",
+      );
+      righe.push("");
+    }
     righe.push(`Totale: ${inRevisione ?? 0} in revisione · ${sigillati ?? 0} sigillati · ${pecErrore ?? 0} PEC in errore · ${richiesteAperteCount ?? 0} richieste aperte`);
     righe.push(`Apri il gestionale: ${process.env.NEXT_PUBLIC_SITE_URL ?? ""}`);
     righe.push("");

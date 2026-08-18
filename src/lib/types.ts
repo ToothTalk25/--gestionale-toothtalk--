@@ -12,6 +12,7 @@ export type Consenso = {
   tipo: TipoConsenso;
   versione: string;
   accettato_at: string;
+  revocato_at: string | null;
 };
 
 export type TaskStatus =

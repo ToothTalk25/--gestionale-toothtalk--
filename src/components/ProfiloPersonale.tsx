@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState, useTransition, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
-import { aggiornaAnagrafica, caricaAccordo, caricaFoto, registraConsenso } from "@/app/actions-profilo";
+import { aggiornaAnagrafica, caricaAccordo, caricaFoto, registraConsenso, revocaConsenso } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 
@@ -46,6 +47,30 @@ export default function ProfiloPersonale({
   // Consenso riconoscimento foto
   const [consensoRiconoscimento, setConsensoRiconoscimento] = useState(false);
   const [consensoCaricato, setConsensoCaricato] = useState(false);
+  const [messaggioRevoca, setMessaggioRevoca] = useState<string | null>(null);
+  const [erroreRevoca, setErroreRevoca] = useState<string | null>(null);
+  const [revocaInCorso, setRevocaInCorso] = useState(false);
+
+  async function revoca(tipo: "privacy" | "cookie") {
+    const ok = window.confirm(
+      "Revocare il consenso " +
+        (tipo === "privacy" ? "alla privacy policy" : "alla cookie policy") +
+        "? La revoca viene registrata (chi, quando) e non è retroattiva. Non tocca le liberatorie firmate e i materiali già depositati come prova legale.",
+    );
+    if (!ok) return;
+    setRevocaInCorso(true);
+    setErroreRevoca(null);
+    setMessaggioRevoca(null);
+    const esito = await revocaConsenso(tipo);
+    setRevocaInCorso(false);
+    if (!esito.ok) setErroreRevoca(esito.errore);
+    else {
+      setMessaggioRevoca(
+        "Consenso " + (tipo === "privacy" ? "privacy" : "cookie") + " revocato. Il banner ricomparirà al prossimo accesso.",
+      );
+      router.refresh();
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -227,6 +252,50 @@ export default function ProfiloPersonale({
             )}
           </section>
         )}
+
+        {/* ------------------------------------------- consensi e privacy */}
+        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+          <h2 className="text-lg font-medium">Consensi e privacy</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Puoi revocare in qualsiasi momento il consenso alla privacy e
+            alla cookie policy: la revoca viene registrata (chi e quando) e
+            non è retroattiva. Non tocca le liberatorie firmate e i
+            materiali già depositati come prova legale.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => revoca("privacy")}
+              disabled={revocaInCorso}
+              className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            >
+              Revoca consenso privacy
+            </button>
+            <button
+              onClick={() => revoca("cookie")}
+              disabled={revocaInCorso}
+              className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            >
+              Revoca consenso cookie
+            </button>
+          </div>
+          {messaggioRevoca && (
+            <p className="mt-3 text-xs text-emerald-700">{messaggioRevoca}</p>
+          )}
+          {erroreRevoca && (
+            <p className="mt-3 text-xs text-red-600">{erroreRevoca}</p>
+          )}
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+            Informative:{" "}
+            <Link href="/privacy" className="text-tt-blue underline">
+              privacy policy
+            </Link>{" "}
+            e{" "}
+            <Link href="/privacy#cookie" className="text-tt-blue underline">
+              cookie policy
+            </Link>
+            .
+          </p>
+        </section>
 
         {/* ----------------------------------------------------- accordo
             Solo per i partecipanti: chi ha accesso globale stipula i contratti,

@@ -26,11 +26,11 @@ export default function BannerConsenso() {
         }
         const { data: consensi } = await supabaseBrowser()
           .from("consensi")
-          .select("tipo, versione")
+          .select("tipo, versione, revocato_at")
           .eq("user_id", auth.user.id);
         const lista = consensi ?? [];
-        const privacyOk = lista.some((c) => c.tipo === "privacy" && c.versione === PRIVACY_VERSION);
-        const cookieOk = lista.some((c) => c.tipo === "cookie" && c.versione === COOKIE_VERSION);
+        const privacyOk = lista.some((c) => c.tipo === "privacy" && c.versione === PRIVACY_VERSION && !c.revocato_at);
+        const cookieOk = lista.some((c) => c.tipo === "cookie" && c.versione === COOKIE_VERSION && !c.revocato_at);
         if (attivo) setStato(privacyOk && cookieOk ? "nascosto" : "visibile");
       } catch {
         if (attivo) setStato("nascosto");
