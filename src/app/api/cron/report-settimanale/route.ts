@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { inviaEmailGmail } from "@/lib/mail";
+import { richiestaAutorizzataCron } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,11 @@ export const dynamic = "force-dynamic";
  * da inviare, richieste di modifica aperte) così l'admin può collegarlo al
  * proprio briefing senza aprire il gestionale.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!richiestaAutorizzataCron(request)) {
+    return NextResponse.json({ ok: false, errore: "non autorizzato" }, { status: 401 });
+  }
+
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;

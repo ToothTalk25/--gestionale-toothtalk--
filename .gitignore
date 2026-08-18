@@ -16,3 +16,4 @@ supabase/google-key.json
 *service-account*.json
 *credentials*.json
 .env*
+supabase/.temp/

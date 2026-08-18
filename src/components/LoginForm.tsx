@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { percorsoInternoValido } from "@/lib/percorsi";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -51,7 +52,11 @@ export default function LoginForm() {
       setInCorso(false);
       return;
     }
-    router.replace(params.get("next") ?? "/dashboard");
+    // Il parametro "next" viene usato solo se è un percorso INTERNO:
+    // altrimenti (es. next=https://maligno.com, //evil.com) si va sulla
+    // dashboard. È la difesa contro l'open redirect dopo il login.
+    const next = params.get("next");
+    router.replace(percorsoInternoValido(next) ? next! : "/dashboard");
     router.refresh();
   }
 

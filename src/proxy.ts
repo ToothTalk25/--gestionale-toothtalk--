@@ -5,6 +5,16 @@ type CookieDaImpostare = { name: string; value: string; options: CookieOptions }
 
 const PUBBLICHE = ["/login", "/auth"];
 
+// Flag di sicurezza rigidi per i cookie di sessione (HttpOnly, Secure,
+// SameSite=Strict): il token non vive in localStorage e non viaggia in
+// contesti cross-site.
+const COOKIE_SICURI: CookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "strict",
+  path: "/",
+};
+
 // In Next 16 questa convenzione si chiama "proxy" (era "middleware").
 // Gira su OGNI richiesta: rinnova il token di sessione Supabase e respinge
 // verso /login chi non è autenticato, prima ancora che una pagina venga resa.
@@ -27,12 +37,14 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: CookieDaImpostare[]) {
-          for (const { name, value } of cookiesToSet) {
+          for (const { name, value, options } of cookiesToSet) {
+            const opts = { ...options, ...COOKIE_SICURI };
             request.cookies.set(name, value);
           }
           response = NextResponse.next({ request });
           for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
+            const opts = { ...options, ...COOKIE_SICURI };
+            response.cookies.set(name, value, opts);
           }
         },
       },

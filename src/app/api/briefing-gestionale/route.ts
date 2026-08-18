@@ -12,8 +12,18 @@ export const dynamic = "force-dynamic";
  * chiama questo endpoint non è mai loggato nel gestionale.
  */
 export async function GET(request: NextRequest) {
-  const key = request.nextUrl.searchParams.get("key");
-  if (!key || key !== process.env.BRIEFING_API_KEY) {
+  // Chiave condivisa: ora in header Authorization: Bearer <BRIEFING_API_KEY>.
+  // La vecchia ?key=... resta accettata solo se la chiave è presente (a
+  // scopo di compatibilità), ma l'header è il metodo raccomandato: le query
+  // string finiscono nei log dei proxy, gli header no.
+  const auth = request.headers.get("authorization") ?? "";
+  const daHeader = auth === `Bearer ${process.env.BRIEFING_API_KEY}`;
+  const daQuery = request.nextUrl.searchParams.get("key");
+  const autorizzato =
+    (process.env.BRIEFING_API_KEY ? daHeader : false) ||
+    (!!process.env.BRIEFING_API_KEY && daQuery === process.env.BRIEFING_API_KEY);
+
+  if (!autorizzato) {
     return NextResponse.json({ ok: false, errore: "non autorizzato" }, { status: 401 });
   }
 

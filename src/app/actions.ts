@@ -365,6 +365,20 @@ export async function registraVersione(input: {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
+  // Zero Trust: la deliverableId arriva dal client. Verifichiamo che la
+  // deliverable appartenga davvero alla task indicata prima di registrare
+  // la versione — non ci fidiamo della coppia (taskId, deliverableId).
+  const { data: deliverable } = await supabase
+    .from("deliverables")
+    .select("id, task_id")
+    .eq("id", input.deliverableId)
+    .eq("task_id", input.taskId)
+    .maybeSingle<{ id: string; task_id: string }>();
+
+  if (!deliverable) {
+    return fallita({ message: "Accesso negato" }, "Deliverable non accessibile");
+  }
+
   const bucket = bucketPer(input.origin, input.archivio);
 
   // Il record non deve poter esistere senza il file: verifichiamo che
@@ -431,11 +445,20 @@ export async function eliminaVersione(
   await requireSession();
   const supabase = await supabaseServer();
 
+  // Zero Trust: la versionId arriva dal client. Verifichiamo che la versione
+  // appartenga davvero alla task indicata e che lo storage_path rispetti il
+  // prefisso della task (prima di toccare righe o file).
   const { data: versione, error: eLettura } = await supabase
     .from("deliverable_versions")
-    .select("id, bucket, storage_path")
+    .select("id, bucket, storage_path, deliverables!inner(task_id)")
     .eq("id", versionId)
-    .single<{ id: string; bucket: string; storage_path: string }>();
+    .eq("deliverables.task_id", taskId)
+    .single<{
+      id: string;
+      bucket: string;
+      storage_path: string;
+      deliverables: { task_id: string };
+    }>();
 
   if (eLettura || !versione) return { ok: false, errore: "File non trovato." };
 
@@ -461,9 +484,24 @@ export async function urlFirmato(
   path: string,
   secondi = 300,
 ): Promise<Esito<{ url: string }>> {
-  await requireSession();
-  const supabase = await supabaseServer();
+  const { profile, poli } = await requireSession();
 
+  // Zero Trust: non ci fidiamo del path inviato dal client. Il primo
+  // segmento del path storage è il polo a cui appartiene il file
+  // ({polo_id}/{task_id}/{deliverable_id}/...); verifichiamo esplicitamente
+  // che l'utente sia membro di quel polo (o admin) PRIMA di firmare.
+  // I bucket "profili" non seguono questa convenzione: contengono
+  // {user_id}/foto|accordo/... e sono coperti dalle loro policy dedicate,
+  // quindi restano validi solo i bucket delle consegne.
+  if (bucket === "originali" || bucket === "finali" || bucket === "revisioni") {
+    const poloId = path.split("/")[0] ?? "";
+    const accessibile = profile.role === "admin" || poli.some((p) => p.id === poloId);
+    if (!accessibile || !poloId) {
+      return fallita({ message: "Accesso negato" }, "Download non autorizzato");
+    }
+  }
+
+  const supabase = await supabaseServer();
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, secondi, { download: true });
