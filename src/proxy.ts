@@ -3,7 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieDaImpostare = { name: string; value: string; options: CookieOptions };
 
-const PUBBLICHE = ["/login", "/auth", "/privacy", "/termini", "/registrati"];
+const PUBBLICHE = [
+  "/login",
+  "/auth",
+  "/privacy",
+  "/termini",
+  "/registrati",
+  // File di verifica proprietà dominio (Google Search Console): statico,
+  // nessun dato sensibile, deve restare raggiungibile senza sessione.
+  "/google97604b8436f2db92.html",
+];
 
 // Flag di sicurezza rigidi per i cookie di sessione (HttpOnly, Secure,
 // SameSite=Strict): il token non vive in localStorage e non viaggia in
