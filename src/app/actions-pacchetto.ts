@@ -7,6 +7,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
+import { salvaPacchettoSchema } from "@/lib/schemi";
 import {
   budgetAllegati,
   corpoHtml,
@@ -32,6 +33,14 @@ export async function salvaPacchetto(
   taskId: string,
   campi: { descrizione?: string; script?: string; titolo_youtube?: string },
 ): Promise<Esito<{ pacchettoId: string; avvisi: string[] }>> {
+  // Validazione Zod: il payload dal client viene controllato prima di tutto.
+  const validazione = salvaPacchettoSchema.safeParse({ taskId, campi });
+  if (!validazione.success) {
+    return errore(validazione.error.issues[0]?.message ?? "Dati non validi.");
+  }
+  ({ taskId } = validazione.data);
+  ({ campi } = validazione.data);
+
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 

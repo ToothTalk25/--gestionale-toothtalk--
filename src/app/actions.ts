@@ -6,7 +6,34 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
+import {
+  aggiornaTestiSchema,
+  archiviaFileFinaleSchema,
+  cambiaStatoSchema,
+  creaTaskSchema,
+  eliminaProjettoSchema,
+  eliminaVersioneSchema,
+  impostaBloccoSchema,
+  impostaCoinvolgeTerziSchema,
+  preparaUploadSchema,
+  registraVersioneSchema,
+  urlFirmatoSchema,
+} from "@/lib/schemi";
 import type { Archivio, DeliverableKind, TaskStatus, VersionOrigin } from "@/lib/types";
+
+import type { z } from "zod";
+
+/** Validazione Zod: payload dal client → dati tipizzati, o errore leggibile. */
+function valida<S extends z.ZodTypeAny>(
+  schema: S,
+  data: unknown,
+): { ok: true; dati: z.infer<S> } | { ok: false; errore: string } {
+  const esito = schema.safeParse(data);
+  if (!esito.success) {
+    return { ok: false, errore: esito.error.issues[0]?.message ?? "Dati non validi." };
+  }
+  return { ok: true, dati: esito.data };
+}
 
 /** Il bucket è determinato dal server, mai scelto dal client. */
 function bucketPer(origin: VersionOrigin, archivio: Archivio): string {
@@ -37,16 +64,22 @@ export async function creaTask(formData: FormData): Promise<Esito<{ id: string; 
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
-  const polo_id = String(formData.get("polo_id") ?? "");
-  const scadenza = String(formData.get("scadenza") ?? "").trim() || null;
-  const formato_id = String(formData.get("formato_id") ?? "").trim() || null;
+  // Validazione Zod: il payload dal client viene controllato prima di tutto.
+  const raw = {
+    polo_id: String(formData.get("polo_id") ?? ""),
+    titolo: String(formData.get("titolo") ?? "").trim(),
+    script: String(formData.get("script") ?? "").trim() || null,
+    scadenza: String(formData.get("scadenza") ?? "").trim() || null,
+    formato_id: String(formData.get("formato_id") ?? "").trim() || null,
+  };
+  const validazione = valida(creaTaskSchema, raw);
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  const { polo_id, titolo: titoloRaw, script: scriptRaw, scadenza, formato_id } = validazione.dati;
 
   // Regole di forma uniformi: il titolo scritto in modo libero viene portato
   // alla forma standard (maiuscola iniziale, niente punto finale, una riga).
-  const titoloRaw = String(formData.get("titolo") ?? "").trim();
-  const scriptRaw = String(formData.get("script") ?? "").trim() || null;
   const { valore: titolo, diff: diffTitolo } = normalizzaConDiff("titolo", titoloRaw);
-  const { valore: script, diff: diffScript } = normalizzaConDiff("script", scriptRaw);
+  const { valore: script, diff: diffScript } = normalizzaConDiff("script", scriptRaw ?? null);
 
   if (!titolo) return { ok: false, errore: "Il titolo è obbligatorio." };
 
@@ -86,6 +119,11 @@ export async function aggiornaTesti(
   taskId: string,
   campi: { titolo?: string; script?: string | null; note_admin?: string | null; numero_video?: number | null },
 ): Promise<Esito<{ avvisi: string[] }>> {
+  const validazione = valida(aggiornaTestiSchema, { taskId, campi });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId } = validazione.dati);
+  ({ campi } = validazione.dati);
+
   const supabase = await supabaseServer();
 
   const aggiornati: typeof campi = {};
@@ -118,6 +156,10 @@ export async function aggiornaTesti(
  * fallisce resta un file orfano invisibile, innocuo).
  */
 export async function eliminaProgetto(taskId: string): Promise<Esito> {
+  const validazione = valida(eliminaProjettoSchema, { taskId });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId } = validazione.dati);
+
   const supabase = await supabaseServer();
   const admin = supabaseAdmin();
 
@@ -157,6 +199,10 @@ export async function archiviaFileFinale(
   taskId: string,
   versionId: string,
 ): Promise<Esito> {
+  const validazione = valida(archiviaFileFinaleSchema, { taskId, versionId });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId, versionId } = validazione.dati);
+
   const { isAdmin } = await requireSession();
   if (!isAdmin) return fallita({ message: "Accesso negato" }, "Solo chi ha accesso globale può archiviare un file.");
 
@@ -226,6 +272,10 @@ export async function impostaCoinvolgeTerzi(
   taskId: string,
   coinvolgeTerzi: boolean,
 ): Promise<Esito> {
+  const validazione = valida(impostaCoinvolgeTerziSchema, { taskId, coinvolgeTerzi });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId, coinvolgeTerzi } = validazione.dati);
+
   const supabase = await supabaseServer();
   const { error } = await supabase
     .from("tasks")
@@ -240,6 +290,10 @@ export async function cambiaStato(
   taskId: string,
   status: TaskStatus,
 ): Promise<Esito> {
+  const validazione = valida(cambiaStatoSchema, { taskId, status });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId, status } = validazione.dati);
+
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
@@ -272,6 +326,10 @@ export async function impostaBlocco(
   taskId: string,
   locked: boolean,
 ): Promise<Esito> {
+  const validazione = valida(impostaBloccoSchema, { taskId, locked });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId, locked } = validazione.dati);
+
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
@@ -302,6 +360,10 @@ export async function preparaUpload(
   kind: DeliverableKind,
   titolo?: string,
 ): Promise<Esito<{ deliverableId: string; prefix: string }>> {
+  const validazione = valida(preparaUploadSchema, { taskId, kind, titolo });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId, kind, titolo } = validazione.dati);
+
   const supabase = await supabaseServer();
 
   const { data: task, error: eTask } = await supabase
@@ -362,6 +424,11 @@ export async function registraVersione(input: {
   sha256: string;
   note?: string | null;
 }): Promise<Esito<{ versionId: string; recordHash: string; versionNo: number }>> {
+  // Validazione Zod: il payload viene controllato prima di ogni query.
+  const validazione = valida(registraVersioneSchema, input);
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  input = validazione.dati as typeof input;
+
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
@@ -370,10 +437,10 @@ export async function registraVersione(input: {
   // la versione — non ci fidiamo della coppia (taskId, deliverableId).
   const { data: deliverable } = await supabase
     .from("deliverables")
-    .select("id, task_id")
+    .select("id, task_id, kind")
     .eq("id", input.deliverableId)
     .eq("task_id", input.taskId)
-    .maybeSingle<{ id: string; task_id: string }>();
+    .maybeSingle<{ id: string; task_id: string; kind: DeliverableKind }>();
 
   if (!deliverable) {
     return fallita({ message: "Accesso negato" }, "Deliverable non accessibile");
@@ -391,6 +458,29 @@ export async function registraVersione(input: {
   });
   if (!elenco?.length) {
     return { ok: false, errore: "File non trovato nello storage: upload incompleto." };
+  }
+
+  // Upload DoS / MIME reale: il contenuto viene verificato dai magic bytes,
+  // non dal nome o dal Content-Type dichiarato. Scarichiamo i primi byte
+  // del file già caricato e li confrontiamo con i formati ammessi per il kind.
+  try {
+    const { verificaUpload, primiByte } = await import("@/lib/upload-guard");
+    const { data: blobFile } = await supabaseAdmin()
+      .storage.from(bucket)
+      .download(input.storagePath);
+    if (blobFile) {
+      const buffer = Buffer.from(await blobFile.arrayBuffer());
+      const bytes = await primiByte(buffer);
+      const esito = verificaUpload(deliverable.kind, input.sizeBytes, bytes);
+      if (!esito.ok) {
+        return { ok: false, errore: esito.errore };
+      }
+    }
+  } catch (e) {
+    // Se la verifica fallisce per un errore tecnico, blocchiamo comunque:
+    // meglio rifiutare un upload ambiguo che registrare un file sospetto.
+    console.error("Verifica magic bytes fallita:", e);
+    return { ok: false, errore: "Impossibile verificare il contenuto del file." };
   }
 
   const { data, error } = await supabase
@@ -442,6 +532,10 @@ export async function eliminaVersione(
   taskId: string,
   versionId: string,
 ): Promise<Esito> {
+  const validazione = valida(eliminaVersioneSchema, { taskId, versionId });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ taskId, versionId } = validazione.dati);
+
   await requireSession();
   const supabase = await supabaseServer();
 
@@ -484,6 +578,11 @@ export async function urlFirmato(
   path: string,
   secondi = 300,
 ): Promise<Esito<{ url: string }>> {
+  const validazione = valida(urlFirmatoSchema, { bucket, path, secondi });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  ({ bucket, path } = validazione.dati);
+  secondi = validazione.dati.secondi ?? 300;
+
   const { profile, poli } = await requireSession();
 
   // Zero Trust: non ci fidiamo del path inviato dal client. Il primo
