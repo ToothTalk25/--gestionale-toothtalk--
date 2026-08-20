@@ -72,24 +72,26 @@ export default function GestioneInviti({
                       : "—"}
                   </td>
                   <td className="py-2 text-right" data-label="Azioni">
-                    {!i.utilizzabile && (
-                      <span className="mr-3 text-xs text-amber-700">
-                        non più utilizzabile
-                      </span>
-                    )}
-                    <button
-                      disabled={pending}
-                      onClick={() =>
-                        start(async () => {
-                          const e = await disattivaCodiceInvito(i.id);
-                          if (!e.ok) setErrore(e.errore);
-                          else router.refresh();
-                        })
-                      }
-                      className="text-xs text-slate-400 hover:text-red-600 hover:underline"
-                    >
-                      Disattiva
-                    </button>
+                    <div className="flex flex-col items-start gap-1 md:flex-row md:items-center md:justify-end">
+                      {!i.utilizzabile && (
+                        <span className="text-xs text-amber-700 md:mr-3">
+                          non più utilizzabile
+                        </span>
+                      )}
+                      <button
+                        disabled={pending}
+                        onClick={() =>
+                          start(async () => {
+                            const e = await disattivaCodiceInvito(i.id);
+                            if (!e.ok) setErrore(e.errore);
+                            else router.refresh();
+                          })
+                        }
+                        className="text-xs text-slate-400 hover:text-red-600 hover:underline"
+                      >
+                        Disattiva
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

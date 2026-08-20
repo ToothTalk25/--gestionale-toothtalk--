@@ -230,11 +230,13 @@ export default async function AdminPage() {
                     </Link>
                   </td>
                   <td className="py-2 pr-4" data-label="Deposito del gruppo">
-                    {r.originale_file}
-                    <div className="text-xs text-slate-400">
-                      {r.originale_sigillata_il
-                        ? new Date(r.originale_sigillata_il).toLocaleString("it-IT")
-                        : ""}
+                    <div className="flex flex-col items-start gap-0.5">
+                      <span>{r.originale_file}</span>
+                      <span className="text-xs text-slate-400">
+                        {r.originale_sigillata_il
+                          ? new Date(r.originale_sigillata_il).toLocaleString("it-IT")
+                          : ""}
+                      </span>
                     </div>
                   </td>
                   <td className="py-2 pr-4" data-label="Versione editata">
@@ -317,9 +319,11 @@ export default async function AdminPage() {
                       {poliDi[p.id]?.join(", ") || "—"}
                     </td>
                     <td className="py-2 pr-4" data-label="Partecipante">
-                      {p.full_name ?? "—"}
-                      <div className="text-xs text-slate-400">{p.email}</div>
-                      <ToggleOnScreen userId={p.id} appare={p.on_screen} />
+                      <div className="flex flex-col items-start gap-1">
+                        <span>{p.full_name ?? "—"}</span>
+                        <span className="text-xs text-slate-400">{p.email}</span>
+                        <ToggleOnScreen userId={p.id} appare={p.on_screen} />
+                      </div>
                     </td>
                     <td className="py-2 pr-4" data-label="Università">{p.universita ?? "—"}</td>
                     <td className="py-2 pr-4" data-label="Foto">

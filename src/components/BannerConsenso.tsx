@@ -71,7 +71,7 @@ export default function BannerConsenso() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
         <p className="flex-1 text-xs leading-relaxed text-slate-600">
           Il gestionale usa solo cookie tecnici necessari all&apos;accesso. Leggi

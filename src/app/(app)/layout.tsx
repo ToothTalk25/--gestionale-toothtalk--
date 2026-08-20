@@ -66,15 +66,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </header>
 
         <main className="flex-1">
-          <div className="mx-auto max-w-6xl px-4 py-4 pb-28 md:py-8 sm:pb-8">{children}</div>
+          {/*
+            Il footer è fisso a fondo schermo su mobile (sotto): il contenuto
+            ha bisogno di spazio in fondo per non finirci coperto. La misura
+            rispecchia l'altezza reale del footer (testo + padding), più la
+            safe-area del dispositivo (barra home su iPhone con notch/isola).
+          */}
+          <div className="mx-auto max-w-6xl px-4 py-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:py-8 sm:pb-8">
+            {children}
+          </div>
         </main>
 
         {/*
           Fisso a fondo schermo su mobile (l'utente lo vuole sempre visibile,
           non in fondo a uno scroll lunghissimo). Da "sm" in su torna nel
-          normale flusso della pagina, come un footer qualsiasi.
+          normale flusso della pagina, come un footer qualsiasi. Il padding
+          inferiore include la safe-area: su iPhone con barra home il testo
+          non deve mai finirci addosso o sotto.
         */}
-        <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white py-3 sm:static sm:z-auto sm:py-4">
+        <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:static sm:z-auto sm:py-4 sm:pl-0 sm:pr-0">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>
               ToothTalk<sup className="ml-0.5 align-super text-[8px]">™</sup> —

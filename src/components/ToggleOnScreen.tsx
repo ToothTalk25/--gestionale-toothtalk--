@@ -36,7 +36,7 @@ export default function ToggleOnScreen({
   }
 
   return (
-    <span className="mt-1 inline-flex items-center gap-1">
+    <span className="mt-1 flex flex-wrap items-center gap-1">
       <button
         onClick={() => cambia(true)}
         disabled={inCorso || valore}
