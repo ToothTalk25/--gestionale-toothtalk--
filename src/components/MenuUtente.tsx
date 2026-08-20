@@ -74,26 +74,42 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           role="menu"
           className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
         >
-          {/* Le voci "Progetti" e "Profilo" sono per i partecipanti. Chi ha
-              accesso globale naviga dai gruppi in alto e dal Registro: il suo
-              menu serve solo a uscire. */}
-          {!isAdmin && (
+          {/* Voci comuni a tutti: Progetti e Profilo. Per chi ha accesso
+              globale si aggiungono anche le voci di amministrazione, così
+              tutto è raggiungibile anche dal menu del profilo. */}
+          <Link
+            href="/dashboard"
+            onClick={() => setAperto(false)}
+            role="menuitem"
+            className={pathname === "/dashboard" ? vociAttive : vociInattive}
+          >
+            Progetti
+          </Link>
+          <Link
+            href="/profilo"
+            onClick={() => setAperto(false)}
+            role="menuitem"
+            className={pathname === "/profilo" ? vociAttive : vociInattive}
+          >
+            Profilo
+          </Link>
+          {isAdmin && (
             <>
               <Link
-                href="/dashboard"
+                href="/revisione"
                 onClick={() => setAperto(false)}
                 role="menuitem"
-                className={pathname === "/dashboard" ? vociAttive : vociInattive}
+                className={pathname === "/revisione" ? vociAttive : vociInattive}
               >
-                Progetti
+                Video da rivedere
               </Link>
               <Link
-                href="/profilo"
+                href="/admin"
                 onClick={() => setAperto(false)}
                 role="menuitem"
-                className={pathname === "/profilo" ? vociAttive : vociInattive}
+                className={pathname === "/admin" ? vociAttive : vociInattive}
               >
-                Profilo
+                Registro
               </Link>
             </>
           )}
