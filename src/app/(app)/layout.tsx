@@ -46,16 +46,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   {p.nome}
                 </NavLink>
               ))}
-              {isAdmin && (
-                <>
-                  <NavLink href="/revisione" activePrefix="/revisione">
-                    Video da rivedere
-                  </NavLink>
-                  <NavLink href="/admin" activePrefix="/admin">
-                    Registro
-                  </NavLink>
-                </>
-              )}
             </nav>
 
             {/*
