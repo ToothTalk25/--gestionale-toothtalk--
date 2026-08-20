@@ -75,8 +75,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
         >
           {/* Voci comuni a tutti: Progetti e Profilo. Per chi ha accesso
-              globale si aggiungono anche le voci di amministrazione, così
-              tutto è raggiungibile anche dal menu del profilo. */}
+              globale si aggiungono anche le voci di amministrazione. */}
           <Link
             href="/dashboard"
             onClick={() => setAperto(false)}
@@ -85,19 +84,14 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           >
             Progetti
           </Link>
-          {/* Chi ha accesso globale non ha un profilo da compilare (vedi
-              profilo/page.tsx: la pagina rimanda sempre a /dashboard per
-              l'admin) — mostrare la voce lo farebbe solo rimbalzare. */}
-          {!isAdmin && (
-            <Link
-              href="/profilo"
-              onClick={() => setAperto(false)}
-              role="menuitem"
-              className={pathname === "/profilo" ? vociAttive : vociInattive}
-            >
-              Profilo
-            </Link>
-          )}
+          <Link
+            href="/profilo"
+            onClick={() => setAperto(false)}
+            role="menuitem"
+            className={pathname === "/profilo" ? vociAttive : vociInattive}
+          >
+            Profilo
+          </Link>
           {isAdmin && (
             <>
               <Link
