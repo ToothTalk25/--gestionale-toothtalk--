@@ -7,6 +7,7 @@ import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import FotoProfilo from "@/components/FotoProfilo";
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
 import TerminaCollaborazione from "@/components/TerminaCollaborazione";
+import ToggleOnScreen from "@/components/ToggleOnScreen";
 import ScaricaRicevuta from "@/components/ScaricaRicevuta";
 import ProfiliUscenti from "@/components/ProfiliUscenti";
 import NavigazioneAdmin, { type SezioneAdmin } from "@/components/NavigazioneAdmin";
@@ -273,11 +274,7 @@ export default async function AdminPage() {
                     <td className="py-2 pr-4" data-label="Partecipante">
                       {p.full_name ?? "—"}
                       <div className="text-xs text-slate-400">{p.email}</div>
-                      {p.on_screen && (
-                        <span className="mt-1 inline-block rounded bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium text-violet-700">
-                          In video
-                        </span>
-                      )}
+                      <ToggleOnScreen userId={p.id} appare={p.on_screen} />
                     </td>
                     <td className="py-2 pr-4" data-label="Università">{p.universita ?? "—"}</td>
                     <td className="py-2 pr-4" data-label="Foto">

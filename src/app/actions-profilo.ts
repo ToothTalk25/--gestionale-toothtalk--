@@ -825,3 +825,41 @@ export async function esportaDatiPersonali(): Promise<Esito<{ nome: string; cont
 
 
 
+
+/**
+ * L'Admin aggiorna il flag "appare in video" di un partecipante dopo
+ * l'approvazione (es. una persona che prima non appariva e poi inizia a
+ * comparire nei video). Il flag serve alla revoca GDPR: chi appare ha
+ * diritto di far purgare i propri video. Solo il Titolare può cambiarlo
+ * (la guardia fn_protect_profile lo protegge lato database).
+ */
+export async function impostaOnScreen(
+  userId: string,
+  appare: boolean,
+): Promise<Esito<{ appare: boolean }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ on_screen: appare })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  // Traccia il cambio (chi, quando, nuovo valore) nella catena di audit.
+  await ignora(
+    supabase.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "cambio_on_screen",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: { appare_in_video: appare },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { appare } };
+}
+
