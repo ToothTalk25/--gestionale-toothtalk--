@@ -1,91 +1,48 @@
 import Link from "next/link";
+import { INFORMATIVA_PRIVACY, type Blocco } from "@/lib/informativa-privacy";
+
+function RigaBlocco({ b }: { b: Blocco }) {
+  if (b.tipo === "h2") return <h2 className="text-base font-medium text-slate-900">{b.testo}</h2>;
+  if (b.tipo === "p") return <p className="mt-1">{b.testo}</p>;
+  return (
+    <ul className="mt-1 list-disc space-y-1 pl-5">
+      {b.voci.map((v, i) => (
+        <li key={i}>{v}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Un h2 apre un nuovo blocco (div con spazio sopra); p/ul che seguono
+// restano nello stesso blocco finché non arriva il prossimo h2.
+function raggruppaPerSezione(blocchi: Blocco[]): Blocco[][] {
+  const gruppi: Blocco[][] = [];
+  for (const b of blocchi) {
+    if (b.tipo === "h2" || gruppi.length === 0) gruppi.push([b]);
+    else gruppi[gruppi.length - 1].push(b);
+  }
+  return gruppi;
+}
 
 export default function PrivacyPage() {
+  const sezioni = raggruppaPerSezione(INFORMATIVA_PRIVACY);
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
       <h1 className="mt-6 text-2xl font-semibold">Informativa privacy</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 12 agosto 2026
+        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 20 agosto 2026
       </p>
 
       <section className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
-        <div>
-          <h2 className="text-base font-medium text-slate-900">Titolare del trattamento</h2>
-          <p className="mt-1">
-            ToothTalk<sup className="align-super text-[10px]">™</sup>,
-            progetto di divulgazione odontoiatrica, rappresentato dal
-            referente del progetto. Contatto: attraverso il gestionale o l&apos;account
-            email del progetto.
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-base font-medium text-slate-900">Quali dati trattiamo</h2>
-          <ul className="mt-1 list-disc pl-5">
-            <li>Dati anagrafici essenziali: nome, cognome, email, università</li>
-            <li>Foto del profilo</li>
-            <li>Accordo editoriale firmato (PDF)</li>
-            <li>Video, script e materiali depositati nel gestionale</li>
-            <li>Dati di accesso e log delle operazioni</li>
-          </ul>
-        </div>
-
-        <div>
-          <h2 className="text-base font-medium text-slate-900">Perché e con quale base giuridica</h2>
-          <ul className="mt-1 list-disc pl-5">
-            <li>
-              <strong>Esecuzione del progetto</strong>: organizzare la partecipazione
-              dei gruppi universitari e la realizzazione dei video
-            </li>
-            <li>
-              <strong>Consenso (art. 6.1.a GDPR)</strong>: caricamento della foto,
-              dell&apos;accordo e dei materiali
-            </li>
-            <li>
-              <strong>Interesse legittimo (art. 6.1.f GDPR)</strong>: tutela legale del
-              contenuto attraverso la certificazione via PEC e il registro append-only
-            </li>
-          </ul>
-          <p className="mt-2">
-            L&apos;accordo firmato viene inviato via PEC al referente del progetto: è la
-            registrazione con data certa che protegge chi realizza i video.
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-base font-medium text-slate-900">Conservazione</h2>
-          <p className="mt-1">
-            I file (video, foto, materiali) restano sulla piattaforma solo il tempo
-            necessario a scaricarli e pubblicarli, e possono essere eliminati dopo
-            l&apos;invio della PEC. I metadati, le impronte e i verbali PEC restano come
-            registro append-only per esigenze di tutela legale, insieme alla copia
-            già presente nella casella PEC e nelle caselle dei partecipanti. Una copia
-            dei materiali sigillati e del relativo verbale viene inoltre archiviata su
-            Google Drive, in una cartella riservata al progetto e accessibile solo al
-            referente.
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-base font-medium text-slate-900">Chi vede i tuoi dati</h2>
-          <p className="mt-1">
-            L&apos;anagrafica completa è visibile solo a te e al referente del progetto.
-            Gli altri partecipanti del gruppo vedono solo il tuo nome. I materiali
-            depositati sono visibili ai partecipanti del tuo gruppo e al referente.
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-base font-medium text-slate-900">I tuoi diritti</h2>
-          <p className="mt-1">
-            Puoi esercitare in ogni momento i diritti previsti dal GDPR: accesso,
-            rettifica, cancellazione, opposizione, limitazione, portabilità dei dati,
-            e revoca del consenso. Per esercitarli contatta il referente del progetto.
-            Hai inoltre il diritto di proporre reclamo al Garante per la protezione
-            dei dati personali.
-          </p>
-        </div>
+        {sezioni.map((gruppo, i) => (
+          <div key={i}>
+            {gruppo.map((b, j) => (
+              <RigaBlocco key={j} b={b} />
+            ))}
+          </div>
+        ))}
 
         <div id="cookie">
           <h2 className="text-base font-medium text-slate-900">Cookie policy</h2>
@@ -100,7 +57,7 @@ export default function PrivacyPage() {
         </div>
 
         <p className="pt-4 text-xs text-slate-400">
-          Ultimo aggiornamento: 12 agosto 2026 ·{" "}
+          Ultimo aggiornamento: 20 agosto 2026 ·{" "}
           <Link href="/login" className="underline">
             Torna al login
           </Link>

@@ -9,6 +9,11 @@ const PUBBLICHE = [
   "/privacy",
   "/termini",
   "/registrati",
+  // Firma della liberatoria da parte di chi è stato intervistato: non ha
+  // (e non deve avere) un account nel gestionale, riceve solo un link con
+  // token via email. Senza questa riga il proxy lo rimandava al login,
+  // rendendo l'intero flusso di firma digitale irraggiungibile.
+  "/carica-liberatoria",
   // File di verifica proprietà dominio (Google Search Console): statico,
   // nessun dato sensibile, deve restare raggiungibile senza sessione.
   "/google97604b8436f2db92.html",

@@ -39,9 +39,13 @@ body {
 
 /* Feedback al tocco: senza questo, -webkit-tap-highlight-color: transparent
    (sopra) toglie ogni segnale visivo di "ho premuto qui" — ogni bottone e
-   link si scurisce leggermente mentre è premuto, come in una vera app. */
+   link si scurisce leggermente mentre è premuto, come in una vera app.
+   Le caselle di spunta (accetto/confermo, tipicamente dentro un <label>
+   cliccabile) usavano ancora l'evidenziazione nativa del telefono, tolta
+   dalla regola sopra: senza sostituto restavano senza alcun feedback. */
 button:not(:disabled):active,
-a:active {
+a:active,
+label:has(input[type="checkbox"], input[type="radio"]):active {
   filter: brightness(0.92);
 }
 
