@@ -75,7 +75,9 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
         >
           {/* Profilo come prima voce: è la sezione personale, poi il resto.
-              Per chi ha accesso globale si aggiungono le voci di admin. */}
+              "Video da rivedere" e "Registro" NON compaiono qui: sono già
+              nella barra in alto per chi ha accesso globale — ripeterle
+              anche qui è solo un doppione. */}
           <Link
             href="/profilo"
             onClick={() => setAperto(false)}
@@ -92,26 +94,6 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           >
             Progetti
           </Link>
-          {isAdmin && (
-            <>
-              <Link
-                href="/revisione"
-                onClick={() => setAperto(false)}
-                role="menuitem"
-                className={pathname === "/revisione" ? vociAttive : vociInattive}
-              >
-                Video da rivedere
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setAperto(false)}
-                role="menuitem"
-                className={pathname === "/admin" ? vociAttive : vociInattive}
-              >
-                Registro
-              </Link>
-            </>
-          )}
           <button
             onClick={esci}
             role="menuitem"
