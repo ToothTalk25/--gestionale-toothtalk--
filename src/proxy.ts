@@ -79,6 +79,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Il pathname corrente serve al layout app per il blocco accordo
+  // (senza aggiungere query extra a ogni richiesta).
+  response.headers.set("x-pathname", path);
+
   return response;
 }
 

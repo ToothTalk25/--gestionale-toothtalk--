@@ -65,31 +65,50 @@ export type EsitoVerificaAccordo = {
 
 /**
  * Verifica che il PDF caricato sia l'accordo editoriale ToothTalk, firmato
- * nel punto giusto. Restituisce sempre un esito: l'IA non blocca nulla.
- * L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage):
- * la cessione dei diritti (immagine e autore) è già dentro l'Art. 4 del
- * documento unico, quindi non c'è alcun tipo da distinguere.
+ * nel punto giusto E sostanzialmente identico al MODELLO ufficiale attivo
+ * (confronto delle clausole, non solo "sembra un accordo"). Restituisce
+ * sempre un esito: l'IA non blocca nulla — ma solo un esito 'ok' (insieme
+ * all'approvazione manuale del Titolare) sblocca l'accesso ai progetti.
+ * L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage).
  */
 export async function verificaAccordoFirmato(opts: {
   pdfBase64: string;
   mimeType: string;
+  modelloBase64?: string;
+  modelloMimeType?: string;
 }): Promise<EsitoVerificaAccordo> {
   const prompt = [
-    "Sei un assistente di controllo documenti. Ti viene mostrato un PDF.",
+    "Sei un assistente di controllo documenti.",
+    "Ti vengono mostrati due PDF:",
+    "  (1) il MODELLO ufficiale dell'accordo ToothTalk;",
+    "  (2) un documento caricato da un collaboratore che dichiara di essere quell'accordo firmato.",
     "Rispondi SOLO con un JSON senza testo intorno, con questa forma:",
     '{"esito":"ok|attenzione|errato","note":"spiegazione breve in italiano"}',
     "",
     "Criteri:",
-    "1. Il documento è un accordo di partecipazione/editoriale ToothTalk? Se non lo è -> errato.",
-    "2. C'è una firma manoscritta (non testo stampato) nel riquadro/della firma? Se manca -> errato.",
-    "3. La firma è presente ma in un punto inatteso o il documento sembra una bozza non compilata -> attenzione.",
-    "4. Se tutto è a posto -> ok.",
+    "1. Confronta il testo SOSTANZIALE delle clausole (non la formattazione) tra i due documenti.",
+    "   Se il contenuto delle clausole del documento (2) è stato alterato rispetto al modello (1)",
+    "   — anche se visivamente identico — l'esito è 'errato'.",
+    "2. Se il documento (2) non è riconducibile al modello (1), l'esito è 'errato'.",
+    "3. Se manca una firma manoscritta (non testo stampato), l'esito è 'errato'.",
+    "4. Se tutto corrisponde ed è firmato, l'esito è 'ok'.",
+    "5. Solo se la firma c'è ma in un punto inatteso, o il documento sembra una bozza non compilata, 'attenzione'.",
   ].join("\n");
 
   try {
-    const risposta = await genera(prompt, [
+    const parti: { inlineData: { data: string; mimeType: string } }[] = [
       { inlineData: { data: opts.pdfBase64, mimeType: opts.mimeType } },
-    ]);
+    ];
+    // Se c'è il modello di riferimento, lo passiamo come secondo PDF.
+    if (opts.modelloBase64) {
+      parti.push({
+        inlineData: {
+          data: opts.modelloBase64,
+          mimeType: opts.modelloMimeType ?? "application/pdf",
+        },
+      });
+    }
+    const risposta = await genera(prompt, parti);
     const jsonMatch = risposta.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { esito: "non_valutato", note: "Risposta IA non interpretabile." };
     const parsed = JSON.parse(jsonMatch[0]) as Partial<EsitoVerificaAccordo>;

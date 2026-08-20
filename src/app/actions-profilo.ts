@@ -479,16 +479,50 @@ export async function caricaAccordo(
   }
 
   // --- controllo IA sull'accordo (segnalazione, mai blocco) ------------
+  // La verifica confronta il documento col MODELLO attivo (ultima riga di
+  // modello_accordo): senza un modello di riferimento l'IA non può fare il
+  // confronto e restituisce 'non_valutato'.
+  let modelloBase64: string | undefined;
+  let modelloMime: string | undefined;
+  try {
+    const { data: modello } = await supabase
+      .from("modello_accordo")
+      .select("storage_path")
+      .order("caricato_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ storage_path: string }>();
+    if (modello) {
+      const { data: blobModello, error: eMod } = await supabase.storage
+        .from("finali")
+        .download(modello.storage_path);
+      if (!eMod && blobModello) {
+        modelloBase64 = Buffer.from(await blobModello.arrayBuffer()).toString("base64");
+        modelloMime = blobModello.type || "application/pdf";
+      }
+    }
+  } catch {
+    // se il recupero del modello fallisce, si procede senza confronto
+  }
+
   const verifica = await verificaAccordoFirmato({
     pdfBase64: buffer.toString("base64"),
     mimeType: blob.type || "application/pdf",
+    modelloBase64,
+    modelloMimeType: modelloMime,
   });
+
+  // Se non c'era un modello di riferimento, l'esito 'non_valutato' con nota
+  // esplicita: l'admin vedrà che serve caricare il modello prima.
+  const nota =
+    verifica.esito === "non_valutato" && !modelloBase64
+      ? "Nessun modello di riferimento caricato: carica prima il modello dell'accordo."
+      : verifica.note;
 
   const { error: eVerifica } = await supabase
     .from("profiles")
     .update({
       accordo_verificato: verifica.esito,
-      accordo_verifica_note: verifica.note || null,
+      accordo_verifica_note: nota || null,
       accordo_verificato_at: new Date().toISOString(),
     })
     .eq("id", profile.id);
@@ -862,4 +896,66 @@ export async function impostaOnScreen(
   revalidatePath("/admin");
   return { ok: true, dati: { appare } };
 }
+
+/**
+ * Il Titolare approva MANUALMENTE l'accordo di un collaboratore: è la
+ * quarta condizione (oltre a caricato + letto/confermato + verifica IA ok)
+ * che sblocca l'accesso ai progetti. L'approvazione è tracciata in
+ * audit_log. Solo admin.
+ */
+export async function approvaAccordoManualmente(
+  userId: string,
+): Promise<Esito<{ approvatoAt: string }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+
+  const supabase = await supabaseServer();
+
+  // Controllo di coerenza: si approva solo un accordo che esiste.
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, full_name, accordo_path, accordo_letto_confermato, accordo_verificato, accordo_approvato_admin_at")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      accordo_path: string | null;
+      accordo_letto_confermato: boolean;
+      accordo_verificato: string | null;
+      accordo_approvato_admin_at: string | null;
+    }>();
+  if (!target) return errore("Utente non trovato.");
+  if (!target.accordo_path) return errore("Nessun accordo caricato per questo utente.");
+  if (target.accordo_approvato_admin_at) return errore("Accordo già approvato.");
+
+  const ora = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      accordo_approvato_admin_at: ora,
+      accordo_approvato_da: profile.id,
+    })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  // Traccia l'approvazione nella catena di audit.
+  await ignora(
+    supabase.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "approvazione_accordo_admin",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: {
+        utente: target.full_name,
+        accordo_verificato: target.accordo_verificato,
+        approvato_at: ora,
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { approvatoAt: ora } };
+}
+
 

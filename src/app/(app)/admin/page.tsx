@@ -15,6 +15,9 @@ import SezioneAudit, { type RigaAudit } from "@/components/SezioneAudit";
 import SezioneConsensi, { type RigaConsenso } from "@/components/SezioneConsensi";
 import SezioneLiberatorie, { type RigaLiberatoria } from "@/components/SezioneLiberatorie";
 import CaricaModelloAccordo, { type RigaModelloAccordo } from "@/components/CaricaModelloAccordo";
+import AccordiDaApprovare, {
+  type RigaAccordoDaApprovare,
+} from "@/components/AccordiDaApprovare";
 import RichiesteRegistrazione, {
   type RigaRichiestaRegistrazione,
 } from "@/components/RichiesteRegistrazione";
@@ -45,6 +48,7 @@ export default async function AdminPage() {
     { data: registoConsensi },
     { data: richieste },
     { data: modelliAccordo },
+    { data: accordiDaApprovare },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -136,6 +140,18 @@ export default async function AdminPage() {
           profiles: { full_name: string | null } | null;
         }[]
       >(),
+    // Accordi caricati e verificati OK dall'IA ma in attesa di approvazione
+    // MANUALE del Titolare (quarta condizione per sbloccare i progetti).
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note")
+      .not("accordo_path", "is", null)
+      .eq("accordo_letto_confermato", true)
+      .eq("accordo_verificato", "ok")
+      .is("accordo_approvato_admin_at", null)
+      .neq("role", "admin")
+      .order("accordo_caricato_at", { ascending: true })
+      .returns<RigaAccordoDaApprovare[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -256,6 +272,15 @@ export default async function AdminPage() {
               attenzione: "\"Approva\" attiva subito l'account e spedisce l'accordo editoriale via PEC alla persona — controlla prima che il modello caricato in \"Modello accordo\" sia quello giusto. Respingere/eliminare una richiesta è definitivo, non recuperabile.",
             },
             contenuto: <RichiesteRegistrazione richieste={richieste ?? []} />,
+          },
+          {
+            id: "accordi-da-approvare",
+            etichetta: "Accordi da approvare",
+            promemoria: {
+              cosa: "approvi MANUALMENTE l'accordo di chi l'ha già caricato, confermato la lettura e superato la verifica IA — è l'ultimo passaggio che sblocca l'accesso ai progetti.",
+              attenzione: "L'approvazione è irreversibile e vale come tua firma sul controllo. Se l'esito IA non è 'ok' il profilo non compare qui; se per qualsiasi motivo compare con esito diverso, controllalo con particolare attenzione prima di approvare.",
+            },
+            contenuto: <AccordiDaApprovare accordi={accordiDaApprovare ?? []} />,
           },
           {
             id: "partecipanti",

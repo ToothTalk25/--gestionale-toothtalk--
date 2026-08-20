@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { requireSession } from "@/lib/auth";
 import MenuUtente from "@/components/MenuUtente";
 import BannerConsenso from "@/components/BannerConsenso";
@@ -7,6 +9,27 @@ import { PoloAttivoProvider } from "@/components/PoloAttivoContext";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, poli, isAdmin } = await requireSession();
+
+  // --- Blocco accesso progetti finché l'accordo non è completo ---------
+  // Quattro condizioni, TUTTE necessarie per i Collaboratori:
+  //   1. accordo caricato (accordo_path)
+  //   2. spunta "ho letto e compreso" (accordo_letto_confermato)
+  //   3. verifica IA = 'ok' (accordo_verificato)
+  //   4. approvazione manuale del Titolare (accordo_approvato_admin_at)
+  // L'admin (isAdmin) non è mai soggetto al blocco. Chi è bloccato può
+  // restare SOLO su /profilo (dove carica/gestisce l'accordo): tutto il
+  // resto viene rimandato lì. Il redirect esclude esplicitamente /profilo
+  // per evitare un loop infinito (il layout gira anche per /profilo).
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const accordoCompleto =
+    isAdmin ||
+    (!!profile.accordo_path &&
+      profile.accordo_letto_confermato &&
+      profile.accordo_verificato === "ok" &&
+      !!profile.accordo_approvato_admin_at);
+  if (!accordoCompleto && pathname !== "/profilo") {
+    redirect("/profilo");
+  }
 
   return (
     <PoloAttivoProvider>

@@ -37,7 +37,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, pec, full_name, role, attivo, on_screen, universita, foto_path, accordo_path, accordo_sha256, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_verificato_at, accordo_letto_confermato",
+      "id, email, pec, full_name, role, attivo, on_screen, universita, foto_path, accordo_path, accordo_sha256, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_verificato_at, accordo_letto_confermato, accordo_approvato_admin_at, accordo_approvato_da",
     )
     .eq("id", session.user.id)
     .single<Profile>();

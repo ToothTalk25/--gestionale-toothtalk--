@@ -113,6 +113,8 @@ export type Profile = {
   accordo_verifica_note: string | null;
   accordo_verificato_at: string | null;
   accordo_letto_confermato: boolean;
+  accordo_approvato_admin_at: string | null;
+  accordo_approvato_da: string | null;
 };
 
 export type Polo = {

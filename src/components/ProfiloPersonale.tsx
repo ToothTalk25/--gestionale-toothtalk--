@@ -400,6 +400,40 @@ export default function ProfiloPersonale({
               )}
             </div>
           )}
+
+          {/* ---- Checklist: le 4 condizioni per sbloccare i progetti ---- */}
+          <div className="mt-4 rounded-lg border border-slate-200 p-3 text-xs">
+            <p className="font-medium text-slate-700">Accesso ai progetti — stato</p>
+            <ul className="mt-2 space-y-1 text-slate-600">
+              <li className={profile.accordo_path ? "text-emerald-700" : "text-slate-400"}>
+                {profile.accordo_path ? "☑" : "☐"} Accordo caricato
+              </li>
+              <li className={profile.accordo_letto_confermato ? "text-emerald-700" : "text-slate-400"}>
+                {profile.accordo_letto_confermato ? "☑" : "☐"} Confermato &quot;ho letto e compreso&quot;
+              </li>
+              <li className={verificaStato.esito === "ok" ? "text-emerald-700" : "text-slate-400"}>
+                {verificaStato.esito === "ok" ? "☑" : "☐"} Verifica IA superata
+                {verificaStato.esito === "attenzione" && (
+                  <span className="text-amber-700"> (attenzione: verifica manuale)</span>
+                )}
+                {verificaStato.esito === "errato" && (
+                  <span className="text-red-700"> (sembra non corretto: ricarica)</span>
+                )}
+              </li>
+              <li className={profile.accordo_approvato_admin_at ? "text-emerald-700" : "text-slate-400"}>
+                {profile.accordo_approvato_admin_at ? "☑" : "☐"} Approvato dal Titolare
+              </li>
+            </ul>
+            {(!profile.accordo_path ||
+              !profile.accordo_letto_confermato ||
+              verificaStato.esito !== "ok" ||
+              !profile.accordo_approvato_admin_at) && (
+              <p className="mt-2 text-slate-500">
+                Il tuo accesso ai progetti resta bloccato finché l&apos;accordo non è
+                completo su tutti questi punti.
+              </p>
+            )}
+          </div>
         </section>
         )}
       </div>
