@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { aggiornaAnagrafica } from "@/app/actions-profilo";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { aggiornaAnagrafica, caricaFoto, registraConsenso } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
+import FotoProfilo from "@/components/FotoProfilo";
+
+function sanifica(nome: string) {
+  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+}
 
 /**
- * Profilo dell'Admin (Titolare). L'admin non compila un accordo né una
- * foto: gestisce il progetto dal Registro. Qui può solo aggiornare il
- * proprio recapito (email o PEC) — utile se cambia casella. È una vista
- * leggera e coerente con lo stile della pagina profilo dei partecipanti.
+ * Profilo dell'Admin (Titolare). L'admin non compila un accordo — gestisce
+ * il progetto dal Registro. Ha però una foto come gli altri membri: il
+ * Titolare è anche membro del team del proprio polo, e la foto serve ai
+ * compagni di gruppo per riconoscersi negli stessi punti dell'app in cui
+ * vedono le foto degli altri.
  */
 export default function ProfiloAdmin({ profile }: { profile: Profile }) {
   const router = useRouter();
@@ -17,6 +24,58 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [inCorso, start] = useTransition();
+
+  const fotoInput = useRef<HTMLInputElement>(null);
+  const [fotoPath, setFotoPath] = useState(profile.foto_path ?? "");
+  const [consensoRiconoscimento, setConsensoRiconoscimento] = useState(false);
+  const [consensoCaricato, setConsensoCaricato] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: auth } = await supabaseBrowser().auth.getUser();
+      if (!auth.user) return;
+      const { data } = await supabaseBrowser()
+        .from("consensi")
+        .select("id")
+        .eq("user_id", auth.user.id)
+        .eq("tipo", "riconoscimento_foto")
+        .limit(1);
+      setConsensoRiconoscimento((data ?? []).length > 0);
+      setConsensoCaricato(true);
+    })();
+  }, []);
+
+  async function daiConsensoRiconoscimento() {
+    const esito = await registraConsenso("riconoscimento_foto");
+    if (esito.ok) setConsensoRiconoscimento(true);
+  }
+
+  async function caricaFotoFile() {
+    const file = fotoInput.current?.files?.[0];
+    if (!file) return;
+    setErrore(null);
+    setMessaggio(null);
+    try {
+      const { data: auth } = await supabaseBrowser().auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("Sessione non valida.");
+
+      const path = `${uid}/foto/${crypto.randomUUID()}__${sanifica(file.name)}`;
+      const { error } = await supabaseBrowser()
+        .storage.from("profili")
+        .upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
+      if (error) throw new Error(error.message);
+
+      const esito = await caricaFoto(path);
+      if (!esito.ok) throw new Error(esito.errore);
+      setFotoPath(path);
+      setMessaggio("Foto aggiornata.");
+      if (fotoInput.current) fotoInput.current.value = "";
+      router.refresh();
+    } catch (e) {
+      setErrore(e instanceof Error ? e.message : "Errore imprevisto");
+    }
+  }
 
   function salva() {
     setErrore(null);
@@ -69,6 +128,60 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
         >
           {inCorso ? "Salvo…" : "Salva"}
         </button>
+      </section>
+
+      {/* -------------------------------------------------------- foto
+          Anche il Titolare fa parte di un team di polo: la foto serve ai
+          compagni di gruppo per riconoscerlo negli stessi punti dell'app
+          in cui vedono le foto degli altri membri. */}
+      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+        <h2 className="text-lg font-medium">Foto</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          La foto che ti identifica nel team.
+        </p>
+
+        <div className="mt-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-2 ring-black/10">
+          {fotoPath ? (
+            <FotoProfilo path={fotoPath} className="h-full w-full object-cover" alt="Foto profilo" />
+          ) : (
+            <span className="text-xs text-slate-400">Nessuna foto</span>
+          )}
+        </div>
+
+        <input
+          ref={fotoInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={caricaFotoFile}
+        />
+        <button
+          onClick={() => fotoInput.current?.click()}
+          className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+        >
+          {fotoPath ? "Sostituisci foto" : "Carica foto"}
+        </button>
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+          Formati accettati: JPG, PNG o WebP. Dimensione massima 5 MB,
+          consigliata quadrata e almeno 400×400 px.
+        </p>
+
+        {consensoCaricato && fotoPath && (
+          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={consensoRiconoscimento}
+              onChange={() => !consensoRiconoscimento && daiConsensoRiconoscimento()}
+              disabled={consensoRiconoscimento}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <span className="text-xs text-slate-600 leading-relaxed">
+              {consensoRiconoscimento
+                ? "Hai autorizzato l'uso di questa foto per il controllo automatico."
+                : "Autorizzo l'uso di questa foto per il controllo automatico che verifica se un video mostra persone esterne al progetto."}
+            </span>
+          </label>
+        )}
       </section>
 
       {/* ------------------------------------------- strumenti admin */}
