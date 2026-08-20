@@ -74,16 +74,8 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           role="menu"
           className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
         >
-          {/* Voci comuni a tutti: Progetti e Profilo. Per chi ha accesso
-              globale si aggiungono anche le voci di amministrazione. */}
-          <Link
-            href="/dashboard"
-            onClick={() => setAperto(false)}
-            role="menuitem"
-            className={pathname === "/dashboard" ? vociAttive : vociInattive}
-          >
-            Progetti
-          </Link>
+          {/* Profilo come prima voce: è la sezione personale, poi il resto.
+              Per chi ha accesso globale si aggiungono le voci di admin. */}
           <Link
             href="/profilo"
             onClick={() => setAperto(false)}
@@ -91,6 +83,14 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
             className={pathname === "/profilo" ? vociAttive : vociInattive}
           >
             Profilo
+          </Link>
+          <Link
+            href="/dashboard"
+            onClick={() => setAperto(false)}
+            role="menuitem"
+            className={pathname === "/dashboard" ? vociAttive : vociInattive}
+          >
+            Progetti
           </Link>
           {isAdmin && (
             <>
