@@ -179,11 +179,19 @@ export default async function AdminPage() {
           {
             id: "inviti",
             etichetta: "Inviti",
+            promemoria: {
+              cosa: "crei o disattivi i codici che permettono a nuovi collaboratori di registrarsi in un polo.",
+              attenzione: "disattivare un codice blocca subito nuove registrazioni con quel codice — non tocca chi si è già registrato.",
+            },
             contenuto: <GestioneInviti poli={ordinaPoli(poli ?? [])} inviti={inviti ?? []} />,
           },
           {
             id: "confronto",
             etichetta: "Originale vs versione finale",
+            promemoria: {
+              cosa: "confronti il materiale depositato dal gruppo con l'eventuale versione che hai modificato tu prima della pubblicazione.",
+              attenzione: "solo consultazione — nessuna azione possibile da qui.",
+            },
             contenuto: (
               <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
         <h2 className="text-lg font-medium">Originale vs versione finale</h2>
@@ -234,16 +242,28 @@ export default async function AdminPage() {
           {
             id: "log",
             etichetta: "Log delle operazioni",
+            promemoria: {
+              cosa: "consulti il registro immutabile di tutte le azioni amministrative (chi ha fatto cosa e quando).",
+              attenzione: "solo lettura — il registro non si può modificare né cancellare, nemmeno da qui.",
+            },
             contenuto: <SezioneAudit audit={audit ?? []} nomi={nomi} />,
           },
           {
             id: "richieste",
             etichetta: "Richieste di registrazione",
+            promemoria: {
+              cosa: "approvi o respingi le domande di chi si è appena registrato.",
+              attenzione: "\"Approva\" attiva subito l'account e spedisce l'accordo editoriale via PEC alla persona — controlla prima che il modello caricato in \"Modello accordo\" sia quello giusto. Respingere/eliminare una richiesta è definitivo, non recuperabile.",
+            },
             contenuto: <RichiesteRegistrazione richieste={richieste ?? []} />,
           },
           {
             id: "partecipanti",
             etichetta: "Registro partecipanti",
+            promemoria: {
+              cosa: "gestisci anagrafica, stato \"in video\" e chiusura della collaborazione di ogni partecipante attivo.",
+              attenzione: "\"Termina Collaborazione\" per un partecipante on-screen cancella per sempre i video/audio grezzi che lo ritraggono (revoca GDPR incondizionata, irreversibile) — verifica lo stato \"in video\" prima di procedere, perché determina cosa viene distrutto.",
+            },
             contenuto: (
               <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
         <h2 className="text-lg font-medium">Registro partecipanti per sede</h2>
@@ -342,6 +362,10 @@ export default async function AdminPage() {
           {
             id: "uscenti",
             etichetta: "Profili uscenti",
+            promemoria: {
+              cosa: "vedi chi ha un account disattivato e cosa comporta eliminarlo del tutto (il dettaglio, per ciascuno, è già qui sotto).",
+              attenzione: "\"Elimina account\" è definitivo — leggi il riquadro rosso/verde per ogni profilo prima di confermare.",
+            },
             contenuto: (
               <ProfiliUscenti
                 profili={profili ?? []}
@@ -353,16 +377,28 @@ export default async function AdminPage() {
           {
             id: "consensi",
             etichetta: "Consensi GDPR",
+            promemoria: {
+              cosa: "consulti il registro dei consensi privacy/cookie/riconoscimento-foto raccolti, con le ricevute firmate scaricabili.",
+              attenzione: "solo consultazione — nessuna azione qui modifica lo stato di un consenso.",
+            },
             contenuto: <SezioneConsensi consensi={consensi ?? []} nomi={nomi} />,
           },
           {
             id: "liberatorie",
             etichetta: "Liberatorie e accordi",
+            promemoria: {
+              cosa: "consulti il registro delle liberatorie firmate da soggetti esterni e degli accordi caricati dai collaboratori.",
+              attenzione: "solo consultazione — i documenti restano protetti, non sono scaricabili da qui per tutela della privacy dei terzi.",
+            },
             contenuto: <SezioneLiberatorie documenti={registoConsensi ?? []} />,
           },
           {
             id: "modello-accordo",
             etichetta: "Modello accordo",
+            promemoria: {
+              cosa: "carichi il documento dell'accordo editoriale che verrà inviato automaticamente a ogni nuova registrazione approvata.",
+              attenzione: "l'ultimo modello caricato diventa SUBITO quello attivo, usato dalla prossima approvazione — controllalo bene prima di caricarlo.",
+            },
             contenuto: <CaricaModelloAccordo modelli={modelli} />,
           },
         ]}

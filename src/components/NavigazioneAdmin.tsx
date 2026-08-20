@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import PromemoriaSezione from "@/components/PromemoriaSezione";
 
 /**
  * Navigazione tra le sezioni del Registro globale (pagina admin).
@@ -13,6 +14,8 @@ import { useRef } from "react";
 export type SezioneAdmin = {
   id: string;
   etichetta: string;
+  /** Cosa si fa in questa sezione — mostrato in un promemoria in cima. */
+  promemoria?: { cosa: string; attenzione?: string };
   contenuto: React.ReactNode;
 };
 
@@ -25,19 +28,26 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-16 z-30 rounded-2xl bg-white/95 p-3 ring-1 ring-black/5 backdrop-blur">
-        {/* scorciatoie per saltare da una sezione all'altra */}
-        <nav className="flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible md:pb-0">
+      <div className="sticky top-16 z-30 flex items-center gap-3 rounded-2xl bg-white/95 p-3 ring-1 ring-black/5 backdrop-blur">
+        <label htmlFor="sezione-admin" className="text-sm font-medium text-slate-600">
+          Vai a:
+        </label>
+        <select
+          id="sezione-admin"
+          defaultValue=""
+          onChange={(e) => {
+            if (e.target.value) salta(e.target.value);
+            e.target.value = "";
+          }}
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-tt-blue focus:outline-none md:w-auto"
+        >
+          <option value="">Scegli una sezione…</option>
           {sezioni.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => salta(s.id)}
-              className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-tt-blue-50 hover:text-tt-blue"
-            >
+            <option key={s.id} value={s.id}>
               {s.etichetta}
-            </button>
+            </option>
           ))}
-        </nav>
+        </select>
       </div>
 
       {sezioni.map((s) => (
@@ -47,6 +57,7 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
             riferimenti.current.set(s.id, el);
           }}
         >
+          {s.promemoria && <PromemoriaSezione {...s.promemoria} />}
           {s.contenuto}
         </section>
       ))}
