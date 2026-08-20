@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 
 /**
- * Menu a tendina per navigare tra le sezioni del Registro globale (pagina
- * admin). Mostra una sezione alla volta, così la pagina non diventa un muro
- * di tabelle. La sezione attiva resta nella tendina per non perdere il
- * contesto.
+ * Navigazione tra le sezioni del Registro globale (pagina admin).
+ *
+ * A differenza di un menu che nasconde il contenuto, qui TUTTE le sezioni
+ * restano visibili una sotto l'altra: il menu serve solo come scorciatoia
+ * per saltare rapidamente a una sezione (scroll). Nessun contenuto viene
+ * mai nascosto — è la pagina admin completa, ordinata per sezioni.
  */
 export type SezioneAdmin = {
   id: string;
@@ -15,24 +17,31 @@ export type SezioneAdmin = {
 };
 
 export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] }) {
-  const [attiva, setAttiva] = useState(sezioni[0]?.id ?? "");
-  const corrente = sezioni.find((s) => s.id === attiva) ?? sezioni[0];
+  const riferimenti = useRef<Map<string, HTMLElement | null>>(new Map());
+
+  function salta(id: string) {
+    riferimenti.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-3 ring-1 ring-black/5 md:flex md:flex-wrap md:items-center md:gap-3">
+      <div className="sticky top-16 z-30 rounded-2xl bg-white/95 p-3 ring-1 ring-black/5 backdrop-blur md:flex md:flex-wrap md:items-center md:gap-3">
         <label
           htmlFor="sezione-admin"
           className="mb-2 block text-sm font-medium text-slate-600 md:mb-0"
         >
-          Sezione del registro
+          Vai a:
         </label>
         <select
           id="sezione-admin"
-          value={corrente.id}
-          onChange={(e) => setAttiva(e.target.value)}
+          defaultValue=""
+          onChange={(e) => {
+            if (e.target.value) salta(e.target.value);
+            e.target.value = "";
+          }}
           className="mb-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-tt-blue focus:outline-none md:mb-0 md:w-auto"
         >
+          <option value="">Scegli una sezione…</option>
           {sezioni.map((s) => (
             <option key={s.id} value={s.id}>
               {s.etichetta}
@@ -45,12 +54,8 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
           {sezioni.map((s) => (
             <button
               key={s.id}
-              onClick={() => setAttiva(s.id)}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition ${
-                s.id === corrente.id
-                  ? "bg-tt-blue text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+              onClick={() => salta(s.id)}
+              className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-tt-blue-50 hover:text-tt-blue"
             >
               {s.etichetta}
             </button>
@@ -58,7 +63,17 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
         </nav>
       </div>
 
-      {corrente?.contenuto}
+      {sezioni.map((s) => (
+        <section
+          key={s.id}
+          ref={(el) => {
+            riferimenti.current.set(s.id, el);
+          }}
+        >
+          {s.contenuto}
+        </section>
+      ))}
     </div>
   );
 }
+
