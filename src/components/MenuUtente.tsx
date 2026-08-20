@@ -85,14 +85,19 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           >
             Progetti
           </Link>
-          <Link
-            href="/profilo"
-            onClick={() => setAperto(false)}
-            role="menuitem"
-            className={pathname === "/profilo" ? vociAttive : vociInattive}
-          >
-            Profilo
-          </Link>
+          {/* Chi ha accesso globale non ha un profilo da compilare (vedi
+              profilo/page.tsx: la pagina rimanda sempre a /dashboard per
+              l'admin) — mostrare la voce lo farebbe solo rimbalzare. */}
+          {!isAdmin && (
+            <Link
+              href="/profilo"
+              onClick={() => setAperto(false)}
+              role="menuitem"
+              className={pathname === "/profilo" ? vociAttive : vociInattive}
+            >
+              Profilo
+            </Link>
+          )}
           {isAdmin && (
             <>
               <Link
