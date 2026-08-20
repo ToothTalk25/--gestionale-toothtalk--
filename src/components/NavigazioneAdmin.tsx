@@ -28,19 +28,29 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
         <label htmlFor="sezione-admin" className="text-sm font-medium text-slate-600">
           Vai a:
         </label>
-        <select
-          id="sezione-admin"
-          value={attiva}
-          onChange={(e) => setAttiva(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-tt-blue focus:outline-none md:w-auto"
-        >
-          <option value="">Scegli una sezione…</option>
-          {sezioni.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.etichetta}
-            </option>
-          ))}
-        </select>
+        <div className="relative w-full md:w-auto">
+          <select
+            id="sezione-admin"
+            value={attiva}
+            onChange={(e) => setAttiva(e.target.value)}
+            className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm text-slate-700 focus:border-tt-blue focus:outline-none focus:ring-2 focus:ring-tt-blue/20 md:w-auto md:min-w-[220px]"
+          >
+            <option value="">Scegli una sezione…</option>
+            {sezioni.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.etichetta}
+              </option>
+            ))}
+          </select>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+          >
+            <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        </div>
       </div>
 
       {corrente && (
