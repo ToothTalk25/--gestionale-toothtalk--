@@ -183,35 +183,6 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
           </label>
         )}
       </section>
-
-      {/* ------------------------------------------- strumenti admin */}
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-        <h2 className="text-lg font-medium">Strumenti del Titolare</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Da qui raggiungi le aree di amministrazione del progetto.
-        </p>
-        <ul className="mt-4 space-y-2 text-sm">
-          <li>
-            <a href="/admin" className="text-tt-blue hover:underline">
-              → Registro globale (partecipanti, consensi, accordi, log)
-            </a>
-          </li>
-          <li>
-            <a href="/revisione" className="text-tt-blue hover:underline">
-              → Video da rivedere
-            </a>
-          </li>
-          <li>
-            <a href="/dashboard" className="text-tt-blue hover:underline">
-              → Progetti (vista globale)
-            </a>
-          </li>
-        </ul>
-        <p className="mt-4 text-xs text-slate-400">
-          Ruolo: <span className="font-medium text-slate-600">admin</span> ·
-          accesso globale a tutti i gruppi.
-        </p>
-      </section>
     </div>
   );
 }
