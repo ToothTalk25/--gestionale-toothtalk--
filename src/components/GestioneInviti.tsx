@@ -46,8 +46,8 @@ export default function GestioneInviti({
 
       {/* ------------------------------------------------ codici attivi */}
       {attivi.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="mt-4 overflow-x-auto md:overflow-visible">
+          <table className="tabella-mobile w-full text-left text-sm">
             <thead className="text-xs text-slate-400">
               <tr>
                 <th className="py-2 pr-4">Gruppo</th>
@@ -60,18 +60,18 @@ export default function GestioneInviti({
             <tbody>
               {attivi.map((i) => (
                 <tr key={i.id} className="border-t border-slate-100">
-                  <td className="py-2 pr-4">{i.gruppo}</td>
-                  <td className="py-2 pr-4 font-mono font-medium">{i.codice}</td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-4" data-label="Gruppo">{i.gruppo}</td>
+                  <td className="py-2 pr-4 font-mono font-medium" data-label="Codice">{i.codice}</td>
+                  <td className="py-2 pr-4" data-label="Usi">
                     {i.usi}
                     {i.max_usi ? ` / ${i.max_usi}` : ""}
                   </td>
-                  <td className="py-2 pr-4 text-xs">
+                  <td className="py-2 pr-4 text-xs" data-label="Scadenza">
                     {i.scade_il
                       ? new Date(i.scade_il).toLocaleDateString("it-IT")
                       : "—"}
                   </td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-right" data-label="Azioni">
                     {!i.utilizzabile && (
                       <span className="mr-3 text-xs text-amber-700">
                         non più utilizzabile

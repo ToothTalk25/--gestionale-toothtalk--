@@ -10,6 +10,7 @@ export default function RegistratiPage() {
   const [pec, setPec] = useState("");
   const [password, setPassword] = useState("");
   const [codice, setCodice] = useState("");
+  const [onScreen, setOnScreen] = useState<boolean | null>(null);
   const [consenso, setConsenso] = useState(false);
   const [gruppo, setGruppo] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
@@ -34,7 +35,15 @@ export default function RegistratiPage() {
     setInCorso(true);
     setErrore(null);
 
-    const esito = await registraConInvito({ nome, email, pec, password, codice, consenso });
+    const esito = await registraConInvito({
+      nome,
+      email,
+      pec,
+      password,
+      codice,
+      onScreen,
+      consenso,
+    });
     setInCorso(false);
 
     if (!esito.ok) {
@@ -53,14 +62,19 @@ export default function RegistratiPage() {
             alt="ToothTalk"
             className="mx-auto h-9 w-auto"
           />
-          <p className="mt-6 text-sm">
-            Account creato. Sei nel gruppo <strong>{fatto}</strong>.
+          <p className="mt-6 text-sm leading-relaxed">
+            La tua richiesta di registrazione per il gruppo <strong>{fatto}</strong>{" "}
+            è stata inviata.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            Un amministratore la verificherà: appena approvata riceverai
+            l&apos;accordo editoriale da firmare via PEC e potrai accedere.
           </p>
           <Link
             href="/login"
             className="mt-6 inline-block w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white"
           >
-            Accedi
+            Vai al login
           </Link>
         </div>
       </main>
@@ -121,10 +135,9 @@ export default function RegistratiPage() {
           autoComplete="email"
         />
 
-        <label className="mt-4 block text-sm font-medium">La tua PEC</label>
+        <label className="mt-4 block text-sm font-medium">Email o PEC (facoltativa)</label>
         <input
           type="email"
-          required
           value={pec}
           onChange={(e) => setPec(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -132,9 +145,41 @@ export default function RegistratiPage() {
           autoComplete="off"
         />
         <p className="mt-1 text-xs text-slate-400">
-          Obbligatoria: l&apos;accordo firmato e le impronte dei materiali ti
-          arriveranno via PEC con valore certificato.
+          Facoltativa: una PEC vera dà in più la certificazione di consegna
+          delle comunicazioni, ma non è richiesta per partecipare.
         </p>
+
+        <label className="mt-4 block text-sm font-medium">
+          Apparirai nei video del progetto?
+        </label>
+        <p className="mt-1 text-xs text-slate-400">
+          Serve per gestire la revoca del consenso (immagine/voce), non per
+          scegliere un accordo: l&apos;accordo editoriale è uno per tutti.
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setOnScreen(true)}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              onScreen === true
+                ? "border-tt-blue bg-tt-blue-50 text-tt-blue"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            📹 Sì, in video
+          </button>
+          <button
+            type="button"
+            onClick={() => setOnScreen(false)}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              onScreen === false
+                ? "border-tt-blue bg-tt-blue-50 text-tt-blue"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            🎨 No, dietro le quinte
+          </button>
+        </div>
 
         <label className="mt-4 block text-sm font-medium">Password</label>
         <input

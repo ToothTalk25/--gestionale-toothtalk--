@@ -66,6 +66,9 @@ export type EsitoVerificaAccordo = {
 /**
  * Verifica che il PDF caricato sia l'accordo editoriale ToothTalk, firmato
  * nel punto giusto. Restituisce sempre un esito: l'IA non blocca nulla.
+ * L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage):
+ * la cessione dei diritti (immagine e autore) è già dentro l'Art. 4 del
+ * documento unico, quindi non c'è alcun tipo da distinguere.
  */
 export async function verificaAccordoFirmato(opts: {
   pdfBase64: string;

@@ -17,3 +17,6 @@ supabase/google-key.json
 *credentials*.json
 .env*
 supabase/.temp/
+
+# Worktree e stato di Claude (mai committare)
+.claude/

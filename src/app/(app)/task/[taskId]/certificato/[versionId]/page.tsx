@@ -100,8 +100,8 @@ export default async function CertificatoPage({
 
       <section className="mt-6">
         <h2 className="text-sm font-medium">Catena delle versioni</h2>
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="mt-2 overflow-x-auto md:overflow-visible">
+          <table className="tabella-mobile w-full text-left text-xs">
             <thead className="text-slate-400">
               <tr>
                 <th className="py-1 pr-3">v</th>
@@ -114,15 +114,15 @@ export default async function CertificatoPage({
             <tbody>
               {righe.map((r) => (
                 <tr key={r.version_no} className="border-t border-slate-100">
-                  <td className="py-1 pr-3">{r.version_no}</td>
-                  <td className="py-1 pr-3">
+                  <td className="py-1 pr-3" data-label="v">{r.version_no}</td>
+                  <td className="py-1 pr-3" data-label="Origine">
                     {r.origin === "originale" ? "Deposito del gruppo" : "Versione editata"}
                   </td>
-                  <td className="py-1 pr-3">{r.file_name}</td>
-                  <td className="py-1 pr-3">
+                  <td className="py-1 pr-3" data-label="File">{r.file_name}</td>
+                  <td className="py-1 pr-3" data-label="Data">
                     {new Date(r.uploaded_at).toLocaleString("it-IT")}
                   </td>
-                  <td className={`py-1 ${r.integra ? "text-emerald-700" : "text-red-600"}`}>
+                  <td className={`py-1 ${r.integra ? "text-emerald-700" : "text-red-600"}`} data-label="Integrità">
                     {r.integra ? "verificata" : "ROTTA"}
                   </td>
                 </tr>

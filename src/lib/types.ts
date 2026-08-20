@@ -22,6 +22,7 @@ export type TaskStatus =
   | "modificato_admin"
   | "approvato"
   | "sigillato"
+  | "archived_due_to_revocation"
   | "pubblicato"
   | "respinto";
 
@@ -55,6 +56,7 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   modificato_admin: "Rielaborato",
   approvato: "Approvato",
   sigillato: "Sigillato",
+  archived_due_to_revocation: "Archiviato per revoca",
   pubblicato: "Pubblicato",
   respinto: "Da rivedere",
 };
@@ -101,6 +103,7 @@ export type Profile = {
   full_name: string | null;
   role: UserRole;
   attivo: boolean;
+  on_screen: boolean;
   universita: string | null;
   foto_path: string | null;
   accordo_path: string | null;
@@ -109,6 +112,7 @@ export type Profile = {
   accordo_verificato: string | null;
   accordo_verifica_note: string | null;
   accordo_verificato_at: string | null;
+  accordo_letto_confermato: boolean;
 };
 
 export type Polo = {

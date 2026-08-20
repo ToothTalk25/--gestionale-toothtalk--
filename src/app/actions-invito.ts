@@ -53,6 +53,7 @@ export async function registraConInvito(input: {
   pec: string;
   password: string;
   codice: string;
+  onScreen: boolean | null;
   consenso: boolean;
 }): Promise<Esito<{ gruppo: string }>> {
   const nome = input.nome.trim();
@@ -62,11 +63,20 @@ export async function registraConInvito(input: {
 
   if (!nome) return { ok: false, errore: "Inserisci nome e cognome." };
   if (!email) return { ok: false, errore: "Inserisci l'email." };
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pec)) {
-    return { ok: false, errore: "Inserisci un indirizzo PEC valido." };
+  // La PEC è facoltativa: se presente deve essere un indirizzo valido
+  // (qualunque dominio, incluse email normali). L'email di accesso resta
+  // comunque il canale minimo garantito.
+  if (pec && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(pec)) {
+    return { ok: false, errore: "Inserisci un indirizzo email valido (o lascia vuoto)." };
   }
   if (input.password.length < 8) {
     return { ok: false, errore: "La password deve avere almeno 8 caratteri." };
+  }
+  if (input.onScreen === null) {
+    return {
+      ok: false,
+      errore: "Indica se apparirai nei video (in video o dietro le quinte).",
+    };
   }
   if (!input.consenso) {
     return {
@@ -78,19 +88,24 @@ export async function registraConInvito(input: {
   const verifica = await verificaCodice(codice);
   if (!verifica.ok) return verifica;
 
-  // La PEC deve essere quella dell'ateneo del gruppo.
   const admin = supabaseAdmin();
-  const { data: pecOk } = await admin.rpc("pec_universitaria_valida", {
-    p_polo: verifica.dati.polo_id,
-    p_pec: pec,
-  });
-  if (pecOk === false) {
-    return {
-      ok: false,
-      errore:
-        "La PEC non appartiene al dominio universitario del gruppo. Usa la " +
-        "PEC rilasciata dal tuo ateneo (es. nome.cognome@studenti.unime.it).",
-    };
+
+  // Se l'utente ha indicato una PEC vera, verifichiamo che appartenga
+  // all'ateneo del gruppo; se no, si procede comunque con la sola email.
+  if (pec) {
+    const { data: pecOk } = await admin.rpc("pec_universitaria_valida", {
+      p_polo: verifica.dati.polo_id,
+      p_pec: pec,
+    });
+    if (pecOk === false) {
+      return {
+        ok: false,
+        errore:
+          "La PEC non appartiene al dominio universitario del gruppo. Usa la " +
+          "PEC rilasciata dal tuo ateneo (es. nome.cognome@studenti.unime.it) " +
+          "oppure lascia il campo vuoto.",
+      };
+    }
   }
 
   const { data: creato, error: eCrea } = await admin.auth.admin.createUser({
@@ -111,11 +126,20 @@ export async function registraConInvito(input: {
     return { ok: false, errore: "Creazione account non riuscita." };
   }
 
-  // La PEC del partecipante, registrata subito nel profilo.
+  // La PEC (facoltativa) e il tipo di partecipante (appare in video o no),
+  // registrati subito nel profilo. Se la PEC è vuota si salva null: non è
+  // più richiesta per partecipare. Il tipo determina il flag on_screen
+  // (usato solo per la revoca GDPR). L'account nasce INATTIVO: la persona
+  // non può accedere finché l'Admin non la approva (getSessionContext
+  // tratta attivo=false come nessuna sessione). L'approvazione la fa
+  // approvaRegistrazione.
   try {
-    await admin.from("profiles").update({ pec }).eq("id", creato.user.id);
+    await admin
+      .from("profiles")
+      .update({ pec: pec || null, on_screen: input.onScreen, attivo: false })
+      .eq("id", creato.user.id);
   } catch {
-    // Non blocchiamo la creazione: la PEC si può completare dal profilo.
+    // Non blocchiamo la creazione: la PEC e il tipo si possono completare dal profilo.
   }
 
   const { error: eInvito } = await admin.rpc("consuma_invito", {

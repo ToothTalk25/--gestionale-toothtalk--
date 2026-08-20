@@ -6,8 +6,17 @@ import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import FotoProfilo from "@/components/FotoProfilo";
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
+import TerminaCollaborazione from "@/components/TerminaCollaborazione";
 import ScaricaRicevuta from "@/components/ScaricaRicevuta";
 import ProfiliUscenti from "@/components/ProfiliUscenti";
+import NavigazioneAdmin, { type SezioneAdmin } from "@/components/NavigazioneAdmin";
+import SezioneAudit, { type RigaAudit } from "@/components/SezioneAudit";
+import SezioneConsensi, { type RigaConsenso } from "@/components/SezioneConsensi";
+import SezioneLiberatorie, { type RigaLiberatoria } from "@/components/SezioneLiberatorie";
+import CaricaModelloAccordo, { type RigaModelloAccordo } from "@/components/CaricaModelloAccordo";
+import RichiesteRegistrazione, {
+  type RigaRichiestaRegistrazione,
+} from "@/components/RichiesteRegistrazione";
 
 type Confronto = {
   deliverable_id: string;
@@ -17,41 +26,6 @@ type Confronto = {
   originale_sigillata_il: string | null;
   finale_file: string | null;
   modificata_da_admin: boolean;
-};
-
-type Consenso = {
-  id: string;
-  user_id: string;
-  tipo: string;
-  versione: string;
-  accettato_at: string;
-  storage_path: string | null;
-  sha256: string | null;
-};
-
-type ConsensoRegistro = {
-  id: string;
-  task_id: string | null;
-  user_id: string | null;
-  tipo_soggetto: string;
-  tipo: string;
-  nome_soggetto: string;
-  email_soggetto: string | null;
-  sha256: string;
-  metodo_firma: string | null;
-  firmato_at: string;
-  is_revoked: boolean;
-  revocato_at: string | null;
-};
-
-type Audit = {
-  id: number;
-  at: string;
-  action: string;
-  entity_type: string;
-  entity_id: string | null;
-  actor: string | null;
-  meta: Record<string, unknown>;
 };
 
 export default async function AdminPage() {
@@ -68,13 +42,15 @@ export default async function AdminPage() {
     { data: consensi },
     { data: materialiPerUtente },
     { data: registoConsensi },
+    { data: richieste },
+    { data: modelliAccordo },
   ] = await Promise.all([
     supabase
       .from("audit_log")
       .select("id, at, action, entity_type, entity_id, actor, meta")
       .order("at", { ascending: false })
       .limit(80)
-      .returns<Audit[]>(),
+      .returns<RigaAudit[]>(),
     supabase
       .from("v_confronto_versioni")
       .select("*")
@@ -84,7 +60,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo",
+        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo, on_screen",
       )
       .order("role")
       .returns<
@@ -99,6 +75,7 @@ export default async function AdminPage() {
           accordo_caricato_at: string | null;
           accordo_verificato: string | null;
           attivo: boolean;
+          on_screen: boolean;
         }[]
       >(),
     supabase
@@ -120,7 +97,7 @@ export default async function AdminPage() {
       .from("consensi")
       .select("id, user_id, tipo, versione, accettato_at, storage_path, sha256")
       .order("accettato_at", { ascending: false })
-      .returns<Consenso[]>(),
+      .returns<RigaConsenso[]>(),
     supabaseAdmin()
       .from("deliverable_versions")
       .select("uploaded_by")
@@ -132,7 +109,32 @@ export default async function AdminPage() {
       )
       .order("firmato_at", { ascending: false })
       .limit(200)
-      .returns<ConsensoRegistro[]>(),
+      .returns<RigaLiberatoria[]>(),
+    // Richieste di registrazione: account creati ma non approvati (attivo=false,
+    // senza approvato_at, non admin). È la coda di lavoro dell'admin.
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, universita, pec, on_screen")
+      .eq("attivo", false)
+      .is("approvato_at", null)
+      .neq("role", "admin")
+      .order("created_at", { ascending: true })
+      .returns<RigaRichiestaRegistrazione[]>(),
+    // Modelli dell'accordo editoriale (ultimo = attivo), con nome di chi ha caricato.
+    supabaseAdmin()
+      .from("modello_accordo")
+      .select("id, storage_path, sha256, caricato_at, caricato_da, profiles!inner(full_name)")
+      .order("caricato_at", { ascending: false })
+      .returns<
+        {
+          id: string;
+          storage_path: string;
+          sha256: string;
+          caricato_at: string;
+          caricato_da: string | null;
+          profiles: { full_name: string | null } | null;
+        }[]
+      >(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -150,6 +152,16 @@ export default async function AdminPage() {
     materialiDi[v.uploaded_by] = (materialiDi[v.uploaded_by] ?? 0) + 1;
   }
 
+  // Modelli dell'accordo nel formato atteso dal componente (nome caricatore).
+  const modelli: RigaModelloAccordo[] = (modelliAccordo ?? []).map((m) => ({
+    id: m.id,
+    storage_path: m.storage_path,
+    sha256: m.sha256,
+    caricato_at: m.caricato_at,
+    caricato_da: m.caricato_da,
+    caricato_da_nome: m.profiles?.full_name ?? null,
+  }));
+
   return (
     <div className="space-y-8">
       <header>
@@ -161,12 +173,21 @@ export default async function AdminPage() {
         </p>
       </header>
 
-      <GestioneInviti poli={ordinaPoli(poli ?? [])} inviti={inviti ?? []} />
-
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+      <NavigazioneAdmin
+        sezioni={[
+          {
+            id: "inviti",
+            etichetta: "Inviti",
+            contenuto: <GestioneInviti poli={ordinaPoli(poli ?? [])} inviti={inviti ?? []} />,
+          },
+          {
+            id: "confronto",
+            etichetta: "Originale vs versione finale",
+            contenuto: (
+              <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
         <h2 className="text-lg font-medium">Originale vs versione finale</h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="mt-3 overflow-x-auto md:overflow-visible">
+          <table className="tabella-mobile w-full text-left text-sm">
             <thead className="text-xs text-slate-400">
               <tr>
                 <th className="py-2 pr-4">Materiale</th>
@@ -178,12 +199,12 @@ export default async function AdminPage() {
             <tbody>
               {(confronti ?? []).map((r) => (
                 <tr key={r.deliverable_id} className="border-t border-slate-100">
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-4" data-label="Materiale">
                     <Link href={`/task/${r.task_id}`} className="hover:underline">
                       {KIND_LABEL[r.kind]}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-4" data-label="Deposito del gruppo">
                     {r.originale_file}
                     <div className="text-xs text-slate-400">
                       {r.originale_sigillata_il
@@ -191,10 +212,10 @@ export default async function AdminPage() {
                         : ""}
                     </div>
                   </td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-4" data-label="Versione editata">
                     {r.finale_file ?? <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="py-2 text-xs">
+                  <td className="py-2 text-xs" data-label="Stato">
                     {r.modificata_da_admin ? (
                       <span className="text-purple-700">editata</span>
                     ) : (
@@ -206,36 +227,31 @@ export default async function AdminPage() {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-        <h2 className="text-lg font-medium">Log delle operazioni</h2>
-        <ul className="mt-3 space-y-1 text-sm">
-          {(audit ?? []).map((a) => (
-            <li key={a.id} className="border-b border-slate-50 py-1">
-              <span className="text-xs text-slate-400">
-                {new Date(a.at).toLocaleString("it-IT")}
-              </span>{" "}
-              <strong>{a.action}</strong>{" "}
-              <span className="text-slate-500">
-                {a.entity_type} · {a.actor ? nomi[a.actor] ?? a.actor : "—"}
-              </span>
-              {typeof a.meta?.file_name === "string" && (
-                <span className="text-slate-400"> · {a.meta.file_name as string}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+            </section>
+            )
+          },
+          {
+            id: "log",
+            etichetta: "Log delle operazioni",
+            contenuto: <SezioneAudit audit={audit ?? []} nomi={nomi} />,
+          },
+          {
+            id: "richieste",
+            etichetta: "Richieste di registrazione",
+            contenuto: <RichiesteRegistrazione richieste={richieste ?? []} />,
+          },
+          {
+            id: "partecipanti",
+            etichetta: "Registro partecipanti",
+            contenuto: (
+              <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
         <h2 className="text-lg font-medium">Registro partecipanti per sede</h2>
         <p className="mt-1 text-sm text-slate-500">
           Anagrafica e accordo editoriale dei partecipanti, raggruppati per
           gruppo.
         </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="mt-3 overflow-x-auto md:overflow-visible">
+          <table className="tabella-mobile w-full text-left text-sm">
             <thead className="text-xs text-slate-400">
               <tr>
                 <th className="py-2 pr-4">Gruppo</th>
@@ -251,22 +267,27 @@ export default async function AdminPage() {
                 .filter((p) => p.role !== "admin")
                 .map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
-                    <td className="py-2 pr-4 text-xs text-slate-500">
+                    <td className="py-2 pr-4 text-xs text-slate-500" data-label="Gruppo">
                       {poliDi[p.id]?.join(", ") || "—"}
                     </td>
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pr-4" data-label="Partecipante">
                       {p.full_name ?? "—"}
                       <div className="text-xs text-slate-400">{p.email}</div>
+                      {p.on_screen && (
+                        <span className="mt-1 inline-block rounded bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium text-violet-700">
+                          In video
+                        </span>
+                      )}
                     </td>
-                    <td className="py-2 pr-4">{p.universita ?? "—"}</td>
-                    <td className="py-2 pr-4">
+                    <td className="py-2 pr-4" data-label="Università">{p.universita ?? "—"}</td>
+                    <td className="py-2 pr-4" data-label="Foto">
                       {p.foto_path ? (
                         <FotoProfilo path={p.foto_path} className="h-12 w-12 rounded-lg object-cover" />
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="py-2">
+                    <td className="py-2" data-label="Accordo editoriale">
                       {p.accordo_path ? (
                         <span className="text-xs">
                           <span className="text-emerald-700">Caricato</span>
@@ -298,8 +319,16 @@ export default async function AdminPage() {
                         <span className="text-xs text-slate-400">Non caricato</span>
                       )}
                     </td>
-                    <td className="py-2">
-                      <EliminaAccountAdmin userId={p.id} />
+                    <td className="py-2" data-label="Azioni">
+                      <div className="flex flex-col items-start gap-1">
+                        <TerminaCollaborazione
+                          userId={p.id}
+                          fullName={p.full_name}
+                          onScreen={p.on_screen}
+                          giaTerminata={!p.attivo}
+                        />
+                        <EliminaAccountAdmin userId={p.id} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -311,148 +340,36 @@ export default async function AdminPage() {
           <code className="rounded bg-slate-100 px-1">npm run utente</code>
         </p>
       </section>
-
-      {/* ---------- Profili uscenti ---------- */}
-      <ProfiliUscenti
-        profili={profili ?? []}
-        poliDi={poliDi}
-        materialiDi={materialiDi}
+            )
+          },
+          {
+            id: "uscenti",
+            etichetta: "Profili uscenti",
+            contenuto: (
+              <ProfiliUscenti
+                profili={profili ?? []}
+                poliDi={poliDi}
+                materialiDi={materialiDi}
+              />
+            ),
+          },
+          {
+            id: "consensi",
+            etichetta: "Consensi GDPR",
+            contenuto: <SezioneConsensi consensi={consensi ?? []} nomi={nomi} />,
+          },
+          {
+            id: "liberatorie",
+            etichetta: "Liberatorie e accordi",
+            contenuto: <SezioneLiberatorie documenti={registoConsensi ?? []} />,
+          },
+          {
+            id: "modello-accordo",
+            etichetta: "Modello accordo",
+            contenuto: <CaricaModelloAccordo modelli={modelli} />,
+          },
+        ]}
       />
-
-      {/* ---------- Consensi GDPR ---------- */}
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Consensi GDPR</h2>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-            {(consensi ?? []).length} ricevute
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-slate-400">
-          Ogni accettazione genera una ricevuta HTML firmata (SHA256) conservata in storage per audit.
-        </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-slate-400">
-              <tr>
-                <th className="py-2 pr-4">Utente</th>
-                <th className="py-2 pr-4">Tipo</th>
-                <th className="py-2 pr-4">Versione</th>
-                <th className="py-2 pr-4">Accettato il</th>
-                <th className="py-2 pr-4">SHA256</th>
-                <th className="py-2">Ricevuta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(consensi ?? []).map((c) => (
-                <tr key={c.id} className="border-t border-slate-100">
-                  <td className="py-2 pr-4 text-xs">{nomi[c.user_id] ?? c.user_id.slice(0, 8)}</td>
-                  <td className="py-2 pr-4">
-                    <span className={
-                      c.tipo === "privacy"
-                        ? "rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700"
-                        : "rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700"
-                    }>
-                      {c.tipo === "privacy" ? "Privacy" : "Cookie"}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-4 text-xs text-slate-500">{c.versione}</td>
-                  <td className="py-2 pr-4 text-xs text-slate-500">
-                    {new Date(c.accettato_at).toLocaleString("it-IT")}
-                  </td>
-                  <td className="py-2 text-xs font-mono text-slate-400">
-                    {c.sha256 ? c.sha256.slice(0, 16) + "…" : "—"}
-                  </td>
-                  <td className="py-2">
-                    <ScaricaRicevuta consensoId={c.id} disabled={!c.storage_path} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ---------- Registro liberatorie e accordi ---------- */}
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Registro liberatorie e accordi</h2>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-            {(registoConsensi ?? []).length} documenti
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-slate-400">
-          Registro granulare (consents_and_releases): liberatorie firmate e
-          accordi di collaborazione, con impronta SHA-256 e stato di revoca.
-          Append-only: nessun documento viene mai cancellato.
-        </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-slate-400">
-              <tr>
-                <th className="py-2 pr-4">Soggetto</th>
-                <th className="py-2 pr-4">Tipo</th>
-                <th className="py-2 pr-4">Task</th>
-                <th className="py-2 pr-4">Firma</th>
-                <th className="py-2 pr-4">SHA-256</th>
-                <th className="py-2">Stato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(registoConsensi ?? []).map((r) => (
-                <tr key={r.id} className="border-t border-slate-100">
-                  <td className="py-2 pr-4 text-xs">
-                    <span className="font-medium">{r.nome_soggetto}</span>
-                    {r.email_soggetto && (
-                      <div className="text-slate-400">{r.email_soggetto}</div>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4 text-xs">
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-                      {r.tipo === "accordo_collaboratore"
-                        ? "Accordo collaboratore"
-                        : r.tipo_soggetto === "minore"
-                          ? "Liberatoria minore"
-                          : "Liberatoria"}
-                    </span>
-                    {r.metodo_firma && (
-                      <span className="ml-1 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
-                        {r.metodo_firma}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 pr-4 text-xs text-slate-500">
-                    {r.task_id ? r.task_id.slice(0, 8) : "—"}
-                  </td>
-                  <td className="py-2 pr-4 text-xs text-slate-500">
-                    {new Date(r.firmato_at).toLocaleString("it-IT")}
-                  </td>
-                  <td className="py-2 pr-4 font-mono text-xs text-slate-400">
-                    {r.sha256.slice(0, 16)}…
-                  </td>
-                  <td className="py-2 text-xs">
-                    {r.is_revoked ? (
-                      <span className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700">
-                        Revocato
-                      </span>
-                    ) : (
-                      <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700">
-                        Valido
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {(registoConsensi ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-4 text-center text-xs text-slate-400">
-                    Nessun documento firmato ancora.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }

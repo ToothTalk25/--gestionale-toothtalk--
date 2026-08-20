@@ -84,3 +84,56 @@ button {
     background: #fff;
   }
 }
+
+/* ------------------------------------------------------------------
+ * Tabelle responsive (mobile-first): su schermi piccoli la tabella
+ * diventa una lista di card, una per riga, con l'etichetta di ogni
+ * colonna stampata sopra il valore (preso da data-label su ogni <td>).
+ * Su schermi >= md la tabella torna un normale <table>.
+ * ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .tabella-mobile,
+  .tabella-mobile tbody {
+    display: block;
+    width: 100%;
+  }
+  .tabella-mobile thead {
+    display: none;
+  }
+  .tabella-mobile tr {
+    display: block;
+    margin-bottom: 0.625rem;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.75rem;
+    background: #fff;
+    padding: 0.5rem 0.75rem;
+  }
+  .tabella-mobile td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+    border: 0;
+  }
+  .tabella-mobile td:not(:last-child) {
+    border-bottom: 1px dashed rgb(241 245 249);
+  }
+  .tabella-mobile td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 45%;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    padding-top: 0.125rem;
+  }
+  .tabella-mobile td > * {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: right;
+  }
+}
+

@@ -7,6 +7,7 @@ const COLORI: Record<TaskStatus, string> = {
   modificato_admin: "bg-purple-100 text-purple-800",
   approvato: "bg-emerald-100 text-emerald-800",
   sigillato: "bg-orange-100 text-orange-800",
+  archived_due_to_revocation: "bg-rose-100 text-rose-800",
   pubblicato: "bg-tt-blue text-white",
   respinto: "bg-red-100 text-red-800",
 };

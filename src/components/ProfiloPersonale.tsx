@@ -39,6 +39,7 @@ export default function ProfiloPersonale({
       : null,
   );
   const [pecStato, setPecStato] = useState<string | null>(null);
+  const [accordoLetto, setAccordoLetto] = useState(false);
   const [verificaStato, setVerificaStato] = useState<{
     esito: string | null;
     note: string | null;
@@ -130,6 +131,11 @@ export default function ProfiloPersonale({
   async function caricaFile(ref: React.RefObject<HTMLInputElement | null>, tipo: "foto" | "accordo") {
     const file = ref.current?.files?.[0];
     if (!file) return;
+    if (tipo === "accordo" && !accordoLetto) {
+      setErrore("Devi prima spuntare di aver letto e compreso l'accordo editoriale.");
+      if (ref.current) ref.current.value = "";
+      return;
+    }
     setErrore(null);
     setMessaggio(null);
     try {
@@ -150,7 +156,7 @@ export default function ProfiloPersonale({
         setFotoPath(path);
         setMessaggio("Foto aggiornata.");
       } else {
-        const esito = await caricaAccordo(path, sha);
+        const esito = await caricaAccordo(path, sha, accordoLetto);
         if (!esito.ok) {
           setAccordoStato("Caricato, PEC non partita");
           throw new Error(esito.errore);
@@ -159,6 +165,8 @@ export default function ProfiloPersonale({
         setPecStato(`PEC inviata (${esito.dati.messageId})`);
         setVerificaStato({ esito: esito.dati.verifica.esito, note: esito.dati.verifica.note });
         setMessaggio("Accordo caricato e inviato via PEC con data certa.");
+        // Ogni nuovo caricamento richiede una nuova conferma esplicita.
+        setAccordoLetto(false);
       }
       if (ref.current) ref.current.value = "";
       router.refresh();
@@ -180,7 +188,7 @@ export default function ProfiloPersonale({
           {profile.full_name ?? "—"}
         </p>
 
-        <label className="mt-4 block text-sm font-medium">La tua PEC</label>
+        <label className="mt-4 block text-sm font-medium">Email o PEC (facoltativa)</label>
         <input
           type="email"
           value={pec}
@@ -188,12 +196,11 @@ export default function ProfiloPersonale({
           placeholder="nome@pec.it"
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        {!profile.pec && (
-          <p className="mt-1 text-xs text-amber-700">
-            Obbligatoria: l&apos;accordo e le impronte ti arriveranno via PEC con
-            valore certificato.
-          </p>
-        )}
+        <p className="mt-1 text-xs text-slate-400">
+          Facoltativa: serve solo se vuoi ricevere con valore di consegna
+          certificata le comunicazioni (accordo, impronte). Una PEC vera dà
+          la certificazione in più, ma non è richiesta per partecipare.
+        </p>
 
         <label className="mt-4 block text-sm font-medium">Università</label>
         <input
@@ -353,10 +360,23 @@ export default function ProfiloPersonale({
           />
           <button
             onClick={() => accordoInput.current?.click()}
-            className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+            disabled={!accordoLetto}
+            className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
           >
             {accordoStato ? "Sostituisci accordo" : "Carica accordo"}
           </button>
+          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={accordoLetto}
+              onChange={(e) => setAccordoLetto(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <span className="text-xs text-slate-600 leading-relaxed">
+              Ho letto e compreso tutto ciò che è scritto all&apos;interno
+              dell&apos;accordo editoriale.
+            </span>
+          </label>
 
           {verificaStato.esito && (
             <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs">

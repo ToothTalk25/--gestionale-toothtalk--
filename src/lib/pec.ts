@@ -259,6 +259,13 @@ export async function spedisciPec(opts: {
   testo: string;
   html: string;
   allegati: Allegato[];
+  /**
+   * Se presente, sovrascrive config.destinatari come "to" del messaggio.
+   * Serve quando il destinatario PRINCIPALE non è l'accesso globale ma una
+   * singola persona (es. la PEC del collaboratore da approvare): il
+   * Titolare resta comunque raggiungibile via copiaConoscenza.
+   */
+  destinatari?: string[];
   copiaConoscenza?: string[];
 }): Promise<{ messageId: string; accettato: string[] }> {
   const { config } = opts;
@@ -275,7 +282,9 @@ export async function spedisciPec(opts: {
 
   const info = await transporter.sendMail({
     from: config.mittente,
-    to: config.destinatari,
+    // Il "to" di default è l'accesso globale; chi ha bisogno di un
+    // destinatario diverso lo passa esplicitamente (retrocompatibile).
+    to: opts.destinatari?.length ? opts.destinatari : config.destinatari,
     // Chi partecipa al gruppo riceve la stessa copia sulla casella ordinaria:
     // così la prova non sta solo in un'unica cassetta.
     cc: opts.copiaConoscenza?.length ? opts.copiaConoscenza : undefined,

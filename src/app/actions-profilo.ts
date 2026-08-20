@@ -117,25 +117,175 @@ export async function eliminaAccount(
   return { ok: true, dati: { account: "ex" } };
 }
 
+/** Una task collegata a un partecipante (per il riepilogo della revoca). */
+export type TaskRiepilogoRevoca = {
+  id: string;
+  titolo: string;
+  status: string;
+  versioni: number;
+};
+
+/**
+ * Riepilogo delle task con materiali video/audio caricati da un partecipante
+ * on-screen (per la modale di conferma della revoca). Solo il Titolare.
+ */
+export async function riepilogoTaskOnScreen(
+  userId: string,
+): Promise<Esito<{ task: TaskRiepilogoRevoca[] }>> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+
+  const admin = supabaseAdmin();
+  const { data: versioni } = await admin
+    .from("deliverable_versions")
+    .select("id, deliverables!inner(id, task_id, kind)")
+    .eq("uploaded_by", userId)
+    .eq("origin", "originale")
+    .eq("revocato_gdpr", false)
+    .in("deliverables.kind", ["video_grezzo", "audio"])
+    .returns<
+      {
+        id: string;
+        deliverables: { id: string; task_id: string; kind: string };
+      }[]
+    >();
+
+  // Raggruppa per task e conta le versioni coinvolte.
+  const perTask = new Map<string, number>();
+  for (const v of versioni ?? []) {
+    const taskId = v.deliverables.task_id;
+    perTask.set(taskId, (perTask.get(taskId) ?? 0) + 1);
+  }
+  const taskIds = [...perTask.keys()];
+  if (taskIds.length === 0) return { ok: true, dati: { task: [] } };
+
+  const { data: task } = await admin
+    .from("tasks")
+    .select("id, titolo, status")
+    .in("id", taskIds)
+    .order("created_at", { ascending: true })
+    .returns<{ id: string; titolo: string; status: string }[]>();
+
+  return {
+    ok: true,
+    dati: {
+      task: (task ?? []).map((t) => ({
+        id: t.id,
+        titolo: t.titolo,
+        status: t.status,
+        versioni: perTask.get(t.id) ?? 0,
+      })),
+    },
+  };
+}
+
+/**
+ * Termina la collaborazione di un partecipante (solo Titolare).
+ *
+ * ON-SCREEN (Art. 7.3 e 17 GDPR): la revoca del consenso all'uso di
+ * immagine/voce è incondizionata. La RPC revoca_video_on_screen marca le
+ * consegne originali video/audio dell'interessato (revocato_gdpr=true,
+ * transizione one-way ammessa dal trigger append-only) e porta le task a
+ * archived_due_to_revocation. I FILE FISICI vengono poi eliminati dallo
+ * storage (best-effort); la riga e lo SHA256 restano come prova legale.
+ *
+ * BACKSTAGE: nessun file toccato — si chiude solo la collaborazione.
+ *
+ * In entrambi i casi l'account viene disattivato (attivo=false) e l'evento
+ * viene registrato nell'audit_log (la catena di hash la gestisce il trigger
+ * fn_audit_chain: niente calcoli manuali qui).
+ */
+export async function terminaCollaborazione(
+  userId: string,
+  conferma: boolean,
+): Promise<Esito<{ on_screen: boolean; task: number; versioni_purgate: number }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!conferma) return errore("Conferma esplicita richiesta per terminare la collaborazione.");
+
+  const admin = supabaseAdmin();
+
+  const { data: target } = await admin
+    .from("profiles")
+    .select("id, on_screen, full_name, attivo")
+    .eq("id", userId)
+    .single<{ id: string; on_screen: boolean; full_name: string | null; attivo: boolean }>();
+  if (!target) return errore("Profilo non trovato.");
+  if (!target.attivo) return errore("La collaborazione di questo partecipante è già terminata.");
+
+  let taskIds: string[] = [];
+  let versioniPurgate: string[] = [];
+  let azione = "chiusura_collaborazione";
+  const motivo = `Fine collaborazione con ${target.full_name ?? target.id}`;
+
+  if (target.on_screen) {
+    azione = "revoca_on_screen";
+    // 1. Marca le versioni e archivia le task nel registro (RPC SECURITY
+    //    DEFINER). Si chiama con il client UTENTE (non admin): is_admin()
+    //    dentro la RPC legge auth.uid(), che col client service_role
+    //    sarebbe null e la revoca verrebbe rifiutata.
+    const supabase = await supabaseServer();
+    const { data: righe, error: errRpc } = await supabase.rpc("revoca_video_on_screen", {
+      p_user: userId,
+    });
+    if (errRpc) {
+      return errore(`Revoca rifiutata dal database: ${errRpc.message}`);
+    }
+    const righeTipizzate = (righe ?? []) as {
+      version_id: string;
+      bucket: string;
+      storage_path: string;
+      task_id: string;
+    }[];
+    taskIds = [...new Set(righeTipizzate.map((r) => r.task_id))];
+    versioniPurgate = righeTipizzate.map((r) => `${r.bucket}/${r.storage_path}`);
+
+    // 2. Elimina i FILE FISICI dallo storage (best-effort: se uno fallisce,
+    //    la revoca è comunque registrata; l'eccezione è amministrativa).
+    for (const r of righeTipizzate) {
+      await ignora(admin.storage.from(r.bucket).remove([r.storage_path]));
+    }
+  }
+
+  // 3. Disattiva l'account (l'accesso termina in entrambi i casi).
+  await admin.from("profiles").update({ attivo: false }).eq("id", userId);
+
+  // 4. UNA riga in audit_log (append-only, hash concatenato dal trigger).
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: azione,
+      entity_type: "profile",
+      entity_id: userId,
+      meta: {
+        motivo,
+        task_ids: taskIds,
+        versioni_purgate: versioniPurgate,
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return {
+    ok: true,
+    dati: {
+      on_screen: target.on_screen,
+      task: taskIds.length,
+      versioni_purgate: versioniPurgate.length,
+    },
+  };
+}
+
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
 
-  // La PEC, se cambia, deve essere una PEC vera — non importa di chi: solo
-  // non può essere una casella di posta gratuita, che una PEC non può
-  // essere per definizione.
-  if (campi.pec) {
-    const { data: pecOk } = await supabase.rpc("pec_universitaria_valida", {
-      p_polo: null,
-      p_pec: campi.pec,
-    });
-    if (pecOk === false) {
-      return errore(
-        "Questo indirizzo sembra una casella email gratuita, non una PEC. " +
-          "Inserisci una PEC vera: può essere tua, di un familiare o " +
-          "condivisa — non deve necessariamente essere dell'università.",
-      );
-    }
+  // Il campo "Email o PEC" è facoltativo e accetta qualunque indirizzo
+  // valido (anche una normale email). Una PEC vera dà in più la
+  // certificazione di consegna, ma non è più richiesta per partecipare.
+  if (campi.pec && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(campi.pec)) {
+    return errore("Inserisci un indirizzo email valido (o lascia vuoto).");
   }
 
   const { error } = await supabase
@@ -246,6 +396,7 @@ export async function revocaConsenso(tipo: "privacy" | "cookie"): Promise<Esito>
 export async function caricaAccordo(
   storagePath: string,
   _sha256Client: string,
+  haLettoCompreso: boolean,
 ): Promise<Esito<{ messageId: string; verifica: EsitoVerificaAccordo }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
@@ -257,10 +408,12 @@ export async function caricaAccordo(
     return errore("Percorso del file non valido.");
   }
 
-  if (!profile.pec) {
+  // La spunta "ho letto e compreso" è obbligatoria: non ci si fida del solo
+  // controllo lato client (un disabled sul bottone si aggira facilmente),
+  // quindi si respinge qui il caricamento se non arriva true.
+  if (haLettoCompreso !== true) {
     return errore(
-      "Prima di caricare l'accordo devi inserire la tua PEC nel profilo: è " +
-        "necessaria per ricevere la copia certificata via PEC.",
+      "Devi confermare di aver letto e compreso l'accordo editoriale prima di caricarlo.",
     );
   }
 
@@ -299,11 +452,15 @@ export async function caricaAccordo(
       accordo_path: storagePath,
       accordo_sha256: sha256,
       accordo_caricato_at: new Date().toISOString(),
+      accordo_letto_confermato: true,
     })
     .eq("id", profile.id);
   if (error) return errore(error.message);
 
   // Registro granulare consents_and_releases (GDPR): accordo collaboratore.
+  // L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage):
+  // la cessione dei diritti di immagine e autore è già dentro l'unico
+  // documento. Il flag on_screen resta rilevante solo per la revoca GDPR.
   try {
     await supabaseAdmin().from("consents_and_releases").insert({
       task_id: null,
@@ -347,7 +504,9 @@ export async function caricaAccordo(
         "",
         `Ciao!`,
         "",
-        `${nome} ha caricato il proprio accordo editoriale ToothTalk.`,
+        `${nome} ha caricato il proprio accordo editoriale ToothTalk e ha`,
+        "dichiarato, spuntando l'apposita casella prima del caricamento, di",
+        "aver letto e compreso integralmente il contenuto dell'accordo.",
         "",
         "Il PDF allegato è firmato e viene registrato con data certa: fa parte",
         `del registro dei partecipanti. Università: ${profile.universita ?? "non indicata"}.`,
@@ -362,7 +521,9 @@ export async function caricaAccordo(
   <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
   <h1 style="font-size:20px;margin:4px 0 12px">Accordo editoriale — ${nome}</h1>
   <p style="font-size:13px;line-height:1.6">
-    <strong>${nome}</strong> ha caricato il proprio accordo editoriale ToothTalk.
+    <strong>${nome}</strong> ha caricato il proprio accordo editoriale ToothTalk e ha
+    dichiarato, spuntando l'apposita casella prima del caricamento, di aver letto e
+    compreso integralmente il contenuto dell'accordo.
     Il PDF allegato è firmato e viene registrato con data certa: fa parte del
     registro dei partecipanti. Università: ${profile.universita ?? "non indicata"}.
   </p>
@@ -376,7 +537,10 @@ export async function caricaAccordo(
           contentType: blob.type || "application/pdf",
         },
       ],
-      copiaConoscenza: [profile.pec],
+      // La copia al partecipante viaggia sulla sua PEC/email se l'ha
+      // indicata; altrimenti resta solo la certificazione all'accesso
+      // globale. La PEC non è obbligatoria per partecipare.
+      copiaConoscenza: profile.pec ? [profile.pec] : undefined,
     });
 
     revalidatePath("/profilo");
@@ -389,6 +553,198 @@ export async function caricaAccordo(
   }
 
 /** Genera un URL firmato per scaricare una ricevuta di consenso (admin only). */
+/**
+ * Carica il MODELLO dell'accordo editoriale (lato admin): il documento
+ * che viene inviato ai collaboratori per la firma. Ogni caricamento è una
+ * NUOVA riga in modello_accordo (storico append-only in pratica); il
+ * modello attivo è l'ultima riga. L'impronta SHA-256 è ricalcolata
+ * lato server, mai fidarsi del valore dichiarato dal client.
+ */
+/**
+ * Il Collaboratore comunica la propria volontà di recedere (Art. 8
+ * dell'Accordo): registra la richiesta con timestamp immutabile nella
+ * tabella richieste_recesso (append-only). Da richiesto_at decorrono i
+ * 30 giorni di preavviso — la data certa è quella del gestionale, non
+ * quella di un'email.
+ */
+export async function richiediRecesso(
+  motivazione?: string,
+): Promise<Esito<{ richiestoAt: string }>> {
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+
+  const { data, error } = await supabase
+    .from("richieste_recesso")
+    .insert({
+      user_id: profile.id,
+      motivazione: motivazione?.trim() ? motivazione.trim() : null,
+    })
+    .select("richiesto_at")
+    .single<{ richiesto_at: string }>();
+  if (error) return errore(error.message);
+
+  // Traccia l'evento anche nell'audit log (catena di hash).
+  await ignora(
+    supabase.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "richiesta_recesso",
+      entity_type: "profile",
+      entity_id: profile.id,
+      meta: {
+        motivazione: motivazione?.trim() ? motivazione.trim() : null,
+        richiesto_at: data.richiesto_at,
+      },
+    }),
+  );
+
+  revalidatePath("/profilo");
+  return { ok: true, dati: { richiestoAt: data.richiesto_at } };
+}
+
+
+export async function caricaModelloAccordo(
+  storagePath: string,
+): Promise<Esito<{ id: string }>> {
+  const { profile } = await requireSession();
+  if (profile.role !== "admin") return errore("Solo il Titolare può caricare il modello.");
+
+  const supabase = await supabaseServer();
+
+  if (!storagePath.startsWith("modello-accordo/")) {
+    return errore("Percorso del file non valido.");
+  }
+
+  const { data: blob, error: eBlob } = await supabase.storage
+    .from("finali")
+    .download(storagePath);
+  if (eBlob || !blob) return errore("File non leggibile dallo storage.");
+
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+
+  const { data, error } = await supabase
+    .from("modello_accordo")
+    .insert({ storage_path: storagePath, sha256, caricato_da: profile.id })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) return errore(error.message);
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { id: data.id } };
+}
+
+/**
+ * L'Admin approva la registrazione di un collaboratore: attiva l'account,
+ * conferma/corregge il flag on_screen (serve per la correttezza della
+ * revoca GDPR, non per scegliere un accordo — l'accordo è unico per tutti)
+ * e invia alla PEC del collaboratore il MODELLO dell'accordo da firmare,
+ * con il Titolare in copia. Prima di approvare serve aver caricato il
+ * modello (caricaModelloAccordo).
+ */
+export async function approvaRegistrazione(
+  userId: string,
+  onScreenConfermato: boolean,
+): Promise<Esito<{ messageId: string }>> {
+  const { profile: admin } = await requireSession();
+  if (admin.role !== "admin") return errore("Solo il Titolare può approvare registrazioni.");
+
+  const supabase = await supabaseServer();
+
+  // Ultimo modello caricato = quello attivo.
+  const { data: modello } = await supabase
+    .from("modello_accordo")
+    .select("storage_path")
+    .order("caricato_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ storage_path: string }>();
+  if (!modello) {
+    return errore("Nessun modello di accordo caricato: caricalo prima di approvare registrazioni.");
+  }
+
+  const { data: richiedente } = await supabase
+    .from("profiles")
+    .select("full_name, email, pec, universita")
+    .eq("id", userId)
+    .single<{ full_name: string | null; email: string; pec: string | null; universita: string | null }>();
+  // La PEC è facoltativa: se assente, l'accordo va all'email di accesso
+  // (il canale minimo garantito), senza la certificazione di consegna.
+  if (!richiedente?.email) return errore("Questo utente non ha un contatto email valido.");
+
+  let config;
+  try {
+    config = leggiConfigPec();
+  } catch (e) {
+    return errore(e instanceof Error ? e.message : "PEC non configurata.");
+  }
+
+  const { data: blobModello, error: eBlob } = await supabase.storage
+    .from("finali")
+    .download(modello.storage_path);
+  if (eBlob || !blobModello) return errore("Impossibile leggere il modello dell'accordo.");
+  const bufferModello = Buffer.from(await blobModello.arrayBuffer());
+  const nomeModello = modello.storage_path.split("/").pop() ?? "accordo-editoriale.pdf";
+  const nome = richiedente.full_name ?? richiedente.email;
+
+  const { error: eUpdate } = await supabase
+    .from("profiles")
+    .update({
+      attivo: true,
+      on_screen: onScreenConfermato,
+      approvato_at: new Date().toISOString(),
+      approvato_da: admin.id,
+    })
+    .eq("id", userId);
+  if (eUpdate) return errore(eUpdate.message);
+
+  try {
+    const { messageId } = await spedisciPec({
+      config,
+      oggetto: `[ToothTalk] Registrazione approvata — accordo editoriale da firmare`,
+      testo: [
+        "",
+        `Ciao ${nome}!`,
+        "",
+        "La tua registrazione a ToothTalk è stata approvata. In allegato trovi",
+        "l'accordo editoriale: leggilo con attenzione, firmalo e ricaricalo",
+        "firmato dal tuo profilo nel gestionale (sezione \"Accordo editoriale\").",
+        "",
+        "Al momento del caricamento ti verrà chiesto di confermare di aver",
+        "letto e compreso l'accordo: quella conferma, insieme all'accordo",
+        "firmato, ti arriverà a sua volta via PEC con data certa.",
+        "",
+        "Messaggio generato automaticamente dal gestionale ToothTalk.",
+        "",
+      ].join("\n"),
+      html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
+  <h1 style="font-size:20px;margin:4px 0 12px">Registrazione approvata</h1>
+  <p style="font-size:13px;line-height:1.6">
+    Ciao <strong>${nome}</strong>! La tua registrazione a ToothTalk è stata approvata.
+    In allegato trovi l'accordo editoriale: leggilo con attenzione, firmalo e
+    ricaricalo firmato dal tuo profilo nel gestionale.
+  </p>
+  <p style="font-size:12px;color:#666">
+    Al caricamento ti verrà chiesto di confermare di averlo letto e compreso:
+    quella conferma arriverà a sua volta via PEC con data certa.
+  </p>
+</div>`,
+      allegati: [{ filename: nomeModello, content: bufferModello, contentType: "application/pdf" }],
+      // "to": la persona — PEC se presente, altrimenti la sua email di
+      // accesso (la PEC non è più obbligatoria per partecipare).
+      destinatari: [richiedente.pec ?? richiedente.email],
+      copiaConoscenza: config.destinatari, // "cc": accesso globale
+    });
+    revalidatePath("/admin");
+    return { ok: true, dati: { messageId } };
+  } catch (e) {
+    return errore(
+      `Account approvato ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+    );
+  }
+}
+
+
 export async function scaricaRicevutaConsenso(consensoId: string): Promise<Esito<string>> {
   const { profile } = await requireSession();
   if (profile.role !== "admin") return errore("Solo l'admin può scaricare le ricevute.");
@@ -466,4 +822,6 @@ export async function esportaDatiPersonali(): Promise<Esito<{ nome: string; cont
   const nome = `toothtalk-dati-personali-${profile.id.slice(0, 8)}.json`;
   return { ok: true, dati: { nome, contenuto: JSON.stringify(pacchetto, null, 2) } };
 }
+
+
 
