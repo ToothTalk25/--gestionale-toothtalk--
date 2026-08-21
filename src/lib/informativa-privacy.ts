@@ -30,7 +30,6 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "Immagine, voce e dichiarazioni contenute nei video, script e materiali depositati nel gestionale;",
     "Dati tecnici di connessione (indirizzo IP, dispositivo, data e ora) e log delle operazioni.",
   ]),
-  p("Immagine e voce, in quanto non sottoposte a trattamento automatizzato di riconoscimento facciale o biometrico, costituiscono dati personali ordinari ai sensi dell'art. 6 del GDPR, non dati particolari ex art. 9 (in conformità al Considerando 51 del GDPR)."),
 
   h2("Finalità e base giuridica"),
   ul([
