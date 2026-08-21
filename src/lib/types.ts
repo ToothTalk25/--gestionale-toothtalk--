@@ -106,6 +106,9 @@ export type Profile = {
   on_screen: boolean;
   universita: string | null;
   foto_path: string | null;
+  data_nascita: string | null;
+  luogo_nascita: string | null;
+  codice_fiscale: string | null;
   accordo_path: string | null;
   accordo_sha256: string | null;
   accordo_caricato_at: string | null;
@@ -115,6 +118,9 @@ export type Profile = {
   accordo_letto_confermato: boolean;
   accordo_approvato_admin_at: string | null;
   accordo_approvato_da: string | null;
+  nomina_path: string | null;
+  nomina_sha256: string | null;
+  nomina_generata_at: string | null;
 };
 
 export type Polo = {

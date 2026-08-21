@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
-import { aggiornaAnagrafica, caricaAccordo, caricaFoto, revocaConsenso, esportaDatiPersonali } from "@/app/actions-profilo";
+import { aggiornaAnagrafica, caricaAccordo, caricaFoto, revocaConsenso, esportaDatiPersonali, scaricaDocumentoNomina } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 
@@ -27,6 +27,10 @@ export default function ProfiloPersonale({
 
   const [universita, setUniversita] = useState(profile.universita ?? "");
   const [pec, setPec] = useState(profile.pec ?? "");
+  const [dataNascita, setDataNascita] = useState(profile.data_nascita ?? "");
+  const [luogoNascita, setLuogoNascita] = useState(profile.luogo_nascita ?? "");
+  const [codiceFiscale, setCodiceFiscale] = useState(profile.codice_fiscale ?? "");
+  const [nominaMessaggio, setNominaMessaggio] = useState<string | null>(null);
 
   const fotoInput = useRef<HTMLInputElement>(null);
   const accordoInput = useRef<HTMLInputElement>(null);
@@ -96,6 +100,9 @@ export default function ProfiloPersonale({
       const esito = await aggiornaAnagrafica({
         universita: universita || null,
         pec: pec || null,
+        data_nascita: dataNascita || null,
+        luogo_nascita: luogoNascita || null,
+        codice_fiscale: codiceFiscale || null,
       });
       if (!esito.ok) setErrore(esito.errore);
       else {
@@ -110,6 +117,13 @@ export default function ProfiloPersonale({
     if (!file) return;
     if (tipo === "accordo" && !accordoLetto) {
       setErrore("Devi prima spuntare di aver letto e compreso l'accordo editoriale.");
+      if (ref.current) ref.current.value = "";
+      return;
+    }
+    if (tipo === "accordo" && (!dataNascita || !luogoNascita || !codiceFiscale)) {
+      setErrore(
+        "Completa e salva prima data di nascita, luogo di nascita e codice fiscale nella scheda Anagrafica.",
+      );
       if (ref.current) ref.current.value = "";
       return;
     }
@@ -191,6 +205,41 @@ export default function ProfiloPersonale({
           Studenti e studentesse di odontoiatria: l'università basta a
           identificarvi.
         </p>
+
+        {!isAdmin && (
+          <>
+            <label className="mt-4 block text-sm font-medium">Data di nascita</label>
+            <input
+              type="date"
+              value={dataNascita}
+              onChange={(e) => setDataNascita(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <label className="mt-4 block text-sm font-medium">Luogo di nascita</label>
+            <input
+              value={luogoNascita}
+              onChange={(e) => setLuogoNascita(e.target.value)}
+              placeholder="Es. Genova"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <label className="mt-4 block text-sm font-medium">Codice fiscale</label>
+            <input
+              value={codiceFiscale}
+              onChange={(e) => setCodiceFiscale(e.target.value.toUpperCase())}
+              placeholder="RSSMRA00A01F205X"
+              maxLength={16}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono uppercase"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Questi tre dati servono a compilare il Modulo di nomina
+              individuale (Documento 4), generato automaticamente quando il
+              tuo accordo viene approvato: senza, non puoi caricare
+              l&apos;accordo.
+            </p>
+          </>
+        )}
 
         <button
           onClick={salvaAnagrafica}
@@ -321,11 +370,18 @@ export default function ProfiloPersonale({
           />
           <button
             onClick={() => accordoInput.current?.click()}
-            disabled={!accordoLetto}
+            disabled={!accordoLetto || !dataNascita || !luogoNascita || !codiceFiscale}
             className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
           >
             {accordoStato ? "Sostituisci accordo" : "Carica accordo"}
           </button>
+          {(!dataNascita || !luogoNascita || !codiceFiscale) && (
+            <p className="mt-2 text-xs text-amber-700">
+              Completa prima data e luogo di nascita e codice fiscale nella
+              scheda Anagrafica (a sinistra) e salva: servono per il Modulo
+              di nomina.
+            </p>
+          )}
           <label className="mt-3 flex items-start gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -395,6 +451,47 @@ export default function ProfiloPersonale({
               </p>
             )}
           </div>
+
+          {/* ---- Modulo di nomina (Documento 4) — generato dal sistema alla
+              approvazione dell'accordo, nessuna azione richiesta qui se non
+              lo scaricarlo. ---- */}
+          {profile.nomina_path && (
+            <div className="mt-4 rounded-lg border border-slate-200 p-3 text-xs">
+              <p className="font-medium text-slate-700">Modulo di nomina (Documento 4)</p>
+              <p className="mt-1 text-slate-500">
+                Generato automaticamente il{" "}
+                {profile.nomina_generata_at
+                  ? new Date(profile.nomina_generata_at).toLocaleString("it-IT")
+                  : "—"}
+                . Nessuna firma è richiesta da parte tua: è a tua disposizione
+                per conoscenza e conservazione.
+              </p>
+              <button
+                onClick={async () => {
+                  // Apre subito una scheda vuota, prima dell'await: se si
+                  // aspetta la risposta del server e si chiama window.open()
+                  // solo dopo, il browser non la considera più legata al
+                  // click dell'utente e la blocca in silenzio come popup.
+                  const finestra = window.open("", "_blank");
+                  setNominaMessaggio(null);
+                  const esito = await scaricaDocumentoNomina();
+                  if (!esito.ok) {
+                    finestra?.close();
+                    setNominaMessaggio(esito.errore);
+                    return;
+                  }
+                  if (finestra) finestra.location.href = esito.dati;
+                  else window.open(esito.dati, "_blank");
+                }}
+                className="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+              >
+                Scarica il modulo
+              </button>
+              {nominaMessaggio && (
+                <p className="mt-2 text-red-600">{nominaMessaggio}</p>
+              )}
+            </div>
+          )}
         </section>
         )}
       </div>

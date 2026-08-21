@@ -7,12 +7,18 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
+import { inviaEmailGmail } from "@/lib/mail";
 import { COOKIE_VERSION, PRIVACY_VERSION, type Profile } from "@/lib/types";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
 function errore(msg: string): Esito<never> {
   return { ok: false, errore: msg };
+}
+
+/** Escape minimo per interpolare testo libero dentro l'HTML generato lato server. */
+function esc(s: string) {
+  return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
 }
 
 /** Esegue una promise ignorando gli errori (per le cancellazioni best-effort). */
@@ -24,7 +30,9 @@ async function ignora(p: PromiseLike<unknown>): Promise<void> {
   }
 }
 
-type CampiAnagrafica = Partial<Pick<Profile, "universita" | "pec">>;
+type CampiAnagrafica = Partial<
+  Pick<Profile, "universita" | "pec" | "data_nascita" | "luogo_nascita" | "codice_fiscale">
+>;
 
 /**
  * Elimina l'account e i dati personali "inutili" alla difesa del progetto.
@@ -288,6 +296,17 @@ export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito>
     return errore("Inserisci un indirizzo email valido (o lascia vuoto).");
   }
 
+  // Il codice fiscale, se inserito, deve avere la forma standard italiana:
+  // serve a compilare il Modulo di nomina (Documento 4), non solo a essere
+  // "presente". Un valore malformato lo renderebbe inutilizzabile lì.
+  if (campi.codice_fiscale) {
+    const cf = campi.codice_fiscale.trim().toUpperCase();
+    if (!/^[A-Z0-9]{16}$/.test(cf)) {
+      return errore("Il codice fiscale deve avere 16 caratteri alfanumerici.");
+    }
+    campi = { ...campi, codice_fiscale: cf };
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update(campi)
@@ -414,6 +433,15 @@ export async function caricaAccordo(
   if (haLettoCompreso !== true) {
     return errore(
       "Devi confermare di aver letto e compreso l'accordo editoriale prima di caricarlo.",
+    );
+  }
+
+  // Data/luogo di nascita e codice fiscale servono a compilare il Modulo di
+  // nomina (Documento 4), generato automaticamente alla approvazione di
+  // questo stesso accordo: se mancano ora, mancheranno anche allora.
+  if (!profile.data_nascita || !profile.luogo_nascita || !profile.codice_fiscale) {
+    return errore(
+      "Completa prima data di nascita, luogo di nascita e codice fiscale nella scheda anagrafica: servono per il Modulo di nomina che verrà generato quando l'accordo sarà approvato.",
     );
   }
 
@@ -734,33 +762,50 @@ export async function approvaRegistrazione(
   try {
     const { messageId } = await spedisciPec({
       config,
-      oggetto: `[ToothTalk] Registrazione approvata — accordo editoriale da firmare`,
+      oggetto: `[ToothTalk] Benvenuto/a in ToothTalk — un ultimo passo prima di partire`,
       testo: [
         "",
-        `Ciao ${nome}!`,
+        `Ciao ${nome}, benvenuto/a in ToothTalk!`,
         "",
-        "La tua registrazione a ToothTalk è stata approvata. In allegato trovi",
-        "l'accordo editoriale: leggilo con attenzione, firmalo e ricaricalo",
-        "firmato dal tuo profilo nel gestionale (sezione \"Accordo editoriale\").",
+        "La tua registrazione è stata approvata: da oggi fai parte del progetto,",
+        "e non vediamo l'ora di iniziare a lavorare insieme.",
         "",
-        "Al momento del caricamento ti verrà chiesto di confermare di aver",
-        "letto e compreso l'accordo: quella conferma, insieme all'accordo",
-        "firmato, ti arriverà a sua volta via PEC con data certa.",
+        "Un solo passaggio prima di partire: in allegato trovi l'accordo",
+        "editoriale. Leggilo con calma, firmalo e ricaricalo dal tuo profilo",
+        "nel gestionale (sezione \"Accordo editoriale\").",
+        "",
+        "Al momento del caricamento ti verrà chiesto di confermare di averlo",
+        "letto e compreso: quella conferma, insieme all'accordo firmato, ti",
+        "arriverà a sua volta via PEC con data certa — così hai sempre traccia",
+        "di tutto.",
+        "",
+        "Se hai domande o dubbi, scrivici pure: siamo qui per questo.",
+        "",
+        "A presto,",
+        "il team ToothTalk",
         "",
         "Messaggio generato automaticamente dal gestionale ToothTalk.",
         "",
       ].join("\n"),
       html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
   <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
-  <h1 style="font-size:20px;margin:4px 0 12px">Registrazione approvata</h1>
+  <h1 style="font-size:20px;margin:4px 0 12px">Benvenuto/a in ToothTalk 🦷</h1>
   <p style="font-size:13px;line-height:1.6">
-    Ciao <strong>${nome}</strong>! La tua registrazione a ToothTalk è stata approvata.
-    In allegato trovi l'accordo editoriale: leggilo con attenzione, firmalo e
-    ricaricalo firmato dal tuo profilo nel gestionale.
+    Ciao <strong>${nome}</strong>, la tua registrazione è stata approvata: da oggi
+    fai parte del progetto, e non vediamo l'ora di iniziare a lavorare insieme.
+  </p>
+  <p style="font-size:13px;line-height:1.6">
+    Un solo passaggio prima di partire: in allegato trovi l'accordo editoriale.
+    Leggilo con calma, firmalo e ricaricalo dal tuo profilo nel gestionale.
   </p>
   <p style="font-size:12px;color:#666">
     Al caricamento ti verrà chiesto di confermare di averlo letto e compreso:
-    quella conferma arriverà a sua volta via PEC con data certa.
+    quella conferma, insieme all'accordo firmato, ti arriverà a sua volta via
+    PEC con data certa — così hai sempre traccia di tutto.
+  </p>
+  <p style="font-size:13px;line-height:1.6;margin-top:16px">
+    Se hai domande o dubbi, scrivici pure: siamo qui per questo.<br>
+    A presto,<br>il team ToothTalk
   </p>
 </div>`,
       allegati: [{ filename: nomeModello, content: bufferModello, contentType: "application/pdf" }],
@@ -898,14 +943,168 @@ export async function impostaOnScreen(
 }
 
 /**
+ * Genera il Modulo di nomina individuale (Documento 4): atto unilaterale
+ * del Titolare, generato dal gestionale nel momento stesso in cui approva
+ * l'Accordo — nessuna firma o azione ulteriore richiesta al Collaboratore.
+ * Segue lo stesso schema già usato da registraConsenso per le ricevute:
+ * HTML statico, hash SHA-256, upload nel bucket "finali" (nessuna libreria
+ * PDF è presente nel progetto — introdurne una solo per questo sarebbe
+ * sproporzionato; l'HTML generato si stampa in PDF dal browser se serve).
+ *
+ * Best-effort per costruzione: se fallisce, l'approvazione dell'accordo
+ * (già avvenuta) NON viene disfatta. L'errore torna nel messaggio così
+ * l'admin sa che deve rigenerare il modulo a mano o segnalarlo.
+ */
+async function generaModuloNomina(
+  userId: string,
+  approvatoAt: string,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  const admin = supabaseAdmin();
+
+  const { data: c } = await admin
+    .from("profiles")
+    .select("full_name, email, pec, codice_fiscale, data_nascita, luogo_nascita, accordo_caricato_at")
+    .eq("id", userId)
+    .single<{
+      full_name: string | null;
+      email: string;
+      pec: string | null;
+      codice_fiscale: string | null;
+      data_nascita: string | null;
+      luogo_nascita: string | null;
+      accordo_caricato_at: string | null;
+    }>();
+  if (!c) return { ok: false, errore: "Utente non trovato." };
+  if (!c.codice_fiscale || !c.data_nascita || !c.luogo_nascita) {
+    return {
+      ok: false,
+      errore: "Mancano codice fiscale, data o luogo di nascita: completali dal profilo prima di generare il modulo.",
+    };
+  }
+
+  const nome = c.full_name ?? c.email;
+  const dataNascitaIt = new Date(c.data_nascita).toLocaleDateString("it-IT");
+  const dataSottoscrizioneIt = c.accordo_caricato_at
+    ? new Date(c.accordo_caricato_at).toLocaleDateString("it-IT")
+    : "—";
+  const dataApprovazioneIt = new Date(approvatoAt).toLocaleString("it-IT");
+
+  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
+<title>Modulo di nomina individuale — ${nome}</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;color:#0d1b2a;line-height:1.6}
+  h1{font-size:1.35em;text-align:center;margin-bottom:1.4em}
+  h2{font-size:1em;margin-top:1.6em}
+  ul{padding-left:1.2em}
+  li{margin-bottom:.4em}
+  .sig{margin-top:2.5em}
+  .meta{color:#64748b;font-size:.8em;margin-top:3em;border-top:1px solid #e2e8f0;padding-top:1em}
+</style></head><body>
+<h1>MODULO DI NOMINA INDIVIDUALE A PERSONA AUTORIZZATA AL TRATTAMENTO</h1>
+
+<p>Il sottoscritto Enrico Maria Guarino, C.F. GRNNCM05H20C342W, in qualità di Titolare del
+trattamento e Coordinatore del progetto editoriale &quot;Tooth Talk&quot;,</p>
+
+<h2>DICHIARA E NOMINA</h2>
+
+<p>che <strong>${esc(nome)}</strong>, nato/a a ${esc(c.luogo_nascita)} il ${dataNascitaIt},
+C.F. ${esc(c.codice_fiscale)}, avendo sottoscritto in data ${dataSottoscrizioneIt} l'Accordo
+Editoriale per la collaborazione volontaria al Progetto &quot;Tooth Talk&quot;, è nominato/a persona
+autorizzata al trattamento dei dati personali ai sensi dell'art. 29 del Regolamento (UE) 2016/679
+(GDPR) e dell'art. 2-quaterdecies del D.Lgs. 196/2003 e s.m.i. (Codice Privacy), sotto l'autorità
+e le istruzioni documentate del Titolare del trattamento.</p>
+
+<h2>Ambito dell'autorizzazione</h2>
+<ul>
+  <li>Raccolta dei recapiti (email o PEC) dei soggetti esterni intervistati, mediante dichiarazione a video in apertura di ripresa;</li>
+  <li>Inserimento immediato di tali recapiti nel gestionale del Progetto, che provvede autonomamente all'invio, alla raccolta della firma digitale e alla conservazione delle liberatorie;</li>
+  <li><strong>Custodia temporanea del materiale grezzo (file video/audio) esclusivamente per il tempo strettamente necessario al caricamento sul gestionale (entro 48-72 ore dalla ripresa, e comunque non oltre 24 ore dalla conferma di avvenuto caricamento).</strong></li>
+</ul>
+
+<p>Il Collaboratore, nell'esercizio della presente autorizzazione, non ha alcuna autonomia
+decisionale sulle finalità e sui mezzi del trattamento, ed è tenuto a:</p>
+<ul>
+  <li>Non raccogliere, non custodire e non trasmettere alcun documento cartaceo contenente dati personali degli intervistati, in nessuna circostanza;</li>
+  <li>Inserire i recapiti nel gestionale immediatamente dopo la registrazione;</li>
+  <li>Non condividere i dati raccolti (recapiti, video, audio) con altri Collaboratori o terzi al di fuori del caricamento diretto sul gestionale;</li>
+  <li><strong>Cancellare la copia locale del materiale grezzo subito dopo la conferma di avvenuto caricamento, e comunque entro 24 ore dalla ricezione della conferma;</strong></li>
+  <li>Mantenere il proprio dispositivo protetto da blocco schermo/PIN e, ove possibile, da crittografia del volume;</li>
+  <li>Comunicare al Coordinatore, senza indugio, qualsiasi violazione dei dati personali di cui venga a conoscenza nello svolgimento delle proprie attività.</li>
+</ul>
+
+<h2>Durata dell'autorizzazione</h2>
+<p>La presente nomina ha effetto per tutta la durata della collaborazione con il Progetto
+&quot;Tooth Talk&quot;, come definita dall'Accordo Editoriale, e può essere revocata in qualsiasi
+momento dal Coordinatore con comunicazione scritta.</p>
+
+<p>Le istruzioni operative di cui agli Artt. 6.2 e 6.3 dell'Accordo Editoriale, già sottoscritto
+dal Collaboratore, si intendono integralmente richiamate e vincolanti ai fini della presente
+nomina.</p>
+
+<p>Il presente modulo viene generato dal gestionale all'esito dell'approvazione dell'Accordo
+Editoriale da parte del Titolare, e reso disponibile al Collaboratore per sua conoscenza e
+conservazione.</p>
+
+<p class="sig">Luogo e data: Genova, ${dataApprovazioneIt}</p>
+<p class="sig">Firma del Coordinatore (Titolare del trattamento): Enrico Maria Guarino</p>
+
+<p class="meta">Documento generato automaticamente dal gestionale ToothTalk al momento
+dell'approvazione dell'accordo da parte del Titolare (atto unilaterale, nessuna firma
+elettronica aggiuntiva richiesta). L'impronta SHA-256 di questo file, calcolata al momento
+della generazione, ne garantisce l'immodificabilità.</p>
+</body></html>`;
+
+  const buffer = Buffer.from(html, "utf8");
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+  const storagePath = `nomina/${userId}/modulo-nomina_${approvatoAt.slice(0, 10)}.html`;
+
+  const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
+    contentType: "text/html; charset=utf-8",
+    upsert: true,
+  });
+  if (eUpload) return { ok: false, errore: `Upload del modulo fallito: ${eUpload.message}` };
+
+  const { error: eUpdate } = await admin
+    .from("profiles")
+    .update({
+      nomina_path: storagePath,
+      nomina_sha256: sha256,
+      nomina_generata_at: approvatoAt,
+    })
+    .eq("id", userId);
+  if (eUpdate) return { ok: false, errore: `Modulo generato ma non registrato: ${eUpdate.message}` };
+
+  // Notifica al Collaboratore — via Gmail: non è un atto che richieda data
+  // certa PEC (quella copre già l'accordo), è solo un avviso di disponibilità.
+  await ignora(
+    inviaEmailGmail({
+      destinatario: c.pec ?? c.email,
+      oggetto: "[ToothTalk] Modulo di nomina disponibile",
+      testo:
+        `Ciao ${nome},\n\nIl tuo accordo editoriale è stato approvato. Il Titolare ha ` +
+        `contestualmente generato il tuo Modulo di nomina a persona autorizzata al ` +
+        `trattamento dei dati (Documento 4): lo trovi nel tuo profilo sul gestionale, ` +
+        `sezione "Accordo editoriale".\n\nNon devi fare nulla: è un documento a tua ` +
+        `disposizione per conoscenza e conservazione.\n\n— ToothTalk`,
+    }),
+  );
+
+  return { ok: true };
+}
+
+/**
  * Il Titolare approva MANUALMENTE l'accordo di un collaboratore: è la
  * quarta condizione (oltre a caricato + letto/confermato + verifica IA ok)
  * che sblocca l'accesso ai progetti. L'approvazione è tracciata in
  * audit_log. Solo admin.
+ *
+ * Nello stesso passaggio genera automaticamente il Modulo di nomina
+ * (Documento 4, Art. 6.5 dell'Accordo): è il click di approvazione stesso
+ * a perfezionare la nomina, non serve una firma separata.
  */
 export async function approvaAccordoManualmente(
   userId: string,
-): Promise<Esito<{ approvatoAt: string }>> {
+): Promise<Esito<{ approvatoAt: string; nomina: "ok" | "errore"; nominaErrore?: string }>> {
   const { isAdmin, profile } = await requireSession();
   if (!isAdmin) return errore("Operazione riservata al Titolare.");
 
@@ -954,8 +1153,57 @@ export async function approvaAccordoManualmente(
     }),
   );
 
+  // Generazione del Documento 4 — best-effort: un suo fallimento non deve
+  // far sembrare fallita l'approvazione dell'accordo, già avvenuta sopra.
+  const esitoNomina = await generaModuloNomina(userId, ora);
+  if (!esitoNomina.ok) {
+    await ignora(
+      supabase.from("audit_log").insert({
+        actor: profile.id,
+        actor_role: profile.role,
+        action: "generazione_nomina_fallita",
+        entity_type: "profile",
+        entity_id: userId,
+        meta: { errore: esitoNomina.errore },
+      }),
+    );
+  }
+
   revalidatePath("/admin");
-  return { ok: true, dati: { approvatoAt: ora } };
+  revalidatePath("/profilo");
+  return {
+    ok: true,
+    dati: {
+      approvatoAt: ora,
+      nomina: esitoNomina.ok ? "ok" : "errore",
+      nominaErrore: esitoNomina.ok ? undefined : esitoNomina.errore,
+    },
+  };
+}
+
+/**
+ * Restituisce un link firmato e temporaneo al Modulo di nomina (Documento
+ * 4) del chiamante — o, se admin, di un userId a scelta. Come per la PEC,
+ * il download passa dal server: nessun bucket è pubblico.
+ */
+export async function scaricaDocumentoNomina(userId?: string): Promise<Esito<string>> {
+  const { profile, isAdmin } = await requireSession();
+  const target = userId && isAdmin ? userId : profile.id;
+  if (userId && userId !== profile.id && !isAdmin) {
+    return errore("Puoi scaricare solo il tuo modulo di nomina.");
+  }
+
+  const admin = supabaseAdmin();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("nomina_path")
+    .eq("id", target)
+    .single<{ nomina_path: string | null }>();
+  if (!c?.nomina_path) return errore("Modulo di nomina non ancora generato.");
+
+  const { data } = await admin.storage.from("finali").createSignedUrl(c.nomina_path, 300);
+  if (!data?.signedUrl) return errore("Impossibile generare il link.");
+  return { ok: true, dati: data.signedUrl };
 }
 
 

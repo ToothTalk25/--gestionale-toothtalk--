@@ -25,8 +25,10 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
   h2("Quali dati trattiamo"),
   ul([
     "Dati anagrafici essenziali: nome, cognome, email, università;",
+    "Data di nascita, luogo di nascita e codice fiscale: raccolti esclusivamente per compilare il Modulo di nomina a persona autorizzata al trattamento (Documento 4, art. 29 GDPR), generato automaticamente all'approvazione dell'accordo;",
     "Foto del profilo;",
     "Accordo editoriale firmato (PDF) e, se il Collaboratore appare nei contenuti, la relativa liberatoria d'immagine;",
+    "Modulo di nomina a persona autorizzata al trattamento (Documento 4), generato automaticamente dal gestionale all'approvazione dell'accordo;",
     "Immagine, voce e dichiarazioni contenute nei video, script e materiali depositati nel gestionale;",
     "Esito e note della verifica automatica (IA) sull'accordo caricato;",
     "Indicazione se il Collaboratore appare nei contenuti pubblicati o lavora dietro le quinte;",
@@ -38,6 +40,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
   h2("Finalità e base giuridica"),
   ul([
     "Esecuzione del contratto (art. 6.1.b GDPR): organizzare la partecipazione dei gruppi universitari, gestire l'account e la collaborazione, ricevere e conservare l'accordo firmato, il caricamento della foto del profilo e dei materiali prodotti;",
+    "Obbligo connesso all'esecuzione del contratto (art. 6.1.b GDPR): trattamento di data di nascita, luogo di nascita e codice fiscale, strettamente limitato alla formalizzazione della nomina a persona autorizzata al trattamento (Documento 4, art. 29 GDPR e art. 2-quaterdecies Codice Privacy) conseguente all'approvazione dell'accordo;",
     "Consenso (art. 6.1.a GDPR): registrazione, pubblicazione e diffusione dell'immagine, della voce e delle dichiarazioni per chi compare nei contenuti pubblicati — revocabile in ogni momento senza conseguenze sulla partecipazione al Progetto;",
     "Interesse legittimo (art. 6.1.f GDPR): tutela legale del contenuto attraverso la certificazione via PEC e il registro append-only.",
   ]),

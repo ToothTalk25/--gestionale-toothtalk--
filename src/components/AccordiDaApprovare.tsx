@@ -37,7 +37,11 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
       setMessaggio(`Errore: ${esito.errore}`);
       return;
     }
-    setMessaggio("Accordo approvato: l'accesso ai progetti è sbloccato.");
+    setMessaggio(
+      esito.dati.nomina === "ok"
+        ? "Accordo approvato: l'accesso ai progetti è sbloccato e il Modulo di nomina (Documento 4) è stato generato."
+        : `Accordo approvato: l'accesso ai progetti è sbloccato. Attenzione — il Modulo di nomina NON è stato generato (${esito.dati.nominaErrore ?? "errore sconosciuto"}): rigeneralo o segnalalo.`,
+    );
     router.refresh();
   }
 

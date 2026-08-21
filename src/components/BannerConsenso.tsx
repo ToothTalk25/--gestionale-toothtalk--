@@ -43,7 +43,13 @@ export default function BannerConsenso() {
 
   if (stato !== "visibile") return null;
 
-  async function accetta(tutto: boolean) {
+  // Un solo pulsante, un solo consenso di fatto: il gestionale usa solo
+  // cookie tecnici, quindi non esiste una scelta reale fra "tutto" e "solo
+  // necessari" da offrire. Registriamo entrambi i tipi di consenso insieme
+  // (privacy + cookie), e chiudiamo il banner SOLO se entrambi sono andati
+  // a buon fine — altrimenti ricompare al prossimo giro, invece di
+  // ricomparire per sempre come nel comportamento precedente.
+  async function accetta() {
     setErroreUi(null);
     let tuttoOk = true;
     try {
@@ -52,12 +58,10 @@ export default function BannerConsenso() {
         setErroreUi(r1.errore);
         tuttoOk = false;
       }
-      if (tutto) {
-        const r2 = await registraConsenso("cookie");
-        if (!r2.ok) {
-          setErroreUi((e) => (e ? e + " · " : "") + r2.errore);
-          tuttoOk = false;
-        }
+      const r2 = await registraConsenso("cookie");
+      if (!r2.ok) {
+        setErroreUi((e) => (e ? e + " · " : "") + r2.errore);
+        tuttoOk = false;
       }
     } catch (e) {
       // La server action ha lanciato: il consenso potrebbe non essere stato
@@ -88,17 +92,10 @@ export default function BannerConsenso() {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => accetta(false)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            Solo necessari
-          </button>
-          <button
-            type="button"
-            onClick={() => accetta(true)}
+            onClick={() => accetta()}
             className="rounded-lg bg-tt-ink px-4 py-1.5 text-xs font-medium text-white hover:opacity-90"
           >
-            Accetta tutto
+            Ho capito
           </button>
         </div>
         {erroreUi && (
