@@ -140,8 +140,8 @@ export type TaskRiepilogoRevoca = {
 export async function riepilogoTaskOnScreen(
   userId: string,
 ): Promise<Esito<{ task: TaskRiepilogoRevoca[] }>> {
-  const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin && profile.id !== userId) return errore("Operazione non disponibile da qui.");
 
   const admin = supabaseAdmin();
   const { data: versioni } = await admin
@@ -190,23 +190,20 @@ export async function riepilogoTaskOnScreen(
 /**
  * Termina la collaborazione di un partecipante (solo Titolare).
  *
- * ON-SCREEN (Art. 7.3 e 17 GDPR): la revoca del consenso all'uso di
- * immagine/voce è incondizionata. La RPC revoca_video_on_screen marca le
- * consegne originali video/audio dell'interessato (revocato_gdpr=true,
- * transizione one-way ammessa dal trigger append-only) e porta le task a
- * archived_due_to_revocation. I FILE FISICI vengono poi eliminati dallo
- * storage (best-effort); la riga e lo SHA256 restano come prova legale.
+ * Uscire dal progetto e revocare il consenso a immagine/voce sono due atti
+ * distinti (vedi revocaImmagineVoce più sotto): terminare la collaborazione
+ * NON tocca più alcun file, per nessuno, indipendentemente da on_screen.
+ * Chi appare in video resta online finché non è lui stesso a revocare quel
+ * consenso — uscire dal progetto non lo implica.
  *
- * BACKSTAGE: nessun file toccato — si chiude solo la collaborazione.
- *
- * In entrambi i casi l'account viene disattivato (attivo=false) e l'evento
- * viene registrato nell'audit_log (la catena di hash la gestisce il trigger
- * fn_audit_chain: niente calcoli manuali qui).
+ * Disattiva l'account (attivo=false) e registra l'evento nell'audit_log
+ * (la catena di hash la gestisce il trigger fn_audit_chain: niente calcoli
+ * manuali qui).
  */
 export async function terminaCollaborazione(
   userId: string,
   conferma: boolean,
-): Promise<Esito<{ on_screen: boolean; task: number; versioni_purgate: number }>> {
+): Promise<Esito<{ on_screen: boolean }>> {
   const { isAdmin, profile } = await requireSession();
   if (!isAdmin) return errore("Operazione riservata al Titolare.");
   if (!conferma) return errore("Conferma esplicita richiesta per terminare la collaborazione.");
@@ -221,68 +218,155 @@ export async function terminaCollaborazione(
   if (!target) return errore("Profilo non trovato.");
   if (!target.attivo) return errore("La collaborazione di questo partecipante è già terminata.");
 
-  let taskIds: string[] = [];
-  let versioniPurgate: string[] = [];
-  let azione = "chiusura_collaborazione";
   const motivo = `Fine collaborazione con ${target.full_name ?? target.id}`;
 
-  if (target.on_screen) {
-    azione = "revoca_on_screen";
-    // 1. Marca le versioni e archivia le task nel registro (RPC SECURITY
-    //    DEFINER). Si chiama con il client UTENTE (non admin): is_admin()
-    //    dentro la RPC legge auth.uid(), che col client service_role
-    //    sarebbe null e la revoca verrebbe rifiutata.
-    const supabase = await supabaseServer();
-    const { data: righe, error: errRpc } = await supabase.rpc("revoca_video_on_screen", {
-      p_user: userId,
-    });
-    if (errRpc) {
-      return errore(`Revoca rifiutata dal database: ${errRpc.message}`);
-    }
-    const righeTipizzate = (righe ?? []) as {
-      version_id: string;
-      bucket: string;
-      storage_path: string;
-      task_id: string;
-    }[];
-    taskIds = [...new Set(righeTipizzate.map((r) => r.task_id))];
-    versioniPurgate = righeTipizzate.map((r) => `${r.bucket}/${r.storage_path}`);
-
-    // 2. Elimina i FILE FISICI dallo storage (best-effort: se uno fallisce,
-    //    la revoca è comunque registrata; l'eccezione è amministrativa).
-    for (const r of righeTipizzate) {
-      await ignora(admin.storage.from(r.bucket).remove([r.storage_path]));
-    }
-  }
-
-  // 3. Disattiva l'account (l'accesso termina in entrambi i casi).
   await admin.from("profiles").update({ attivo: false }).eq("id", userId);
 
-  // 4. UNA riga in audit_log (append-only, hash concatenato dal trigger).
   await ignora(
     admin.from("audit_log").insert({
       actor: profile.id,
       actor_role: profile.role,
-      action: azione,
+      action: "chiusura_collaborazione",
       entity_type: "profile",
       entity_id: userId,
-      meta: {
-        motivo,
-        task_ids: taskIds,
-        versioni_purgate: versioniPurgate,
-      },
+      meta: { motivo },
     }),
   );
 
   revalidatePath("/admin");
+  return { ok: true, dati: { on_screen: target.on_screen } };
+}
+
+/**
+ * Revoca del consenso a immagine/voce — atto AUTONOMO dal recesso, che il
+ * Collaboratore stesso avvia dal proprio profilo (visibile solo se
+ * on_screen). Due effetti distinti, uno automatico e uno su richiesta:
+ *
+ *  1. Materiale grezzo NON pubblicato: purgato SEMPRE, senza bisogno di
+ *     chiederlo (stessa RPC revoca_video_on_screen di prima, ora aperta
+ *     anche all'auto-revoca — vedi 0089).
+ *  2. Contenuti GIÀ pubblicati: rimossi solo se il Collaboratore lo chiede
+ *     esplicitamente (richiediRimozionePubblicato=true). In tal caso si
+ *     apre una pratica in richieste_rimozione_pubblicato, valutata caso
+ *     per caso dal Titolare (art. 17(3)(a) GDPR) — questa funzione non
+ *     rimuove nulla di pubblicato da sola.
+ */
+export async function revocaImmagineVoce(
+  richiediRimozionePubblicato: boolean,
+): Promise<Esito<{ versioniPurgate: number; richiestaAperta: boolean }>> {
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+  const admin = supabaseAdmin();
+
+  // 1. Marca il consenso come revocato nel registro (append-only).
+  await supabase.rpc("revoca_consenso", { p_tipo: "immagine_voce" });
+
+  // 2. Purga il grezzo non pubblicato — sempre, RPC chiamata col client
+  //    utente: is_admin() dentro la RPC leggerebbe auth.uid()=null col
+  //    client service_role e rifiuterebbe anche l'auto-revoca.
+  const { data: righe, error: errRpc } = await supabase.rpc("revoca_video_on_screen", {
+    p_user: profile.id,
+  });
+  if (errRpc) return errore(`Revoca rifiutata dal database: ${errRpc.message}`);
+  const righeTipizzate = (righe ?? []) as {
+    version_id: string;
+    bucket: string;
+    storage_path: string;
+    task_id: string;
+  }[];
+  for (const r of righeTipizzate) {
+    await ignora(admin.storage.from(r.bucket).remove([r.storage_path]));
+  }
+
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "revoca_immagine_voce",
+      entity_type: "profile",
+      entity_id: profile.id,
+      meta: {
+        versioni_purgate: righeTipizzate.map((r) => `${r.bucket}/${r.storage_path}`),
+        richiesta_rimozione_pubblicato: richiediRimozionePubblicato,
+      },
+    }),
+  );
+
+  // 3. Solo se chiesto: apre la pratica sul pubblicato, non lo tocca.
+  let richiestaAperta = false;
+  if (richiediRimozionePubblicato) {
+    const { error: eIns } = await admin.from("richieste_rimozione_pubblicato").insert({
+      user_id: profile.id,
+    });
+    if (!eIns) {
+      richiestaAperta = true;
+      const { data: adminProfiles } = await admin
+        .from("profiles")
+        .select("email")
+        .eq("role", "admin")
+        .eq("attivo", true)
+        .limit(1);
+      const destinatario = adminProfiles?.[0]?.email;
+      if (destinatario) {
+        await ignora(
+          inviaEmailGmail({
+            destinatario,
+            oggetto: "[ToothTalk] Richiesta di rimozione contenuti pubblicati",
+            testo:
+              `${profile.full_name ?? profile.email} ha revocato il consenso a immagine/voce ` +
+              `e ha chiesto anche la rimozione dei contenuti già pubblicati che lo ritraggono.\n\n` +
+              `Valutala dal Registro globale, sezione "Richieste di rimozione" — entro 30 giorni, ` +
+              `prorogabili a 90 con motivazione scritta (art. 17(3)(a) GDPR).\n\n— ToothTalk`,
+          }),
+        );
+      }
+    }
+  }
+
+  revalidatePath("/profilo");
   return {
     ok: true,
-    dati: {
-      on_screen: target.on_screen,
-      task: taskIds.length,
-      versioni_purgate: versioniPurgate.length,
-    },
+    dati: { versioniPurgate: righeTipizzate.length, richiestaAperta },
   };
+}
+
+/** Righe della coda "Richieste di rimozione" (solo Titolare). */
+export type RigaRichiestaRimozione = {
+  id: string;
+  user_id: string;
+  richiesto_at: string;
+  termine_scadenza: string;
+  stato: "aperta" | "risolta";
+  esito: "rimosso" | "oscurato" | "rifiutato" | null;
+  esito_motivazione: string | null;
+  risolta_da: string | null;
+  risolta_at: string | null;
+};
+
+/**
+ * Il Titolare chiude una richiesta di rimozione di contenuti pubblicati,
+ * registrando l'esito della valutazione (art. 17(3)(a) GDPR). Non rimuove
+ * fisicamente nulla: quella resta un'azione manuale editoriale separata,
+ * coerente con l'esito scelto qui.
+ */
+export async function risolviRichiestaRimozione(
+  richiestaId: string,
+  esito: "rimosso" | "oscurato" | "rifiutato",
+  motivazione: string,
+): Promise<Esito> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!motivazione.trim()) return errore("Indica una motivazione per la decisione.");
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from("richieste_rimozione_pubblicato")
+    .update({ stato: "risolta", esito, esito_motivazione: motivazione.trim() })
+    .eq("id", richiestaId);
+  if (error) return errore(error.message);
+
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
 }
 
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {

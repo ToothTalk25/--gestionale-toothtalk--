@@ -27,7 +27,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "Dati anagrafici essenziali: nome, cognome, email, università;",
     "Data di nascita, luogo di nascita e codice fiscale: raccolti esclusivamente per compilare il Modulo di nomina a persona autorizzata al trattamento (Documento 4, art. 29 GDPR), generato automaticamente all'approvazione dell'accordo;",
     "Foto del profilo;",
-    "Accordo editoriale firmato (PDF) e, se il Collaboratore appare nei contenuti, la relativa liberatoria d'immagine;",
+    "Accordo editoriale firmato (PDF): è un unico documento per tutti i Collaboratori, on-screen o dietro le quinte — per chi appare nei contenuti, la cessione dei diritti di immagine e voce è già inclusa nell'accordo stesso, non in un documento separato;",
     "Modulo di nomina a persona autorizzata al trattamento (Documento 4), generato automaticamente dal gestionale all'approvazione dell'accordo;",
     "Immagine, voce e dichiarazioni contenute nei video, script e materiali depositati nel gestionale;",
     "Esito e note della verifica automatica (IA) sull'accordo caricato;",

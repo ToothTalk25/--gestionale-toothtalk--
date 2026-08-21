@@ -21,6 +21,8 @@ import AccordiDaApprovare, {
 import RichiesteRegistrazione, {
   type RigaRichiestaRegistrazione,
 } from "@/components/RichiesteRegistrazione";
+import RichiesteRimozionePubblicato from "@/components/RichiesteRimozionePubblicato";
+import type { RigaRichiestaRimozione } from "@/app/actions-profilo";
 
 type Confronto = {
   deliverable_id: string;
@@ -49,6 +51,7 @@ export default async function AdminPage() {
     { data: richieste },
     { data: modelliAccordo },
     { data: accordiDaApprovare },
+    { data: richiesteRimozione },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -152,6 +155,13 @@ export default async function AdminPage() {
       .neq("role", "admin")
       .order("accordo_caricato_at", { ascending: true })
       .returns<RigaAccordoDaApprovare[]>(),
+    // Richieste di rimozione di contenuti pubblicati (art. 17(3)(a) GDPR):
+    // aperte quando un Collaboratore revoca il consenso a immagine/voce.
+    supabase
+      .from("richieste_rimozione_pubblicato")
+      .select("id, user_id, richiesto_at, termine_scadenza, stato, esito, esito_motivazione, risolta_da, risolta_at")
+      .order("richiesto_at", { ascending: false })
+      .returns<RigaRichiestaRimozione[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -370,7 +380,6 @@ export default async function AdminPage() {
                         <TerminaCollaborazione
                           userId={p.id}
                           fullName={p.full_name}
-                          onScreen={p.on_screen}
                           giaTerminata={!p.attivo}
                         />
                         <EliminaAccountAdmin userId={p.id} />
@@ -407,7 +416,7 @@ export default async function AdminPage() {
             id: "consensi",
             etichetta: "Consensi GDPR",
             promemoria: {
-              cosa: "consulti il registro dei consensi privacy/cookie/riconoscimento-foto raccolti, con le ricevute firmate scaricabili.",
+              cosa: "consulti il registro dei consensi privacy/cookie/immagine-voce raccolti, con le ricevute firmate scaricabili.",
               attenzione: "solo consultazione — nessuna azione qui modifica lo stato di un consenso.",
             },
             contenuto: <SezioneConsensi consensi={consensi ?? []} nomi={nomi} />,
@@ -429,6 +438,20 @@ export default async function AdminPage() {
               attenzione: "l'ultimo modello caricato diventa SUBITO quello attivo, usato dalla prossima approvazione — controllalo bene prima di caricarlo.",
             },
             contenuto: <CaricaModelloAccordo modelli={modelli} />,
+          },
+          {
+            id: "richieste-rimozione",
+            etichetta: "Richieste di rimozione",
+            promemoria: {
+              cosa: "valuti le richieste di rimozione di contenuti già pubblicati, aperte da chi revoca il consenso a immagine/voce dal proprio profilo.",
+              attenzione: "\"Rimosso\"/\"Oscurato\"/\"Rifiutato\" registrano solo la decisione — la rimozione o l'oscuramento del contenuto restano un'azione editoriale manuale a parte, coerente con l'esito scelto qui. Valuta entro 30 giorni, prorogabili a 90 con motivazione scritta.",
+            },
+            contenuto: (
+              <RichiesteRimozionePubblicato
+                richieste={richiesteRimozione ?? []}
+                nomi={nomi}
+              />
+            ),
           },
         ]}
       />

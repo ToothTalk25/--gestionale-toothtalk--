@@ -1,11 +1,13 @@
 -- =====================================================================
 -- 0085_richieste_recesso.sql — comunicazioni di recesso tracciate
 -- =====================================================================
--- Art. 8 dell'Accordo: il Collaboratore può recedere con un preavviso di
--- 30 giorni. Per avere DATA CERTA del recesso senza dipendere dall'invio
--- di email/PEC, la richiesta viene registrata qui con timestamp immutabile
--- (stesso principio dell'audit_log: append-only, mai modificata né
--- cancellata). Da questa data decorre il preavviso.
+-- Art. 9 dell'Accordo: il Collaboratore può recedere in qualsiasi momento,
+-- senza necessità di motivazione né di preavviso (il preavviso è stato
+-- tolto deliberatamente: costituiva un indizio di etero-organizzazione,
+-- art. 2 D.Lgs. 81/2015). Per avere comunque DATA CERTA del recesso senza
+-- dipendere dall'invio di email/PEC, la richiesta viene registrata qui con
+-- timestamp immutabile (stesso principio dell'audit_log: append-only, mai
+-- modificata né cancellata).
 -- =====================================================================
 
 create table if not exists public.richieste_recesso (

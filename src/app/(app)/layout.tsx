@@ -91,9 +91,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               ToothTalk<sup className="ml-0.5 align-super text-[8px]">™</sup> —
               progetto di divulgazione odontoiatrica
             </span>
-            <Link href="/privacy" className="hover:text-slate-600">
-              Privacy e cookie
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/documenti" className="hover:text-slate-600">
+                Documenti
+              </Link>
+              <Link href="/privacy" className="hover:text-slate-600">
+                Privacy e cookie
+              </Link>
+            </div>
           </div>
         </footer>
 

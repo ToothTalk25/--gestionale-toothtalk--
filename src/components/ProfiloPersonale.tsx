@@ -5,7 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
-import { aggiornaAnagrafica, caricaAccordo, caricaFoto, revocaConsenso, esportaDatiPersonali, scaricaDocumentoNomina } from "@/app/actions-profilo";
+import {
+  aggiornaAnagrafica,
+  caricaAccordo,
+  caricaFoto,
+  revocaConsenso,
+  revocaImmagineVoce,
+  esportaDatiPersonali,
+  scaricaDocumentoNomina,
+} from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 
@@ -53,6 +61,10 @@ export default function ProfiloPersonale({
   const [erroreRevoca, setErroreRevoca] = useState<string | null>(null);
   const [revocaInCorso, setRevocaInCorso] = useState(false);
 
+  const [revocaImmagineAperta, setRevocaImmagineAperta] = useState(false);
+  const [chiediRimozionePubblicato, setChiediRimozionePubblicato] = useState(false);
+  const [revocaImmagineInCorso, setRevocaImmagineInCorso] = useState(false);
+
   async function revoca(tipo: "privacy" | "cookie") {
     const ok = window.confirm(
       "Revocare il consenso " +
@@ -72,6 +84,42 @@ export default function ProfiloPersonale({
       );
       router.refresh();
     }
+  }
+
+  async function confermaRevocaImmagine() {
+    const ok = window.confirm(
+      "Revocare il consenso a immagine e voce?\n\n" +
+        "Il materiale grezzo non ancora pubblicato che ti ritrae verrà " +
+        "eliminato definitivamente, sempre e senza bisogno di confermarlo " +
+        "di nuovo." +
+        (chiediRimozionePubblicato
+          ? "\n\nHai anche chiesto la rimozione dei contenuti già pubblicati: " +
+            "si apre una richiesta che il Titolare valuta entro 30 giorni " +
+            "(prorogabili a 90) — non viene rimosso nulla in automatico."
+          : "\n\nI contenuti già pubblicati restano online, a meno che tu non " +
+            "chieda anche la loro rimozione qui sopra.") +
+        "\n\nQuesto NON incide sulla tua partecipazione al progetto: puoi " +
+        "restare come Collaboratore anche dopo la revoca.\n\nConfermi?",
+    );
+    if (!ok) return;
+    setRevocaImmagineInCorso(true);
+    setErroreRevoca(null);
+    setMessaggioRevoca(null);
+    const esito = await revocaImmagineVoce(chiediRimozionePubblicato);
+    setRevocaImmagineInCorso(false);
+    if (!esito.ok) {
+      setErroreRevoca(esito.errore);
+      return;
+    }
+    setMessaggioRevoca(
+      `Consenso a immagine/voce revocato. ${esito.dati.versioniPurgate} file grezzi non pubblicati eliminati.` +
+        (esito.dati.richiestaAperta
+          ? " Richiesta di rimozione del pubblicato aperta: il Titolare la valuterà entro i termini di legge."
+          : ""),
+    );
+    setRevocaImmagineAperta(false);
+    setChiediRimozionePubblicato(false);
+    router.refresh();
   }
 
   async function esportaDati() {
@@ -338,6 +386,73 @@ export default function ProfiloPersonale({
             </Link>
             .
           </p>
+
+          {/* ------------------------------------- immagine e voce (on-screen)
+              Atto indipendente dal recesso: uscire dal progetto non revoca
+              questo consenso, e revocarlo non ti fa uscire dal progetto. */}
+          {profile.on_screen && (
+            <div className="mt-5 border-t border-slate-100 pt-4">
+              <p className="text-sm font-medium text-slate-700">
+                Consenso a immagine e voce nei contenuti
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Indipendente dalla tua partecipazione al progetto: puoi
+                revocarlo restando Collaboratore, e puoi restare Collaboratore
+                senza revocarlo.
+              </p>
+
+              {!revocaImmagineAperta ? (
+                <button
+                  onClick={() => setRevocaImmagineAperta(true)}
+                  className="mt-3 rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                >
+                  Revoca consenso a immagine e voce
+                </button>
+              ) : (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs text-amber-800">
+                    Il materiale grezzo non ancora pubblicato che ti ritrae
+                    verrà eliminato sempre, senza bisogno di chiederlo. I
+                    contenuti già pubblicati restano online, a meno che tu non
+                    chieda anche la loro rimozione qui sotto — in quel caso
+                    si apre una richiesta valutata dal Titolare, non una
+                    rimozione automatica.
+                  </p>
+                  <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={chiediRimozionePubblicato}
+                      onChange={(e) => setChiediRimozionePubblicato(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-xs text-amber-900">
+                      Chiedo anche la rimozione dei contenuti già pubblicati
+                      che mi ritraggono.
+                    </span>
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={confermaRevocaImmagine}
+                      disabled={revocaImmagineInCorso}
+                      className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    >
+                      {revocaImmagineInCorso ? "Revoco…" : "Conferma revoca"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRevocaImmagineAperta(false);
+                        setChiediRimozionePubblicato(false);
+                      }}
+                      disabled={revocaImmagineInCorso}
+                      className="rounded-lg px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
+                    >
+                      Annulla
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* ----------------------------------------------------- accordo

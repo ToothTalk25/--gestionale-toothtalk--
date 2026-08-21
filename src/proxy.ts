@@ -17,6 +17,11 @@ const PUBBLICHE = [
   // File di verifica proprietà dominio (Google Search Console): statico,
   // nessun dato sensibile, deve restare raggiungibile senza sessione.
   "/google97604b8436f2db92.html",
+  // Libreria documenti (modelli, non copie firmate): i link di download
+  // sono file statici in public/documenti/*.docx — senza questa riga il
+  // proxy li avrebbe rimandati al login invece di scaricarli, per
+  // chiunque non fosse già loggato.
+  "/documenti",
 ];
 
 // Flag di sicurezza rigidi per i cookie di sessione (HttpOnly, Secure,
