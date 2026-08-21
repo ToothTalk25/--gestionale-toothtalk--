@@ -17,10 +17,10 @@ const ul = (voci: string[]): Blocco => ({ tipo: "ul", voci });
 
 export const INFORMATIVA_PRIVACY: Blocco[] = [
   h2("Titolare del trattamento"),
-  p("Il Titolare del trattamento è Enrico Maria Guarino, in qualità di titolare del progetto editoriale “Tooth Talk”, con sede in Via Bozzano n.11 16143 Genova, C.F. GRNNCM05H20C342W."),
+  p("Il Titolare del trattamento è Enrico Maria Guarino, in qualità di titolare del progetto editoriale “Tooth Talk”, con sede in Via Bozzano n.11 16143 Genova, C.F. GRNNCM05H20C342W. E-mail: enricoguarino25@gmail.com. PEC: enricomariaguarino@postecertifica.it."),
 
   h2("Responsabile della protezione dei dati (DPO)"),
-  p("Non è stato designato un Responsabile della protezione dei dati, in quanto il trattamento non rientra nelle ipotesi di cui all'art. 37 del Regolamento UE 2016/679 (GDPR). Per qualsiasi questione relativa al trattamento dei dati personali, è possibile contattare il Titolare attraverso il gestionale."),
+  p("Non è stato designato un Responsabile della protezione dei dati, in quanto il trattamento non rientra nelle ipotesi di cui all'art. 37 del Regolamento UE 2016/679 (GDPR). Per qualsiasi questione relativa al trattamento dei dati personali, è possibile contattare il Titolare all'indirizzo email o PEC indicati sopra."),
 
   h2("Quali dati trattiamo"),
   ul([
@@ -68,7 +68,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "Revoca del consenso (art. 7 GDPR): revocare il consenso in qualsiasi momento, senza pregiudicare la liceità del trattamento basata sul consenso prima della revoca;",
     "Proporre reclamo all'Autorità Garante per la protezione dei dati personali (www.garanteprivacy.it).",
   ]),
-  p("Per esercitarli, contatta il referente del progetto attraverso il gestionale."),
+  p("Per esercitarli, scrivi a enricoguarino25@gmail.com o, per la certificazione di consegna, alla PEC enricomariaguarino@postecertifica.it."),
 
   h2("Consenso per chi appare nei contenuti"),
   p("Se il Collaboratore compare, con la propria immagine, voce e/o nome, nei contenuti realizzati nell'ambito del Progetto, prende atto e acconsente che:"),
@@ -78,7 +78,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "non è previsto alcun compenso o rimborso spese, né un diritto di controllo preventivo sui contenuti editati.",
   ]),
   p("Le dichiarazioni rese nei contenuti sono di esclusiva responsabilità di chi le rende: il Collaboratore dichiara che le proprie dichiarazioni sono veritiere, accurate e non diffamatorie nei confronti di terzi, e si impegna a manlevare e tenere indenne il Progetto da qualsiasi pretesa di terzi al riguardo, fatta salva l'ipotesi di montaggio palesemente manipolatorio da parte del Progetto che ne stravolga il senso."),
-  p("Revoca del consenso: sempre possibile in qualsiasi momento, senza obbligo di indicarne il motivo, mediante comunicazione al referente del Progetto — non pregiudica la liceità del trattamento basata sul consenso prima della revoca. Richieste di rimozione di un contenuto già pubblicato sono valutate caso per caso, alla luce delle finalità editoriali del Progetto e delle eccezioni di cui all'art. 17, par. 3, GDPR (libertà di espressione e informazione), con risposta entro 30 (trenta) giorni lavorativi, prorogabile a 90 (novanta) giorni con motivazione scritta."),
+  p("Revoca del consenso: sempre possibile in qualsiasi momento, senza obbligo di indicarne il motivo, scrivendo a enricoguarino25@gmail.com o alla PEC enricomariaguarino@postecertifica.it — non pregiudica la liceità del trattamento basata sul consenso prima della revoca. Richieste di rimozione di un contenuto già pubblicato sono valutate caso per caso, alla luce delle finalità editoriali del Progetto e delle eccezioni di cui all'art. 17, par. 3, GDPR (libertà di espressione e informazione), con risposta entro 30 (trenta) giorni lavorativi, prorogabile a 90 (novanta) giorni con motivazione scritta."),
 
   h2("Obbligo di fornitura dei dati"),
   p("Il conferimento dei dati anagrafici essenziali (nome, cognome, email, università) e della foto del profilo è necessario per la gestione amministrativa dell'account e della collaborazione: il loro mancato conferimento comporta l'impossibilità di accedere al gestionale e di partecipare al Progetto come Collaboratore. Il consenso alla comparizione con la propria immagine, voce e/o dichiarazioni nei contenuti pubblicati (di cui alla sezione “Consenso per chi appare nei contenuti”) è invece facoltativo e indipendente: il relativo rifiuto o la successiva revoca non pregiudicano in alcun modo la possibilità di partecipare al Progetto per le attività che non comportano la comparizione nei contenuti pubblicati."),
