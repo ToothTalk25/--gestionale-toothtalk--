@@ -32,7 +32,7 @@ export default function PrivacyPage() {
       <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
       <h1 className="mt-6 text-2xl font-semibold">Informativa privacy</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 20 agosto 2026
+        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 21 agosto 2026
       </p>
 
       <section className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
@@ -57,7 +57,7 @@ export default function PrivacyPage() {
         </div>
 
         <p className="pt-4 text-xs text-slate-400">
-          Ultimo aggiornamento: 20 agosto 2026 ·{" "}
+          Ultimo aggiornamento: 21 agosto 2026 ·{" "}
           <Link href="/login" className="underline">
             Torna al login
           </Link>

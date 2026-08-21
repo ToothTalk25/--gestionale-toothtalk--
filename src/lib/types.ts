@@ -1,7 +1,7 @@
 export type UserRole = "admin" | "member";
 
 /** Versione corrente dell'informativa privacy e della cookie policy. */
-export const PRIVACY_VERSION = "2026-08-20";
+export const PRIVACY_VERSION = "2026-08-21";
 export const COOKIE_VERSION = "2026-08-10";
 
 export type TipoConsenso = "privacy" | "cookie";

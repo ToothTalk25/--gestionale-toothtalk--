@@ -17,7 +17,7 @@ const ul = (voci: string[]): Blocco => ({ tipo: "ul", voci });
 
 export const INFORMATIVA_PRIVACY: Blocco[] = [
   h2("Titolare del trattamento"),
-  p("Il Titolare del trattamento è il Progetto “Tooth Talk”, rappresentato da Enrico Maria Guarino, con sede in Via Bozzano n.11 16143 Genova, C.F. GRNNCM05H20C342W."),
+  p("Il Titolare del trattamento è Enrico Maria Guarino, in qualità di titolare del progetto editoriale “Tooth Talk”, con sede in Via Bozzano n.11 16143 Genova, C.F. GRNNCM05H20C342W."),
 
   h2("Responsabile della protezione dei dati (DPO)"),
   p("Non è stato designato un Responsabile della protezione dei dati, in quanto il trattamento non rientra nelle ipotesi di cui all'art. 37 del Regolamento UE 2016/679 (GDPR). Per qualsiasi questione relativa al trattamento dei dati personali, è possibile contattare il Titolare attraverso il gestionale."),
@@ -34,8 +34,8 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
 
   h2("Finalità e base giuridica"),
   ul([
-    "Esecuzione del progetto: organizzare la partecipazione dei gruppi universitari e la realizzazione dei contenuti editoriali;",
-    "Consenso (art. 6.1.a GDPR): caricamento della foto, dell'accordo e dei materiali; registrazione e pubblicazione dell'immagine/voce per chi appare nei contenuti;",
+    "Esecuzione del contratto (art. 6.1.b GDPR): organizzare la partecipazione dei gruppi universitari, gestire l'account e la collaborazione, ricevere e conservare l'accordo firmato, il caricamento della foto del profilo e dei materiali prodotti;",
+    "Consenso (art. 6.1.a GDPR): registrazione, pubblicazione e diffusione dell'immagine, della voce e delle dichiarazioni per chi compare nei contenuti pubblicati — revocabile in ogni momento senza conseguenze sulla partecipazione al Progetto;",
     "Interesse legittimo (art. 6.1.f GDPR): tutela legale del contenuto attraverso la certificazione via PEC e il registro append-only.",
   ]),
   p("Pubblicazione e diffusione dei contenuti su canali nazionali, europei e internazionali, ivi inclusi, a titolo esemplificativo e non esaustivo: sito web, piattaforme social (Instagram, Facebook, LinkedIn, YouTube), podcast, newsletter, pubblicazioni cartacee e digitali, e ogni altra forma di comunicazione presente e futura."),
@@ -76,5 +76,5 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
   p("Revoca del consenso: sempre possibile in qualsiasi momento, senza obbligo di indicarne il motivo, mediante comunicazione al referente del Progetto — non pregiudica la liceità del trattamento basata sul consenso prima della revoca. Richieste di rimozione di un contenuto già pubblicato sono valutate caso per caso, alla luce delle finalità editoriali del Progetto e delle eccezioni di cui all'art. 17, par. 3, GDPR (libertà di espressione e informazione), con risposta entro 30 (trenta) giorni lavorativi."),
 
   h2("Obbligo di fornitura dei dati"),
-  p("Il conferimento dei dati personali è facoltativo. Il rifiuto di fornirli o di prestare il consenso comporta però l'impossibilità di partecipare al Progetto come Collaboratore."),
+  p("Il conferimento dei dati anagrafici essenziali (nome, cognome, email, università) e della foto del profilo è necessario per la gestione amministrativa dell'account e della collaborazione: il loro mancato conferimento comporta l'impossibilità di accedere al gestionale e di partecipare al Progetto come Collaboratore. Il consenso alla comparizione con la propria immagine, voce e/o dichiarazioni nei contenuti pubblicati (di cui alla sezione “Consenso per chi appare nei contenuti”) è invece facoltativo e indipendente: il relativo rifiuto o la successiva revoca non pregiudicano in alcun modo la possibilità di partecipare al Progetto per le attività che non comportano la comparizione nei contenuti pubblicati."),
 ];
