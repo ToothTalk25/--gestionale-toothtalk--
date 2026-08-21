@@ -28,6 +28,9 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "Foto del profilo;",
     "Accordo editoriale firmato (PDF) e, se il Collaboratore appare nei contenuti, la relativa liberatoria d'immagine;",
     "Immagine, voce e dichiarazioni contenute nei video, script e materiali depositati nel gestionale;",
+    "Esito e note della verifica automatica (IA) sull'accordo caricato;",
+    "Indicazione se il Collaboratore appare nei contenuti pubblicati o lavora dietro le quinte;",
+    "Riferimento a chi, tra gli account del Titolare, ha approvato la registrazione e l'accordo;",
     "Dati tecnici di connessione (indirizzo IP, dispositivo, data e ora) e log delle operazioni.",
   ]),
   p("Immagine e voce non sono soggette ad alcun trattamento automatizzato di riconoscimento o confronto facciale: nessun sistema del gestionale confronta i volti presenti nei contenuti con le foto profilo del team."),
@@ -47,6 +50,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
 
   h2("Conservazione"),
   p("I file (video, foto, materiali) restano sulla piattaforma solo il tempo necessario a scaricarli e pubblicarli, e possono essere eliminati dopo l'invio della PEC. I metadati, le impronte e i verbali PEC restano come registro append-only per esigenze di tutela legale, insieme alla copia già presente nella casella PEC e nelle caselle dei partecipanti. Una copia dei materiali sigillati e del relativo verbale viene inoltre archiviata su Google Drive, in una cartella riservata al progetto e accessibile solo al referente."),
+  p("Il registro delle operazioni (log di chi ha fatto cosa, quando, su quale progetto) è conservato a tempo indeterminato, per finalità di tutela legale (art. 6.1.f GDPR): è un registro append-only, non modificabile né cancellabile nemmeno dal Titolare."),
   p("Per l'immagine e la voce di chi appare nei contenuti pubblicati: conservazione per un periodo massimo di 20 (venti) anni dalla data di pubblicazione, con revisione almeno ogni 5 (cinque) anni per valutare se il contenuto mantenga un interesse editoriale/documentale. In assenza di una motivazione scritta di rilevanza storica, culturale o scientifica, i dati vengono cancellati allo scadere del quinto anno."),
 
   h2("Chi vede i tuoi dati"),
@@ -74,7 +78,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "non è previsto alcun compenso o rimborso spese, né un diritto di controllo preventivo sui contenuti editati.",
   ]),
   p("Le dichiarazioni rese nei contenuti sono di esclusiva responsabilità di chi le rende: il Collaboratore dichiara che le proprie dichiarazioni sono veritiere, accurate e non diffamatorie nei confronti di terzi, e si impegna a manlevare e tenere indenne il Progetto da qualsiasi pretesa di terzi al riguardo, fatta salva l'ipotesi di montaggio palesemente manipolatorio da parte del Progetto che ne stravolga il senso."),
-  p("Revoca del consenso: sempre possibile in qualsiasi momento, senza obbligo di indicarne il motivo, mediante comunicazione al referente del Progetto — non pregiudica la liceità del trattamento basata sul consenso prima della revoca. Richieste di rimozione di un contenuto già pubblicato sono valutate caso per caso, alla luce delle finalità editoriali del Progetto e delle eccezioni di cui all'art. 17, par. 3, GDPR (libertà di espressione e informazione), con risposta entro 30 (trenta) giorni lavorativi."),
+  p("Revoca del consenso: sempre possibile in qualsiasi momento, senza obbligo di indicarne il motivo, mediante comunicazione al referente del Progetto — non pregiudica la liceità del trattamento basata sul consenso prima della revoca. Richieste di rimozione di un contenuto già pubblicato sono valutate caso per caso, alla luce delle finalità editoriali del Progetto e delle eccezioni di cui all'art. 17, par. 3, GDPR (libertà di espressione e informazione), con risposta entro 30 (trenta) giorni lavorativi, prorogabile a 90 (novanta) giorni con motivazione scritta."),
 
   h2("Obbligo di fornitura dei dati"),
   p("Il conferimento dei dati anagrafici essenziali (nome, cognome, email, università) e della foto del profilo è necessario per la gestione amministrativa dell'account e della collaborazione: il loro mancato conferimento comporta l'impossibilità di accedere al gestionale e di partecipare al Progetto come Collaboratore. Il consenso alla comparizione con la propria immagine, voce e/o dichiarazioni nei contenuti pubblicati (di cui alla sezione “Consenso per chi appare nei contenuti”) è invece facoltativo e indipendente: il relativo rifiuto o la successiva revoca non pregiudicano in alcun modo la possibilità di partecipare al Progetto per le attività che non comportano la comparizione nei contenuti pubblicati."),
