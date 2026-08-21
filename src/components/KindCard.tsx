@@ -75,7 +75,7 @@ export default function KindCard({
             }
           : undefined
       }
-      className={`group rounded-lg p-2 ring-1 flex flex-col transition-colors sm:aspect-square ${
+      className={`group rounded-lg p-2 ring-1 flex flex-col transition-colors sm:min-h-[150px] ${
         dragOver
           ? "ring-2 ring-tt-blue bg-tt-blue/5"
           : versioni.length > 0
