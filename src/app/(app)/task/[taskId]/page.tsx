@@ -45,7 +45,6 @@ export default async function TaskPage({
       archiviato_esterno: boolean;
     };
   };
-  type EsitoRiconoscimento = { esito: string; dettaglio: string | null };
 
   // Tutte le query di questa pagina dipendono solo da taskId (nessuna
   // aspetta il risultato di un'altra) tranne polo/versioni/profili/i dati
@@ -93,7 +92,7 @@ export default async function TaskPage({
 
   const ids = (deliverables ?? []).map((d) => d.id);
 
-  const [{ data: polo }, { data: versioni }, { data: elementiRaw }, { data: esportazione }, { data: verificaVideo }, { data: verificaCopertina }, { data: liberatoriaInfo }] =
+  const [{ data: polo }, { data: versioni }, { data: elementiRaw }, { data: esportazione }, { data: liberatoriaInfo }] =
     await Promise.all([
       supabase
         .from("poli")
@@ -118,29 +117,6 @@ export default async function TaskPage({
       // Stato della copia su Google Drive (RLS: accesso globale o membri del gruppo).
       pacchetto
         ? supabase.from("esportazioni_drive").select("*").eq("pacchetto_id", pacchetto.id).maybeSingle<EsportazioneDriveRow>()
-        : Promise.resolve({ data: null }),
-      // Ultimo esito riconoscimento automatico (Fase D), video e copertina
-      // sono verificati separatamente: un vecchio esito negativo dell'uno non
-      // deve nascondersi dietro l'ultimo esito pulito dell'altro.
-      pacchetto
-        ? supabase
-            .from("verifiche_riconoscimento")
-            .select("esito, dettaglio")
-            .eq("pacchetto_id", pacchetto.id)
-            .eq("ruolo", "video")
-            .order("creato_at", { ascending: false })
-            .limit(1)
-            .maybeSingle<EsitoRiconoscimento>()
-        : Promise.resolve({ data: null }),
-      pacchetto
-        ? supabase
-            .from("verifiche_riconoscimento")
-            .select("esito, dettaglio")
-            .eq("pacchetto_id", pacchetto.id)
-            .eq("ruolo", "copertina")
-            .order("creato_at", { ascending: false })
-            .limit(1)
-            .maybeSingle<EsitoRiconoscimento>()
         : Promise.resolve({ data: null }),
       // Esiste una richiesta di liberatoria firmata via OTP per questo progetto?
       // Stessa condizione esatta controllata da sigilla_pacchetto (0052): non la
@@ -336,7 +312,6 @@ export default async function TaskPage({
         formato={task.formati ?? null}
         contattoEsternoEmail={task.contatto_esterno_email ?? null}
         contattoEsternoPec={task.contatto_esterno_pec ?? null}
-        verificaRiconoscimento={{ video: verificaVideo ?? null, copertina: verificaCopertina ?? null }}
         googleDocUrls={{
           script: (deliverables ?? []).find(d => d.kind === "script")?.google_doc_url ?? null,
           descrizione: (deliverables ?? []).find(d => d.kind === "descrizione")?.google_doc_url ?? null,

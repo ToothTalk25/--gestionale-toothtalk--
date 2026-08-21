@@ -11,7 +11,6 @@ import { aggiornaContattoEsterno, aggiornaContattoPec, inviaRichiestaLiberatoria
 import {
   annullaPacchetto,
   collegaElemento,
-  correggiRiconoscimento,
   importaTestoGoogleDoc,
   inviaPecPacchetto,
   rimandaInComposizione,
@@ -61,7 +60,6 @@ export default function PacchettoVideo({
   formato,
   contattoEsternoEmail,
   contattoEsternoPec,
-  verificaRiconoscimento,
   googleDocUrls,
   liberatoriaInfo,
   haRichiesteAperte,
@@ -76,10 +74,6 @@ export default function PacchettoVideo({
   formato: Formato | null;
   contattoEsternoEmail: string | null;
   contattoEsternoPec: string | null;
-  verificaRiconoscimento: {
-    video: { esito: string; dettaglio: string | null } | null;
-    copertina: { esito: string; dettaglio: string | null } | null;
-  };
   googleDocUrls: { script: string | null; descrizione: string | null; titoloYoutube: string | null };
   liberatoriaInfo: { stato: string; metodo_firma: string | null } | null;
   haRichiesteAperte: boolean;
@@ -486,51 +480,6 @@ export default function PacchettoVideo({
           tu: sigillarlo o rimandarlo in composizione.
         </p>
       )}
-
-      {(() => {
-        const videoSospetto = verificaRiconoscimento.video?.esito === "persona_non_riconosciuta";
-        const copertinaSospetta = verificaRiconoscimento.copertina?.esito === "persona_non_riconosciuta";
-        if ((!videoSospetto && !copertinaSospetta) || coinvolgeTerzi) return null;
-
-        const titolo = videoSospetto && copertinaSospetta
-          ? "possibile persona esterna nel video e nella copertina"
-          : videoSospetto
-            ? "possibile persona esterna nel video"
-            : "possibile persona esterna nella copertina";
-
-        return (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-medium text-amber-800">⚠️ Controllo automatico: {titolo}</p>
-            {videoSospetto && (
-              <p className="mt-1 text-xs text-amber-700">Video: {verificaRiconoscimento.video!.dettaglio}</p>
-            )}
-            {copertinaSospetta && (
-              <p className="mt-1 text-xs text-amber-700">Copertina: {verificaRiconoscimento.copertina!.dettaglio}</p>
-            )}
-            {isAdmin ? (
-              <button
-                onClick={async () => {
-                  setErrore(null);
-                  const res = await correggiRiconoscimento(pacchetto!.id);
-                  if (res.ok) router.refresh();
-                  else setErrore(res.errore);
-                }}
-                disabled={pending}
-                className="mt-3 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-              >
-                Correggi: nessuna persona esterna
-              </button>
-            ) : (
-              <p className="mt-2 text-xs text-amber-700">
-                Se compare davvero una persona esterna al progetto, spunta qui sopra{" "}
-                <strong>&quot;Il video mostra una persona esterna&quot;</strong> e inserisci
-                il suo contatto: senza la liberatoria firmata non sarà possibile
-                segnalare il pacchetto come completato.
-              </p>
-            )}
-          </div>
-        );
-      })()}
 
       {componibile && (
         <button

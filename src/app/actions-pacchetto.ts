@@ -2,7 +2,6 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
@@ -18,7 +17,6 @@ import {
   type Allegato,
 } from "@/lib/pec";
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
-import { verificaPersoneVideo, verificaPersoneImmagine } from "@/lib/gemini";
 
 export type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -113,138 +111,8 @@ export async function collegaElemento(
 
   if (error) return errore(error.message);
 
-  // --- controllo riconoscimento automatico (video e copertina) ---
-  // Ognuno dei due elementi finisce pubblicato: una copertina con una
-  // persona esterna non dichiarata va bloccata allo stesso modo di un
-  // video. Ogni elemento è verificato per conto suo (vedi ruolo in
-  // verifiche_riconoscimento), così sostituire uno dei due non nasconde
-  // un vecchio esito negativo dell'altro.
-  if (ruolo === "video" || ruolo === "copertina") {
-    after(() => avviaVerificaPersone(taskId, pacchettoId, versionId, ruolo));
-  }
-
   revalidatePath(`/task/${taskId}`);
   return { ok: true, dati: undefined };
-}
-
-/**
- * Esegue il riconoscimento automatico (Fase D) in background, per il video
- * o per la copertina. Scarica il file, le foto dei membri con consenso,
- * chiama Gemini e scrive il risultato nella tabella verifiche_riconoscimento.
- */
-async function avviaVerificaPersone(
-  taskId: string,
-  pacchettoId: string,
-  versionId: string,
-  ruolo: "video" | "copertina",
-): Promise<void> {
-  try {
-    const admin = supabaseAdmin();
-
-    // 1) Recupera la versione del file e il polo del task
-    const { data: versione } = await admin
-      .from("deliverable_versions")
-      .select("storage_path, bucket, mime_type")
-      .eq("id", versionId)
-      .single<{ storage_path: string; bucket: string; mime_type: string | null }>();
-    if (!versione) return;
-
-    const { data: task } = await admin
-      .from("tasks")
-      .select("polo_id")
-      .eq("id", taskId)
-      .single<{ polo_id: string }>();
-    if (!task?.polo_id) return;
-
-    // 2) Scarica il file da Storage
-    const { data: blob, error: eDown } = await admin.storage
-      .from(versione.bucket)
-      .download(versione.storage_path);
-    if (eDown || !blob) return;
-
-    const fileBuffer = Buffer.from(await blob.arrayBuffer());
-    const mimeType = versione.mime_type ?? (ruolo === "video" ? "video/mp4" : "image/jpeg");
-
-    // 3) Trova i membri del polo con foto e consenso riconoscimento_foto
-    const { data: membri } = await admin
-      .from("memberships")
-      .select("user_id, profiles!inner(id, foto_path)")
-      .eq("polo_id", task.polo_id)
-      .not("profiles.foto_path", "is", null)
-      .returns<{ user_id: string; profiles: { id: string; foto_path: string } }[]>();
-
-    if (!membri?.length) {
-      await scriviEsito(admin, pacchettoId, ruolo, "errore", "Nessun membro del gruppo ha una foto profilo.");
-      return;
-    }
-
-    // Filtra: solo chi ha dato il consenso riconoscimento_foto
-    const userIds = membri.map((m) => m.user_id);
-    const { data: consensi } = await admin
-      .from("consensi")
-      .select("user_id")
-      .in("user_id", userIds)
-      .eq("tipo", "riconoscimento_foto");
-    const conConsenso = new Set((consensi ?? []).map((c) => c.user_id));
-
-    const fotoRiferimento: { profileId: string; base64: string; mimeType: string }[] = [];
-
-    for (const m of membri) {
-      if (!conConsenso.has(m.user_id)) continue;
-      const fotoPath = m.profiles.foto_path;
-      const { data: fotoBlob, error: eFoto } = await admin.storage
-        .from("profili")
-        .download(fotoPath);
-      if (eFoto || !fotoBlob) continue;
-
-      const base64 = Buffer.from(await fotoBlob.arrayBuffer()).toString("base64");
-      fotoRiferimento.push({
-        profileId: m.profiles.id,
-        base64,
-        mimeType: fotoBlob.type || "image/jpeg",
-      });
-    }
-
-    if (!fotoRiferimento.length) {
-      await scriviEsito(admin, pacchettoId, ruolo, "errore", "Nessun membro ha dato il consenso al riconoscimento foto.");
-      return;
-    }
-
-    // 4) Chiama Gemini (video: File API; copertina: inlineData diretto)
-    const esito =
-      ruolo === "video"
-        ? await verificaPersoneVideo({ videoBuffer: fileBuffer, videoMimeType: mimeType, fotoRiferimento })
-        : await verificaPersoneImmagine({
-            immagineBase64: fileBuffer.toString("base64"),
-            mimeType,
-            fotoRiferimento,
-          });
-
-    // 5) Scrivi risultato
-    await scriviEsito(admin, pacchettoId, ruolo, esito.esito, esito.dettaglio);
-  } catch (e) {
-    const admin = supabaseAdmin();
-    await scriviEsito(admin, pacchettoId, ruolo, "errore", e instanceof Error ? e.message : "Errore durante la verifica.");
-  }
-}
-
-async function scriviEsito(
-  admin: ReturnType<typeof supabaseAdmin>,
-  pacchettoId: string,
-  ruolo: "video" | "copertina",
-  esito: string,
-  dettaglio: string,
-): Promise<void> {
-  try {
-    await admin.from("verifiche_riconoscimento").insert({
-      pacchetto_id: pacchettoId,
-      ruolo,
-      esito,
-      dettaglio,
-    });
-  } catch {
-    // best-effort: se la scrittura fallisce non blocca nulla
-  }
 }
 
 /**
@@ -666,33 +534,6 @@ export async function richiediEsportazioneDrive(
   if (error) return errore(error.message);
 
   revalidatePath(`/task/[taskId]`, "page");
-  return { ok: true, dati: undefined };
-}
-
-/** Correzione manuale admin: segna il riconoscimento come ok. */
-export async function correggiRiconoscimento(pacchettoId: string): Promise<Esito> {
-  const { profile, isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata all'amministratore.");
-
-  const admin = supabaseAdmin();
-  const { error } = await admin.from("verifiche_riconoscimento").insert([
-    {
-      pacchetto_id: pacchettoId,
-      ruolo: "video",
-      esito: "nessuna_persona_esterna",
-      dettaglio: "Corretto manualmente dall'amministratore.",
-      corretto_da: profile.id,
-    },
-    {
-      pacchetto_id: pacchettoId,
-      ruolo: "copertina",
-      esito: "nessuna_persona_esterna",
-      dettaglio: "Corretto manualmente dall'amministratore.",
-      corretto_da: profile.id,
-    },
-  ]);
-
-  if (error) return errore(error.message);
   return { ok: true, dati: undefined };
 }
 

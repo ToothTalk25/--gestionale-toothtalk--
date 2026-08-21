@@ -30,6 +30,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "Immagine, voce e dichiarazioni contenute nei video, script e materiali depositati nel gestionale;",
     "Dati tecnici di connessione (indirizzo IP, dispositivo, data e ora) e log delle operazioni.",
   ]),
+  p("Immagine e voce non sono soggette ad alcun trattamento automatizzato di riconoscimento o confronto facciale: nessun sistema del gestionale confronta i volti presenti nei contenuti con le foto profilo del team."),
 
   h2("Finalità e base giuridica"),
   ul([
@@ -41,6 +42,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
 
   h2("Destinatari dei dati e trasferimento extra-UE"),
   p("I dati personali potranno essere comunicati ad altri Collaboratori e volontari del Progetto che partecipano alla realizzazione dei contenuti editoriali (in qualità di persone autorizzate, art. 29 GDPR) e a fornitori di servizi tecnici e piattaforme digitali (hosting, cloud storage), in qualità di responsabili del trattamento."),
+  p("Il documento dell'accordo editoriale caricato (contenente nome, indirizzo, codice fiscale e firma) viene inoltre inviato a Google (API Gemini) per la verifica automatica di corrispondenza con il modello ufficiale — un trattamento specifico e distinto dal semplice hosting, limitato a questa finalità."),
   p("Trasferimento extra-UE: i contenuti pubblicati sono diffusi anche su piattaforme social le cui società madri hanno sede negli Stati Uniti (Meta, Google), che operano come titolari autonomi del trattamento per i dati elaborati sulle rispettive piattaforme. Tali trasferimenti si basano sulle garanzie adeguate previste dal GDPR, incluso il Data Privacy Framework UE-USA e/o le clausole contrattuali standard (SCC)."),
 
   h2("Conservazione"),
