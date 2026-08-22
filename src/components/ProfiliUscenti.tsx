@@ -1,4 +1,5 @@
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
+import RiattivaCollaborazione from "@/components/RiattivaCollaborazione";
 
 type ProfiloUscente = {
   id: string;
@@ -73,7 +74,10 @@ export default function ProfiliUscenti({
                     )}
                   </p>
                 </div>
-                <EliminaAccountAdmin userId={p.id} />
+                <div className="flex flex-col items-start gap-1">
+                  <RiattivaCollaborazione userId={p.id} />
+                  <EliminaAccountAdmin userId={p.id} />
+                </div>
               </div>
 
               {/* Promemoria: cosa si perde, cosa si conserva, perché */}

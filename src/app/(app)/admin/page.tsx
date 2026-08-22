@@ -363,7 +363,7 @@ export default async function AdminPage() {
             etichetta: "Registro partecipanti",
             promemoria: {
               cosa: "gestisci anagrafica, stato \"in video\" e chiusura della collaborazione di ogni partecipante attivo.",
-              attenzione: "\"Termina Collaborazione\" per un partecipante on-screen cancella per sempre i video/audio grezzi che lo ritraggono (revoca GDPR incondizionata, irreversibile) — verifica lo stato \"in video\" prima di procedere, perché determina cosa viene distrutto.",
+              attenzione: "\"Termina Collaborazione\" disattiva solo l'accesso: NON tocca alcun file, per nessuno, indipendentemente dallo stato \"in video\". Uscire dal progetto e revocare il consenso a immagine/voce sono due atti distinti — la revoca la avvia il Collaboratore dal proprio profilo, e la cancellazione del materiale grezzo è sempre una verifica manuale del Coordinatore (sezione \"Eliminazione grezzo\").",
             },
             contenuto: (
               <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">

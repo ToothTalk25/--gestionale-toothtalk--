@@ -65,10 +65,18 @@ export async function eliminaAccount(
   // 1. Foto del profilo (l'accordo resta: è il titolo della cessione di proprietà)
   const { data: profilo } = await admin
     .from("profiles")
-    .select("id, foto_path, accordo_path")
+    .select("id, foto_path, accordo_path, role")
     .eq("id", userId)
-    .single<{ id: string; foto_path: string | null; accordo_path: string | null }>();
-  if (profilo?.foto_path) {
+    .single<{ id: string; foto_path: string | null; accordo_path: string | null; role: string }>();
+  if (!profilo) return errore("Profilo non trovato.");
+  // Un account con ruolo Titolare non si elimina da qui: servirebbe un cambio
+  // di ruolo esplicito prima, altrimenti si perderebbe l'accesso globale.
+  if (profilo.role === "admin") {
+    return errore(
+      "Non è possibile eliminare un account con ruolo Titolare da qui — serve un cambio di ruolo esplicito prima.",
+    );
+  }
+  if (profilo.foto_path) {
     await admin.storage.from("profili").remove([profilo.foto_path]).catch(() => {});
   }
 
@@ -119,6 +127,18 @@ export async function eliminaAccount(
   } catch {
     // restano i riferimenti all'archivio: profilo anonimizzato + disattivato
   }
+
+  // Traccia l'eliminazione (chi, quando) nella catena di audit.
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "eliminazione_account",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: { account: "ex" },
+    }),
+  );
 
   revalidatePath("/admin");
   revalidatePath("/profilo");
@@ -212,10 +232,15 @@ export async function terminaCollaborazione(
 
   const { data: target } = await admin
     .from("profiles")
-    .select("id, on_screen, full_name, attivo")
+    .select("id, on_screen, full_name, attivo, role")
     .eq("id", userId)
-    .single<{ id: string; on_screen: boolean; full_name: string | null; attivo: boolean }>();
+    .single<{ id: string; on_screen: boolean; full_name: string | null; attivo: boolean; role: string }>();
   if (!target) return errore("Profilo non trovato.");
+  if (target.role === "admin") {
+    return errore(
+      "Non è possibile terminare un account con ruolo Titolare da qui — serve un cambio di ruolo esplicito prima.",
+    );
+  }
   if (!target.attivo) return errore("La collaborazione di questo partecipante è già terminata.");
 
   const motivo = `Fine collaborazione con ${target.full_name ?? target.id}`;
@@ -235,6 +260,44 @@ export async function terminaCollaborazione(
 
   revalidatePath("/admin");
   return { ok: true, dati: { on_screen: target.on_screen } };
+}
+
+/**
+ * Riattiva la collaborazione di un account disattivato (solo Titolare). I
+ * vecchi consensi restano revocati: l'utente li ridà da capo dal proprio
+ * profilo (decisione documentata). Il login torna possibile perché
+ * getSessionContext controlla attivo a ogni richiesta.
+ */
+export async function riattivaCollaborazione(userId: string): Promise<Esito> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  const admin = supabaseAdmin();
+
+  const { data: target } = await admin
+    .from("profiles")
+    .select("id, attivo, role")
+    .eq("id", userId)
+    .single<{ id: string; attivo: boolean; role: string }>();
+  if (!target) return errore("Profilo non trovato.");
+  if (target.role === "admin") return errore("Gli account con ruolo Titolare non passano da qui.");
+  if (target.attivo) return errore("Questo account è già attivo.");
+
+  const { error } = await admin.from("profiles").update({ attivo: true }).eq("id", userId);
+  if (error) return errore(error.message);
+
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "riattivazione_collaborazione",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: { motivo: "Riattivazione manuale da parte del Titolare" },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
 }
 
 /**
@@ -284,30 +347,41 @@ export async function revocaImmagineVoce(
   //    caso); altrimenti scatta l'obbligo di notifica Art. 8.2 (0090).
   let richiestaRimozioneAperta = false;
   if (richiediRimozionePubblicato) {
-    const { error: eIns } = await admin.from("richieste_rimozione_pubblicato").insert({
-      user_id: profile.id,
-    });
-    if (!eIns) {
+    // Evita pratiche parallele: se esiste già una richiesta aperta per
+    // questo utente, la si riusa invece di crearne un'altra.
+    const { count } = await admin
+      .from("richieste_rimozione_pubblicato")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id)
+      .eq("stato", "aperta");
+    if (count && count > 0) {
       richiestaRimozioneAperta = true;
-      const { data: adminProfiles } = await admin
-        .from("profiles")
-        .select("email")
-        .eq("role", "admin")
-        .eq("attivo", true)
-        .limit(1);
-      const destinatario = adminProfiles?.[0]?.email;
-      if (destinatario) {
-        await ignora(
-          inviaEmailGmail({
-            destinatario,
-            oggetto: "[ToothTalk] Richiesta di rimozione contenuti pubblicati",
-            testo:
-              `${profile.full_name ?? profile.email} ha revocato il consenso a immagine/voce ` +
-              `e ha chiesto anche la rimozione dei contenuti già pubblicati che lo ritraggono.\n\n` +
-              `Valutala dal Registro globale, sezione "Richieste di rimozione" — entro 30 giorni, ` +
-              `prorogabili a 90 con motivazione scritta (art. 17(3)(a) GDPR).\n\n— ToothTalk`,
-          }),
-        );
+    } else {
+      const { error: eIns } = await admin.from("richieste_rimozione_pubblicato").insert({
+        user_id: profile.id,
+      });
+      if (!eIns) {
+        richiestaRimozioneAperta = true;
+        const { data: adminProfiles } = await admin
+          .from("profiles")
+          .select("email")
+          .eq("role", "admin")
+          .eq("attivo", true)
+          .limit(1);
+        const destinatario = adminProfiles?.[0]?.email;
+        if (destinatario) {
+          await ignora(
+            inviaEmailGmail({
+              destinatario,
+              oggetto: "[ToothTalk] Richiesta di rimozione contenuti pubblicati",
+              testo:
+                `${profile.full_name ?? profile.email} ha revocato il consenso a immagine/voce ` +
+                `e ha chiesto anche la rimozione dei contenuti già pubblicati che lo ritraggono.\n\n` +
+                `Valutala dal Registro globale, sezione "Richieste di rimozione" — entro 30 giorni, ` +
+                `prorogabili a 90 con motivazione scritta (art. 17(3)(a) GDPR).\n\n— ToothTalk`,
+            }),
+          );
+        }
       }
     }
   } else {
@@ -416,11 +490,35 @@ export async function risolviRichiestaRimozione(
   if (!motivazione.trim()) return errore("Indica una motivazione per la decisione.");
 
   const supabase = await supabaseServer();
+  const { data: richiesta, error: eLettura } = await supabase
+    .from("richieste_rimozione_pubblicato")
+    .select("user_id")
+    .eq("id", richiestaId)
+    .single<{ user_id: string }>();
+  if (eLettura || !richiesta) return errore("Richiesta non trovata.");
+
   const { error } = await supabase
     .from("richieste_rimozione_pubblicato")
     .update({ stato: "risolta", esito, esito_motivazione: motivazione.trim() })
     .eq("id", richiestaId);
   if (error) return errore(error.message);
+
+  // Traccia la decisione (chi, quando, esito) nella catena di audit.
+  const { profile } = await requireSession();
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "risoluzione_richiesta_rimozione",
+      entity_type: "richiesta_rimozione_pubblicato",
+      entity_id: richiestaId,
+      meta: {
+        user_id: richiesta.user_id,
+        esito,
+        motivazione: motivazione.trim(),
+      },
+    }),
+  );
 
   revalidatePath("/admin");
   return { ok: true, dati: undefined };
@@ -1003,6 +1101,18 @@ export async function approvaRegistrazione(
     })
     .eq("id", userId);
   if (eUpdate) return errore(eUpdate.message);
+
+  // Traccia l'approvazione della registrazione nella catena di audit.
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: admin.id,
+      actor_role: admin.role,
+      action: "approvazione_registrazione",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: { on_screen: onScreenConfermato, utente: richiedente?.full_name ?? null },
+    }),
+  );
 
   try {
     const { messageId } = await spedisciPec({
