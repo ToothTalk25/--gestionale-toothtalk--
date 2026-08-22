@@ -315,6 +315,7 @@ Deno.serve(async (req) => {
     const cartVideo = await trovaOCreaCartella(token, cartellaGV, "1 - Video");
     const cartCopertine = await trovaOCreaCartella(token, cartellaGV, "2 - Copertine");
     const cartLiberatorie = await trovaOCreaCartella(token, cartellaGV, "Liberatorie");
+    const cartDichiarazioni = await trovaOCreaCartella(token, cartellaGV, "Dichiarazioni");
     const cartVerbali = await trovaOCreaCartella(token, cartellaGV, "Verbali");
 
     // --- testi accumulati: append nei Google Docs di GESTIONE VIDEO
@@ -355,6 +356,7 @@ Deno.serve(async (req) => {
       video: cartVideo,
       copertina: cartCopertine,
       liberatoria: cartLiberatorie,
+      dichiarazione_identita: cartDichiarazioni,
     };
     for (const el of elementi ?? []) {
       const v = el.deliverable_versions as {

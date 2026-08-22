@@ -24,6 +24,15 @@ function errore(msg: string): Esito<never> {
   return { ok: false, errore: msg };
 }
 
+/** Esegue una promise ignorando gli errori (per le operazioni best-effort). */
+async function ignora(p: PromiseLike<unknown>): Promise<void> {
+  try {
+    await p;
+  } catch {
+    // best-effort: se fallisce, non blocca il resto
+  }
+}
+
 // -------------------------------------------------------- composizione
 
 /** Crea la bozza del pacchetto se non esiste, o ne aggiorna i testi. */
@@ -93,6 +102,138 @@ export async function salvaPacchetto(
   return { ok: true, dati: { pacchettoId: esistente.id, avvisi } };
 }
 
+/**
+ * Segna un file già caricato nei "materiali di lavorazione" (video_grezzo)
+ * come quello che contiene la dichiarazione di identità e recapito
+ * dell'intervistato (Art. 4.1 Protocollo Operativo): lo aggancia al
+ * pacchetto da sigillare con ruolo 'dichiarazione_identita' — non copia
+ * il file, resta un riferimento alla stessa riga di deliverable_versions,
+ * quindi la sua visibilità resta quella ristretta (chi l'ha caricato +
+ * Titolare, vedi migrazione 0091). Chi può chiamarla lo decide la RLS di
+ * pacchetto_elementi/deliverable_versions, non un controllo qui: solo chi
+ * vede già quel file (il suo caricatore, o il Titolare) può marcarlo.
+ */
+export async function collegaDichiarazioneIdentita(
+  taskId: string,
+  versionId: string,
+): Promise<Esito> {
+  const id = await assicuraPacchettoServer(taskId);
+  if (!id.ok) return id;
+  return collegaElemento(taskId, id.dati, "dichiarazione_identita", versionId);
+}
+
+/**
+ * "Segnala errore" sul video di dichiarazione (Protocollo Art. 4.1): chi lo
+ * ha caricato apre una richiesta nel registro del Coordinatore perché il
+ * campo venga liberato. Solo il depositante (o l'admin) — la RLS lo decide.
+ */
+export async function segnalaErroreDichiarazione(
+  pacchettoId: string,
+  motivo?: string,
+): Promise<Esito> {
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from("richieste_ricaricamento_dichiarazione")
+    .insert({
+      user_id: profile.id,
+      pacchetto_id: pacchettoId,
+      motivo: motivo?.trim() || null,
+    });
+  if (error) return errore(error.message);
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
+}
+
+/**
+ * Il Coordinatore libera il campo di dichiarazione: rimuove il riferimento
+ * dal pacchetto, cancella il vecchio file (era sbagliato) e chiude la
+ * richiesta. Da quel momento si può ricaricare il video corretto.
+ */
+export async function liberaCampoDichiarazione(richiestaId: string): Promise<Esito> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  const admin = supabaseAdmin();
+  // La chiusura usa la sessione admin: il trigger valorizza risolta_da.
+  const supabase = await supabaseServer();
+
+  const { data: richiesta } = await admin
+    .from("richieste_ricaricamento_dichiarazione")
+    .select("id, pacchetto_id, stato")
+    .eq("id", richiestaId)
+    .single<{ id: string; pacchetto_id: string; stato: string }>();
+  if (!richiesta) return errore("Richiesta non trovata.");
+  if (richiesta.stato !== "aperta") return errore("Richiesta già risolta.");
+
+  const { data: elemento } = await admin
+    .from("pacchetto_elementi")
+    .select("version_id, deliverable_versions!inner(bucket, storage_path)")
+    .eq("pacchetto_id", richiesta.pacchetto_id)
+    .eq("ruolo", "dichiarazione_identita")
+    .single<{
+      version_id: string;
+      deliverable_versions: { bucket: string; storage_path: string };
+    }>();
+
+  if (elemento) {
+    await admin
+      .from("pacchetto_elementi")
+      .delete()
+      .eq("pacchetto_id", richiesta.pacchetto_id)
+      .eq("ruolo", "dichiarazione_identita");
+    await ignora(
+      admin.storage
+        .from(elemento.deliverable_versions.bucket)
+        .remove([elemento.deliverable_versions.storage_path]),
+    );
+    await ignora(admin.from("deliverable_versions").delete().eq("id", elemento.version_id));
+  }
+
+  const { error } = await supabase
+    .from("richieste_ricaricamento_dichiarazione")
+    .update({ stato: "risolta" })
+    .eq("id", richiestaId);
+  if (error) return errore(error.message);
+
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "liberazione_campo_dichiarazione",
+      entity_type: "profile",
+      entity_id: profile.id,
+      meta: {
+        richiesta_id: richiestaId,
+        pacchetto_id: richiesta.pacchetto_id,
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
+}
+
+/** Come assicuraPacchetto in PacchettoVideo.tsx, ma lato server: crea il pacchetto in bozza se non esiste. */
+async function assicuraPacchettoServer(taskId: string): Promise<Esito<string>> {
+  const supabase = await supabaseServer();
+  const { data: esistente } = await supabase
+    .from("pacchetti_video")
+    .select("id")
+    .eq("task_id", taskId)
+    .neq("stato", "annullato")
+    .maybeSingle<{ id: string }>();
+  if (esistente) return { ok: true, dati: esistente.id };
+
+  const { profile } = await requireSession();
+  const { data, error } = await supabase
+    .from("pacchetti_video")
+    .insert({ task_id: taskId, created_by: profile.id })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) return errore(error.message);
+  return { ok: true, dati: data.id };
+}
+
 /** Aggancia al pacchetto la versione esatta appena caricata. */
 export async function collegaElemento(
   taskId: string,
@@ -132,6 +273,11 @@ export async function rimuoviElementoPacchetto(
   ruolo: RuoloElemento,
 ): Promise<Esito> {
   await requireSession();
+  if (ruolo === "dichiarazione_identita") {
+    return errore(
+      "Il video di dichiarazione non è rimovibile: usa il flusso 'Segnala errore' e la liberazione del Coordinatore.",
+    );
+  }
   const supabase = await supabaseServer();
 
   const { data: elemento, error: eLettura } = await supabase
@@ -168,6 +314,28 @@ export async function rimuoviElementoPacchetto(
   await supabase.storage
     .from(elemento.deliverable_versions.bucket)
     .remove([elemento.deliverable_versions.storage_path]);
+
+  // Traccia la rimozione pre-sigillo nell'audit: il ruolo dichiarazione_identita
+  // non passa da qui (bloccato sopra), ma per gli altri elementi la rimozione
+  // di un file prima del sigillo va comunque registrata — soprattutto quando
+  // riguarda dati di terzi (nota legale 3c).
+  const { profile } = await requireSession();
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "rimozione_elemento_pacchetto",
+      entity_type: "pacchetto_video",
+      entity_id: pacchettoId,
+      meta: {
+        task_id: taskId,
+        ruolo,
+        version_id: elemento.version_id,
+        bucket: elemento.deliverable_versions.bucket,
+        storage_path: elemento.deliverable_versions.storage_path,
+      },
+    }),
+  );
 
   revalidatePath(`/task/${taskId}`);
   return { ok: true, dati: undefined };

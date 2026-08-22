@@ -106,6 +106,80 @@ async function inviaEmailLink(destinatario: string, token: string, usaPec: boole
 
 // ------------------------------------------------------------------ azioni
 
+/**
+ * Crea la richiesta di liberatoria e la invia (via PEC se il contatto ne ha
+ * una, altrimenti via email). Nessun controllo di ruolo qui dentro: chi può
+ * chiamarla è deciso dalle funzioni pubbliche più sotto.
+ */
+async function creaEInviaRichiesta(
+  taskId: string,
+  contatto_email: string,
+): Promise<{ ok: true; token: string } | { ok: false; errore: string }> {
+  // L'insert avviene col service_role: la RLS richieste_admin_insert (0075)
+  // accetta INSERT solo da admin, ma il chiamante reale è un Collaboratore
+  // non-admin che compila il contatto al momento dell'intervista (Protocollo
+  // Art. 4.2: la liberatoria parte da sola). Il controllo di chi può farlo
+  // resta sulle RLS di tasks (is_member_of), non su questa insert.
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase
+    .from("richieste_liberatoria")
+    .insert({
+      task_id: taskId,
+      contatto_email,
+      scade_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    })
+    .select("token")
+    .single<{ token: string }>();
+
+  if (error) return errore(error.message);
+
+  // Se il contatto ha una PEC, la usiamo come destinatario e instradiamo via PEC.
+  const { data: task } = await supabase.from("tasks")
+    .select("contatto_esterno_pec").eq("id", taskId).single<{ contatto_esterno_pec: string | null }>();
+  const pec = task?.contatto_esterno_pec?.trim();
+  const usaPec = !!pec;
+  const destinatario = pec || contatto_email;
+
+  await inviaEmailLink(destinatario, data.token, usaPec);
+
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true, token: data.token };
+}
+
+/**
+ * Se il task coinvolge terzi, ha un contatto valido e NON ha già una
+ * richiesta di liberatoria, la crea e la invia automaticamente — come
+ * previsto dal Protocollo Operativo Art. 4.2 ("Il sistema genera
+ * automaticamente il link OTP e invia la liberatoria all'indirizzo
+ * indicato"): il Collaboratore non deve azionare nulla lui stesso.
+ * Best-effort: un errore qui non deve mai bloccare il salvataggio del
+ * contatto, quindi non propaga eccezioni.
+ */
+async function inviaAutomaticamenteSeNecessario(taskId: string): Promise<void> {
+  try {
+    const supabase = await supabaseServer();
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("coinvolge_terzi, contatto_esterno_email, contatto_esterno_pec")
+      .eq("id", taskId)
+      .single<{ coinvolge_terzi: boolean; contatto_esterno_email: string | null; contatto_esterno_pec: string | null }>();
+    if (!task?.coinvolge_terzi) return;
+
+    const contatto = task.contatto_esterno_pec?.trim() || task.contatto_esterno_email?.trim();
+    if (!contatto) return;
+
+    const { count } = await supabase
+      .from("richieste_liberatoria")
+      .select("id", { count: "exact", head: true })
+      .eq("task_id", taskId);
+    if (count && count > 0) return; // già inviata una volta: un reinvio è una scelta esplicita (bottone admin)
+
+    await creaEInviaRichiesta(taskId, task.contatto_esterno_email?.trim() || contatto);
+  } catch (e) {
+    console.error("Invio automatico liberatoria fallito (ignorato):", e);
+  }
+}
+
 /** Aggiorna l'email del contatto esterno per la liberatoria. */
 export async function aggiornaContattoEsterno(
   taskId: string,
@@ -117,6 +191,7 @@ export async function aggiornaContattoEsterno(
     .update({ contatto_esterno_email })
     .eq("id", taskId);
   if (error) return errore(error.message);
+  if (contatto_esterno_email?.trim()) await inviaAutomaticamenteSeNecessario(taskId);
   revalidatePath(`/task/${taskId}`);
   return { ok: true };
 }
@@ -132,42 +207,25 @@ export async function aggiornaContattoPec(
     .update({ contatto_esterno_pec })
     .eq("id", taskId);
   if (error) return errore(error.message);
+  if (contatto_esterno_pec?.trim()) await inviaAutomaticamenteSeNecessario(taskId);
   revalidatePath(`/task/${taskId}`);
   return { ok: true };
 }
 
-/** Crea una richiesta di liberatoria e restituisce il token. Solo admin. */
+/**
+ * Reinvio manuale della liberatoria (es. dopo un errore o una correzione
+ * dell'indirizzo). Il primo invio, quello "automatico" previsto dal
+ * Protocollo, parte da solo — vedi inviaAutomaticamenteSeNecessario sopra.
+ * Riservato a chi ha accesso globale proprio perché è un reinvio fuori dal
+ * flusso ordinario, non il passaggio normale del Collaboratore.
+ */
 export async function inviaRichiestaLiberatoria(
   taskId: string,
   contatto_email: string,
 ): Promise<{ ok: true; token: string } | { ok: false; errore: string }> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Solo chi ha accesso globale può inviare la richiesta.");
-
-  const supabase = await supabaseServer();
-  const { data, error } = await supabase
-    .from("richieste_liberatoria")
-    .insert({
-      task_id: taskId,
-      contatto_email,
-      scade_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    })
-    .select("token")
-    .single<{ token: string }>();
-
-  if (error) return errore(error.message);
-
-  // Se il contatto ha una PEC, la usiamo come destinatario e instradiamo via PEC.
-  const { data: task } = await (await supabaseServer()).from("tasks")
-    .select("contatto_esterno_pec").eq("id", taskId).single<{ contatto_esterno_pec: string | null }>();
-  const pec = task?.contatto_esterno_pec?.trim();
-  const usaPec = !!pec;
-  const destinatario = pec || contatto_email;
-
-  await inviaEmailLink(destinatario, data.token, usaPec);
-
-  revalidatePath(`/task/${taskId}`);
-  return { ok: true, token: data.token };
+  if (!isAdmin) return errore("Solo chi ha accesso globale può reinviare manualmente la richiesta.");
+  return creaEInviaRichiesta(taskId, contatto_email);
 }
 
 /** Carica la liberatoria da una richiesta pubblica (via token + FormData). */

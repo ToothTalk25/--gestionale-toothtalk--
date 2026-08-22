@@ -240,43 +240,31 @@ export async function terminaCollaborazione(
 /**
  * Revoca del consenso a immagine/voce — atto AUTONOMO dal recesso, che il
  * Collaboratore stesso avvia dal proprio profilo (visibile solo se
- * on_screen). Due effetti distinti, uno automatico e uno su richiesta:
- *
- *  1. Materiale grezzo NON pubblicato: purgato SEMPRE, senza bisogno di
- *     chiederlo (stessa RPC revoca_video_on_screen di prima, ora aperta
- *     anche all'auto-revoca — vedi 0089).
- *  2. Contenuti GIÀ pubblicati: rimossi solo se il Collaboratore lo chiede
- *     esplicitamente (richiediRimozionePubblicato=true). In tal caso si
- *     apre una pratica in richieste_rimozione_pubblicato, valutata caso
- *     per caso dal Titolare (art. 17(3)(a) GDPR) — questa funzione non
- *     rimuove nulla di pubblicato da sola.
+ * on_screen). Nessuna cancellazione automatica (Accordo Art. 7.4): la
+ * revoca apre SEMPRE una richiesta di revisione manuale del materiale
+ * grezzo (richieste_eliminazione_grezzo), che il Coordinatore evaderà
+ * individuando a occhio i file che ritraggono davvero la persona.
+ * Contenuti GIÀ pubblicati: rimozione solo se richiesta esplicitamente
+ * (richiediRimozionePubblicato=true), valutata caso per caso dal Titolare
+ * (art. 17(3)(a) GDPR) — qui non si rimuove nulla di pubblicato.
  */
 export async function revocaImmagineVoce(
   richiediRimozionePubblicato: boolean,
-): Promise<Esito<{ versioniPurgate: number; richiestaAperta: boolean }>> {
+): Promise<Esito<{ richiestaGrezzoAperta: boolean; richiestaRimozioneAperta: boolean }>> {
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
   const admin = supabaseAdmin();
 
-  // 1. Marca il consenso come revocato nel registro (append-only).
+  // 1. Marca il consenso come revocato nel registro (append-only): la riga
+  //    di concessione esiste dall'approvazione dell'Accordo (0096).
   await supabase.rpc("revoca_consenso", { p_tipo: "immagine_voce" });
 
-  // 2. Purga il grezzo non pubblicato — sempre, RPC chiamata col client
-  //    utente: is_admin() dentro la RPC leggerebbe auth.uid()=null col
-  //    client service_role e rifiuterebbe anche l'auto-revoca.
-  const { data: righe, error: errRpc } = await supabase.rpc("revoca_video_on_screen", {
-    p_user: profile.id,
-  });
-  if (errRpc) return errore(`Revoca rifiutata dal database: ${errRpc.message}`);
-  const righeTipizzate = (righe ?? []) as {
-    version_id: string;
-    bucket: string;
-    storage_path: string;
-    task_id: string;
-  }[];
-  for (const r of righeTipizzate) {
-    await ignora(admin.storage.from(r.bucket).remove([r.storage_path]));
-  }
+  // 2. Apre SEMPRE la richiesta di revisione MANUALE del grezzo (30 giorni).
+  let richiestaGrezzoAperta = false;
+  const { error: eGrezzo } = await admin
+    .from("richieste_eliminazione_grezzo")
+    .insert({ user_id: profile.id });
+  if (!eGrezzo) richiestaGrezzoAperta = true;
 
   await ignora(
     admin.from("audit_log").insert({
@@ -286,20 +274,21 @@ export async function revocaImmagineVoce(
       entity_type: "profile",
       entity_id: profile.id,
       meta: {
-        versioni_purgate: righeTipizzate.map((r) => `${r.bucket}/${r.storage_path}`),
+        richiesta_eliminazione_grezzo: richiestaGrezzoAperta,
         richiesta_rimozione_pubblicato: richiediRimozionePubblicato,
       },
     }),
   );
 
-  // 3. Solo se chiesto: apre la pratica sul pubblicato, non lo tocca.
-  let richiestaAperta = false;
+  // 3. Pubblicato: solo se chiesto si apre la pratica (valutazione caso per
+  //    caso); altrimenti scatta l'obbligo di notifica Art. 8.2 (0090).
+  let richiestaRimozioneAperta = false;
   if (richiediRimozionePubblicato) {
     const { error: eIns } = await admin.from("richieste_rimozione_pubblicato").insert({
       user_id: profile.id,
     });
     if (!eIns) {
-      richiestaAperta = true;
+      richiestaRimozioneAperta = true;
       const { data: adminProfiles } = await admin
         .from("profiles")
         .select("email")
@@ -321,13 +310,81 @@ export async function revocaImmagineVoce(
         );
       }
     }
+  } else {
+    // Art. 8.2: il Coordinatore deve dargliene atto entro 30 giorni.
+    await ignora(admin.from("notifiche_dovute_art82").insert({ user_id: profile.id }));
   }
 
   revalidatePath("/profilo");
-  return {
-    ok: true,
-    dati: { versioniPurgate: righeTipizzate.length, richiestaAperta },
-  };
+  return { ok: true, dati: { richiestaGrezzoAperta, richiestaRimozioneAperta } };
+}
+
+/** Riga della coda "Notifiche dovute Art. 8.2" (solo Titolare). */
+export type RigaNotificaArt82 = {
+  id: string;
+  user_id: string;
+  revocato_at: string;
+  scade_at: string;
+  notificata_at: string | null;
+};
+
+/**
+ * Il Titolare segna come inviata la notifica dell'Art. 8.2 (facoltà di
+ * chiedere la rimozione del pubblicato). Manda davvero l'email al
+ * Collaboratore: non è solo una spunta interna.
+ */
+export async function notificaArt82(id: string): Promise<Esito> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+
+  // L'update usa la sessione dell'admin loggato (non il service_role): il
+  // trigger fn_notifiche82_guard valorizza notificata_da := auth.uid(), e
+  // col service_role auth.uid() sarebbe null — notificata_da resterebbe
+  // sempre NULL (vedi nota nel test 2 dell'audit 0090). Le RLS su
+  // notifiche_dovute_art82 e profiles permettono all'admin di leggere.
+  const supabase = await supabaseServer();
+  const { data: riga, error: eLettura } = await supabase
+    .from("notifiche_dovute_art82")
+    .select("id, user_id, notificata_at")
+    .eq("id", id)
+    .single<{ id: string; user_id: string; notificata_at: string | null }>();
+  if (eLettura || !riga) return errore("Notifica non trovata.");
+  if (riga.notificata_at) return errore("Già notificata.");
+
+  const { data: destinatario } = await supabase
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", riga.user_id)
+    .single<{ email: string; full_name: string | null }>();
+
+  if (destinatario?.email) {
+    await ignora(
+      inviaEmailGmail({
+        destinatario: destinatario.email,
+        oggetto: "[ToothTalk] Contenuti pubblicati che ti ritraggono",
+        testo:
+          `Ciao ${destinatario.full_name ?? ""},\n\n` +
+          `Hai revocato il consenso all'uso della tua immagine e voce. Il Coordinatore ` +
+          `individuerà ed eliminerà, entro 30 giorni, il materiale grezzo non pubblicato ` +
+          `che ti ritrae — non è una cancellazione automatica: il sistema registra chi ha ` +
+          `caricato un file, non chi vi compare, quindi la verifica di quali file eliminare ` +
+          `è sempre umana.\n\n` +
+          `Ti informiamo che potrebbero esistere contenuti già pubblicati, alla data della revoca, ` +
+          `che ti ritraggono. Hai facoltà di chiederne la rimozione o l'oscuramento in qualsiasi ` +
+          `momento, scrivendo al Coordinatore: la richiesta viene valutata caso per caso ai sensi ` +
+          `dell'art. 17, par. 3, GDPR (Art. 8.3 dell'Accordo Editoriale).\n\n— ToothTalk`,
+      }),
+    );
+  }
+
+  const { error } = await supabase
+    .from("notifiche_dovute_art82")
+    .update({ notificata_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return errore(error.message);
+
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
 }
 
 /** Righe della coda "Richieste di rimozione" (solo Titolare). */
@@ -364,6 +421,110 @@ export async function risolviRichiestaRimozione(
     .update({ stato: "risolta", esito, esito_motivazione: motivazione.trim() })
     .eq("id", richiestaId);
   if (error) return errore(error.message);
+
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
+}
+
+/** Righe della coda "Richieste eliminazione grezzo" (solo Titolare). */
+export type RigaEliminazioneGrezzo = {
+  id: string;
+  user_id: string;
+  richiesto_at: string;
+  termine_scadenza: string;
+  stato: "aperta" | "risolta";
+  versioni_eliminate: string[] | null;
+  note_coordinatore: string | null;
+  risolta_da: string | null;
+  risolta_at: string | null;
+};
+
+/**
+ * Il Coordinatore evaderà una richiesta di eliminazione grezzo (Accordo Art.
+ * 7.4): seleziona ESPLICITAMENTE i file che ritraggono davvero la persona che
+ * ha revocato, li marca revocato_gdpr e li cancella dallo storage. Il filtro
+ * iniziale (uploaded_by = chi ha revocato) serve solo a restringere la lista
+ * a schermo, MAI come criterio automatico di cancellazione.
+ */
+export async function eseguiEliminazioneGrezzo(
+  richiestaId: string,
+  versionIds: string[],
+  note?: string,
+): Promise<Esito> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!versionIds.length) return errore("Seleziona almeno un file da eliminare.");
+
+  const admin = supabaseAdmin();
+  // La sessione admin serve per: la RPC (is_admin() legge auth.uid()) e la
+  // chiusura (il trigger valorizza risolta_da := auth.uid()).
+  const supabase = await supabaseServer();
+
+  const { data: richiesta } = await admin
+    .from("richieste_eliminazione_grezzo")
+    .select("id, user_id, stato")
+    .eq("id", richiestaId)
+    .single<{ id: string; user_id: string; stato: string }>();
+  if (!richiesta) return errore("Richiesta non trovata.");
+  if (richiesta.stato !== "aperta") return errore("Richiesta già risolta.");
+
+  // Candidati "di partenza": caricati dalla persona che ha revocato, kind
+  // video_grezzo/audio/immagini_montaggio (uno still può ritrarre la persona).
+  const { data: candidati } = await admin
+    .from("deliverable_versions")
+    .select("id, deliverables!inner(kind)")
+    .eq("uploaded_by", richiesta.user_id)
+    .eq("revocato_gdpr", false)
+    .in("deliverables.kind", ["video_grezzo", "audio", "immagini_montaggio"])
+    .returns<{ id: string; deliverables: { kind: string } }[]>();
+
+  const ammessi = new Set((candidati ?? []).map((c) => c.id));
+  const selezionati = versionIds.filter((v) => ammessi.has(v));
+  if (selezionati.length !== versionIds.length) {
+    return errore("Alcuni file selezionati non sono tra i candidati di questa richiesta.");
+  }
+
+  // Marca revocato_gdpr (transizione consentita dal trigger append-only) e
+  // restituisce bucket/storage_path per la cancellazione fisica.
+  const { data: righe, error: eRpc } = await supabase.rpc("revoca_video_on_screen", {
+    p_version_ids: selezionati,
+  });
+  if (eRpc) return errore(`Eliminazione rifiutata dal database: ${eRpc.message}`);
+  const tipizzate = (righe ?? []) as {
+    version_id: string;
+    bucket: string;
+    storage_path: string;
+    task_id: string;
+  }[];
+  for (const r of tipizzate) {
+    await ignora(admin.storage.from(r.bucket).remove([r.storage_path]));
+  }
+
+  // Chiude la richiesta (il trigger valorizza risolta_at/risolta_da).
+  const { error: eChiusura } = await supabase
+    .from("richieste_eliminazione_grezzo")
+    .update({
+      stato: "risolta",
+      versioni_eliminate: selezionati,
+      note_coordinatore: note?.trim() || null,
+    })
+    .eq("id", richiestaId);
+  if (eChiusura) return errore(eChiusura.message);
+
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "eliminazione_grezzo_manuale",
+      entity_type: "profile",
+      entity_id: richiesta.user_id,
+      meta: {
+        richiesta_id: richiestaId,
+        versioni_eliminate: selezionati,
+        note: note?.trim() || null,
+      },
+    }),
+  );
 
   revalidatePath("/admin");
   return { ok: true, dati: undefined };
@@ -1220,6 +1381,22 @@ export async function approvaAccordoManualmente(
     })
     .eq("id", userId);
   if (error) return errore(error.message);
+
+  // La firma dell'Accordo vale quale concessione del consenso a immagine/
+  // voce (Art. 7.1): si registra la riga nel registro consensi (0096), così
+  // la successiva revoca ha una riga su cui incidere (dimostrabilità artt.
+  // 5(2) e 7(1) GDPR). Idempotente: non si crea una seconda riga se esiste.
+  // L'insert usa il service_role: la RLS consensi_insert richiede
+  // user_id = auth.uid(), ma qui la riga è per il collaboratore approvato.
+  // ignora() assorbe gli errori: best-effort, non blocca l'approvazione.
+  await ignora(
+    supabaseAdmin().from("consensi").insert({
+      user_id: userId,
+      tipo: "immagine_voce",
+      versione: "implicito",
+      accettato_at: ora,
+    }),
+  );
 
   // Traccia l'approvazione nella catena di audit.
   await ignora(

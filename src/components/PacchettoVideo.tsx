@@ -17,6 +17,7 @@ import {
   rimuoviElementoPacchetto,
   salvaPacchetto,
   segnalaCompletato,
+  segnalaErroreDichiarazione,
   sigillaPacchetto,
 } from "@/app/actions-pacchetto";
 import { archiviaFileFinale } from "@/app/actions";
@@ -93,6 +94,7 @@ export default function PacchettoVideo({
   const videoUploadRef = useRef<UploadDeliverableHandle>(null);
   const copertinaUploadRef = useRef<UploadDeliverableHandle>(null);
   const liberatoriaUploadRef = useRef<UploadDeliverableHandle>(null);
+  const dichiarazioneUploadRef = useRef<UploadDeliverableHandle>(null);
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
@@ -104,6 +106,7 @@ export default function PacchettoVideo({
   const video = elementi.find((e) => e.ruolo === "video");
   const copertina = elementi.find((e) => e.ruolo === "copertina");
   const liberatoria = elementi.find((e) => e.ruolo === "liberatoria");
+  const dichiarazione = elementi.find((e) => e.ruolo === "dichiarazione_identita");
   const liberatoriaOtp = liberatoriaInfo?.metodo_firma === "otp";
   const completo =
     !!video &&
@@ -112,7 +115,8 @@ export default function PacchettoVideo({
     script.trim() !== "" &&
     titoloYoutube.trim() !== "" &&
     !haRichiesteAperte &&
-    (!coinvolgeTerzi || (!!liberatoria && liberatoriaOtp));
+    (!coinvolgeTerzi || (!!liberatoria && liberatoriaOtp)) &&
+    (!coinvolgeTerzi || !!dichiarazione);
 
   // Lo script cambia a seconda del formato scelto alla creazione del
   // progetto: il titolo, la nota e il placeholder spiegano cosa ci si
@@ -470,6 +474,60 @@ export default function PacchettoVideo({
                 : "Attenzione: la liberatoria vale per il sigillo solo se firmata via codice OTP (non basta un caricamento manuale)."}
             </p>
           )}
+          {coinvolgeTerzi && (
+            <div className="mt-4">
+              <Slot
+                id="dichiarazione"
+                titolo="7 · Video di dichiarazione"
+                elemento={dichiarazione}
+                confermato={testiConfermati || !inBozza}
+                onDropFile={
+                  componibile && !dichiarazione
+                    ? (f) => dichiarazioneUploadRef.current?.handleFile(f)
+                    : undefined
+                }
+                azione={
+                  componibile && !dichiarazione ? (
+                    <UploadDeliverable
+                      ref={dichiarazioneUploadRef}
+                      taskId={taskId}
+                      kind="video_grezzo"
+                      isAdmin={false}
+                      locked={locked}
+                      etichetta="Carica video di dichiarazione"
+                      accept="video/*"
+                      onCaricato={(v) => dopoUpload("dichiarazione_identita", v)}
+                    >
+                      {!dichiarazione && (
+                        <p className="text-xs text-slate-400">Nessun file.</p>
+                      )}
+                    </UploadDeliverable>
+                  ) : null
+                }
+                taskId={taskId}
+                archiviabile={false}
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                Visibile solo a chi l&apos;ha caricato e al Coordinatore. Una
+                volta caricato non è modificabile né rimovibile: se è sbagliato,
+                segnala l&apos;errore e il Coordinatore libererà il campo.
+              </p>
+              {dichiarazione && !isAdmin && pacchetto && (
+                <div className="mt-2">
+                  <button
+                    onClick={async () => {
+                      const esito = await segnalaErroreDichiarazione(pacchetto.id);
+                      if (!esito.ok) window.alert(esito.errore);
+                      else router.refresh();
+                    }}
+                    className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                  >
+                    Segnala errore (il video va ricaricato)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -641,6 +699,7 @@ export default function PacchettoVideo({
                     !script.trim() && "script",
                     !titoloYoutube.trim() && "titolo YouTube",
                     coinvolgeTerzi && !(liberatoria && liberatoriaOtp) && "liberatoria (firma OTP)",
+                    coinvolgeTerzi && !dichiarazione && "video di dichiarazione (da caricare in 'Video completo')",
                     haRichiesteAperte && "richieste di modifica da risolvere",
                   ]
                     .filter(Boolean)

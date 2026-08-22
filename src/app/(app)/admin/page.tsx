@@ -22,7 +22,15 @@ import RichiesteRegistrazione, {
   type RigaRichiestaRegistrazione,
 } from "@/components/RichiesteRegistrazione";
 import RichiesteRimozionePubblicato from "@/components/RichiesteRimozionePubblicato";
-import type { RigaRichiestaRimozione } from "@/app/actions-profilo";
+import NotificheDovuteArt82 from "@/components/NotificheDovuteArt82";
+import RichiesteEliminazioneGrezzo, {
+  type CandidatoGrezzo,
+} from "@/components/RichiesteEliminazioneGrezzo";
+import RichiesteRicaricamentoDichiarazione, {
+  type RigaRicaricamentoDichiarazione,
+} from "@/components/RichiesteRicaricamentoDichiarazione";
+import type { RigaEliminazioneGrezzo } from "@/app/actions-profilo";
+import type { RigaRichiestaRimozione, RigaNotificaArt82 } from "@/app/actions-profilo";
 
 type Confronto = {
   deliverable_id: string;
@@ -52,6 +60,10 @@ export default async function AdminPage() {
     { data: modelliAccordo },
     { data: accordiDaApprovare },
     { data: richiesteRimozione },
+    { data: notificheArt82 },
+    { data: richiesteElimGrezzo },
+    { data: candidatiGrezzo },
+    { data: richiesteRicarDich },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -162,6 +174,44 @@ export default async function AdminPage() {
       .select("id, user_id, richiesto_at, termine_scadenza, stato, esito, esito_motivazione, risolta_da, risolta_at")
       .order("richiesto_at", { ascending: false })
       .returns<RigaRichiestaRimozione[]>(),
+    // Obbligo di dare atto, entro 30 giorni (Art. 8.2 dell'Accordo), di
+    // eventuali contenuti già pubblicati — quando la revoca NON chiedeva
+    // già la rimozione (altrimenti c'è la coda sopra, più forte).
+    supabase
+      .from("notifiche_dovute_art82")
+      .select("id, user_id, revocato_at, scade_at, notificata_at")
+      .order("revocato_at", { ascending: false })
+      .returns<RigaNotificaArt82[]>(),
+    // Richieste di eliminazione MANUALE del materiale grezzo (Accordo Art.
+    // 7.4): nessuna cancellazione automatica, solo revisione del Coordinatore.
+    supabase
+      .from("richieste_eliminazione_grezzo")
+      .select("id, user_id, richiesto_at, termine_scadenza, stato, versioni_eliminate, note_coordinatore, risolta_da, risolta_at")
+      .order("richiesto_at", { ascending: false })
+      .returns<RigaEliminazioneGrezzo[]>(),
+    // Candidati (grezzo) per la revisione: caricati da chi ha revocato, kind
+    // video_grezzo/audio/immagini_montaggio. Filtro di partenza per lo
+    // schermo, MAI criterio automatico di cancellazione.
+    supabaseAdmin()
+      .from("deliverable_versions")
+      .select("id, uploaded_by, file_name, deliverables!inner(task_id, kind)")
+      .eq("revocato_gdpr", false)
+      .in("deliverables.kind", ["video_grezzo", "audio", "immagini_montaggio"])
+      .returns<
+        {
+          id: string;
+          uploaded_by: string;
+          file_name: string;
+          deliverables: { task_id: string; kind: string };
+        }[]
+      >(),
+    // Segnalazioni di errore sul video di dichiarazione (Protocollo Art. 4.1):
+    // il Coordinatore libera il campo e si può ricaricare.
+    supabaseAdmin()
+      .from("richieste_ricaricamento_dichiarazione")
+      .select("id, user_id, pacchetto_id, motivo, stato, creato_at, risolta_da, risolta_at")
+      .order("creato_at", { ascending: false })
+      .returns<RigaRicaricamentoDichiarazione[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -188,6 +238,20 @@ export default async function AdminPage() {
     caricato_da: m.caricato_da,
     caricato_da_nome: m.profiles?.full_name ?? null,
   }));
+
+  // Candidati (grezzo) per ogni richiesta di eliminazione, per la revisione
+  // manuale del Coordinatore (filtro di partenza, mai cancellazione automatica).
+  const candidatiPerRichiesta: Record<string, CandidatoGrezzo[]> = {};
+  for (const r of richiesteElimGrezzo ?? []) {
+    candidatiPerRichiesta[r.id] = (candidatiGrezzo ?? [])
+      .filter((c) => c.uploaded_by === r.user_id)
+      .map((c) => ({
+        version_id: c.id,
+        task_id: c.deliverables.task_id,
+        file_name: c.file_name,
+        kind: c.deliverables.kind,
+      }));
+  }
 
   return (
     <div className="space-y-8">
@@ -449,6 +513,49 @@ export default async function AdminPage() {
             contenuto: (
               <RichiesteRimozionePubblicato
                 richieste={richiesteRimozione ?? []}
+                nomi={nomi}
+              />
+            ),
+          },
+          {
+            id: "notifiche-art82",
+            etichetta: "Notifiche dovute (Art. 8.2)",
+            promemoria: {
+              cosa: "quando qualcuno revoca il consenso a immagine/voce SENZA chiedere anche la rimozione del pubblicato, l'Accordo (Art. 8.2) impone comunque di dargliene atto entro 30 giorni.",
+              attenzione: "il bottone \"Notifica\" manda davvero l'email al Collaboratore: falla solo quando hai verificato se esistono contenuti pubblicati che lo ritraggono.",
+            },
+            contenuto: (
+              <NotificheDovuteArt82
+                notifiche={notificheArt82 ?? []}
+                nomi={nomi}
+              />
+            ),
+          },
+          {
+            id: "eliminazione-grezzo",
+            etichetta: "Eliminazione grezzo (revoca)",
+            promemoria: {
+              cosa: "quando qualcuno revoca il consenso a immagine/voce, la cancellazione del materiale grezzo è SEMPRE manuale: individui a occhio quali file ritraggono davvero la persona e selezioni solo quelli.",
+              attenzione: "il filtro iniziale (chi li ha caricati) serve solo a restringere la lista — MAI come criterio automatico di cancellazione. Termine: 30 giorni dalla revoca (Accordo Art. 7.4).",
+            },
+            contenuto: (
+              <RichiesteEliminazioneGrezzo
+                richieste={richiesteElimGrezzo ?? []}
+                candidati={candidatiPerRichiesta}
+                nomi={nomi}
+              />
+            ),
+          },
+          {
+            id: "ricaricamento-dichiarazione",
+            etichetta: "Richieste dichiarazione (ricarica)",
+            promemoria: {
+              cosa: "chi ha caricato per errore il video di dichiarazione lo segnala da qui; liberi il campo (il vecchio file viene cancellato) e può ricaricare quello corretto.",
+              attenzione: "la liberazione è definitiva: il vecchio video di dichiarazione viene eliminato. Verifica la segnalazione prima di procedere.",
+            },
+            contenuto: (
+              <RichiesteRicaricamentoDichiarazione
+                richieste={richiesteRicarDich ?? []}
                 nomi={nomi}
               />
             ),
