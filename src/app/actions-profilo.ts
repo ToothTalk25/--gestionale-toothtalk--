@@ -630,7 +630,9 @@ export async function eseguiEliminazioneGrezzo(
 
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {
   const { profile } = await requireSession();
-  const supabase = await supabaseServer();
+  // Scrive col service_role: i campi anagrafici sono protetti dal trigger
+  // fn_protect_profile (0103) — solo admin/service_role possono aggiornarli.
+  const supabase = supabaseAdmin();
 
   // Il campo "Email o PEC" è facoltativo e accetta qualunque indirizzo
   // valido (anche una normale email). Una PEC vera dà in più la
@@ -761,7 +763,9 @@ export async function caricaAccordo(
   haLettoCompreso: boolean,
 ): Promise<Esito<{ messageId: string; verifica: EsitoVerificaAccordo }>> {
   const { profile } = await requireSession();
-  const supabase = await supabaseServer();
+  // Scrive col service_role: i campi accordo sono protetti dal trigger
+  // fn_protect_profile (0103) — solo admin/service_role possono scriverli.
+  const supabase = supabaseAdmin();
 
   // Il path deve stare nello spazio di chi chiama: impedisce di far puntare
   // il proprio profilo al file di qualcun altro (che comunque l'RLS dello
@@ -965,48 +969,6 @@ export async function caricaAccordo(
  * modello attivo è l'ultima riga. L'impronta SHA-256 è ricalcolata
  * lato server, mai fidarsi del valore dichiarato dal client.
  */
-/**
- * Il Collaboratore comunica la propria volontà di recedere (Art. 8
- * dell'Accordo): registra la richiesta con timestamp immutabile nella
- * tabella richieste_recesso (append-only). Da richiesto_at decorrono i
- * 30 giorni di preavviso — la data certa è quella del gestionale, non
- * quella di un'email.
- */
-export async function richiediRecesso(
-  motivazione?: string,
-): Promise<Esito<{ richiestoAt: string }>> {
-  const { profile } = await requireSession();
-  const supabase = await supabaseServer();
-
-  const { data, error } = await supabase
-    .from("richieste_recesso")
-    .insert({
-      user_id: profile.id,
-      motivazione: motivazione?.trim() ? motivazione.trim() : null,
-    })
-    .select("richiesto_at")
-    .single<{ richiesto_at: string }>();
-  if (error) return errore(error.message);
-
-  // Traccia l'evento anche nell'audit log (catena di hash).
-  await ignora(
-    supabase.from("audit_log").insert({
-      actor: profile.id,
-      actor_role: profile.role,
-      action: "richiesta_recesso",
-      entity_type: "profile",
-      entity_id: profile.id,
-      meta: {
-        motivazione: motivazione?.trim() ? motivazione.trim() : null,
-        richiesto_at: data.richiesto_at,
-      },
-    }),
-  );
-
-  revalidatePath("/profilo");
-  return { ok: true, dati: { richiestoAt: data.richiesto_at } };
-}
-
 
 export async function caricaModelloAccordo(
   storagePath: string,

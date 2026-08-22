@@ -506,6 +506,7 @@ export default async function AdminPage() {
           {
             id: "richieste-rimozione",
             etichetta: "Richieste di rimozione",
+            badge: (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length,
             promemoria: {
               cosa: "valuti le richieste di rimozione di contenuti già pubblicati, aperte da chi revoca il consenso a immagine/voce dal proprio profilo.",
               attenzione: "\"Rimosso\"/\"Oscurato\"/\"Rifiutato\" registrano solo la decisione — la rimozione o l'oscuramento del contenuto restano un'azione editoriale manuale a parte, coerente con l'esito scelto qui. Valuta entro 30 giorni, prorogabili a 90 con motivazione scritta.",
@@ -534,6 +535,7 @@ export default async function AdminPage() {
           {
             id: "eliminazione-grezzo",
             etichetta: "Eliminazione grezzo (revoca)",
+            badge: (richiesteElimGrezzo ?? []).filter((r) => r.stato === "aperta").length,
             promemoria: {
               cosa: "quando qualcuno revoca il consenso a immagine/voce, la cancellazione del materiale grezzo è SEMPRE manuale: individui a occhio quali file ritraggono davvero la persona e selezioni solo quelli.",
               attenzione: "il filtro iniziale (chi li ha caricati) serve solo a restringere la lista — MAI come criterio automatico di cancellazione. Termine: 30 giorni dalla revoca (Accordo Art. 7.4).",
@@ -549,6 +551,7 @@ export default async function AdminPage() {
           {
             id: "ricaricamento-dichiarazione",
             etichetta: "Richieste dichiarazione (ricarica)",
+            badge: (richiesteRicarDich ?? []).filter((r) => r.stato === "aperta").length,
             promemoria: {
               cosa: "chi ha caricato per errore il video di dichiarazione lo segnala da qui; liberi il campo (il vecchio file viene cancellato) e può ricaricare quello corretto.",
               attenzione: "la liberazione è definitiva: il vecchio video di dichiarazione viene eliminato. Verifica la segnalazione prima di procedere.",

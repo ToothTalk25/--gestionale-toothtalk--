@@ -15,6 +15,8 @@ export type SezioneAdmin = {
   etichetta: string;
   /** Cosa si fa in questa sezione — mostrato in un promemoria in cima. */
   promemoria?: { cosa: string; attenzione?: string };
+  /** Contatore da mostrare accanto alla voce (es. richieste aperte). */
+  badge?: number;
   contenuto: React.ReactNode;
 };
 
@@ -39,6 +41,7 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
             {sezioni.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.etichetta}
+                {s.badge ? ` (${s.badge})` : ""}
               </option>
             ))}
           </select>
