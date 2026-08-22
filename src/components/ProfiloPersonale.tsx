@@ -509,7 +509,7 @@ export default function ProfiloPersonale({
             />
             <span className="text-xs text-slate-600 leading-relaxed">
               Ho letto e compreso tutto ciò che è scritto all&apos;interno
-              dell&apos;accordo editoriale.
+              dell&apos;accordo editoriale e del Protocollo Operativo ad esso allegato.
             </span>
           </label>
 

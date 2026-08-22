@@ -1,6 +1,8 @@
 "use server";
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -779,7 +781,7 @@ export async function caricaAccordo(
   // quindi si respinge qui il caricamento se non arriva true.
   if (haLettoCompreso !== true) {
     return errore(
-      "Devi confermare di aver letto e compreso l'accordo editoriale prima di caricarlo.",
+      "Devi confermare di aver letto e compreso l'accordo editoriale e il Protocollo Operativo prima di caricarlo.",
     );
   }
 
@@ -915,7 +917,7 @@ export async function caricaAccordo(
         "",
         `${nome} ha caricato il proprio accordo editoriale ToothTalk e ha`,
         "dichiarato, spuntando l'apposita casella prima del caricamento, di",
-        "aver letto e compreso integralmente il contenuto dell'accordo.",
+        "aver letto e compreso integralmente il contenuto dell'accordo editoriale e del Protocollo Operativo ad esso allegato.",
         "",
         "Il PDF allegato è firmato e viene registrato con data certa: fa parte",
         `del registro dei partecipanti. Università: ${profile.universita ?? "non indicata"}.`,
@@ -932,7 +934,8 @@ export async function caricaAccordo(
   <p style="font-size:13px;line-height:1.6">
     <strong>${nome}</strong> ha caricato il proprio accordo editoriale ToothTalk e ha
     dichiarato, spuntando l'apposita casella prima del caricamento, di aver letto e
-    compreso integralmente il contenuto dell'accordo.
+    compreso integralmente il contenuto dell'accordo editoriale e del Protocollo
+    Operativo ad esso allegato.
     Il PDF allegato è firmato e viene registrato con data certa: fa parte del
     registro dei partecipanti. Università: ${profile.universita ?? "non indicata"}.
   </p>
@@ -1053,6 +1056,22 @@ export async function approvaRegistrazione(
   const nomeModello = modello.storage_path.split("/").pop() ?? "accordo-editoriale.pdf";
   const nome = richiedente.full_name ?? richiedente.email;
 
+  // Il Protocollo Operativo viene allegato automaticamente all'email con
+  // l'accordo da firmare: l'incorporazione per richiamo (Protocollo Art.
+  // 13.1) vale solo se il documento è materialmente consegnato PRIMA della
+  // firma. Il file arriva dal filesystem del deploy (public/documenti/), la
+  // stessa fonte dei PDF ufficiali che il Titolare aggiorna ad ogni modifica.
+  let protocolloPdf: Buffer;
+  try {
+    protocolloPdf = readFileSync(
+      join(process.cwd(), "public", "documenti", "3-protocollo-operativo.pdf"),
+    );
+  } catch {
+    return errore(
+      "Impossibile allegare il Protocollo Operativo: file public/documenti/3-protocollo-operativo.pdf non leggibile dal server. Correggi prima di approvare la registrazione.",
+    );
+  }
+
   const { error: eUpdate } = await supabase
     .from("profiles")
     .update({
@@ -1088,8 +1107,9 @@ export async function approvaRegistrazione(
         "e non vediamo l'ora di iniziare a lavorare insieme.",
         "",
         "Un solo passaggio prima di partire: in allegato trovi l'accordo",
-        "editoriale. Leggilo con calma, firmalo e ricaricalo dal tuo profilo",
-        "nel gestionale (sezione \"Accordo editoriale\").",
+        "editoriale e il Protocollo Operativo ad esso allegato. Leggili con",
+        "calma, firma l'accordo e ricaricalo dal tuo profilo nel gestionale",
+        "(sezione \"Accordo editoriale\").",
         "",
         "Al momento del caricamento ti verrà chiesto di confermare di averlo",
         "letto e compreso: quella conferma, insieme all'accordo firmato, ti",
@@ -1112,8 +1132,9 @@ export async function approvaRegistrazione(
     fai parte del progetto, e non vediamo l'ora di iniziare a lavorare insieme.
   </p>
   <p style="font-size:13px;line-height:1.6">
-    Un solo passaggio prima di partire: in allegato trovi l'accordo editoriale.
-    Leggilo con calma, firmalo e ricaricalo dal tuo profilo nel gestionale.
+    Un solo passaggio prima di partire: in allegato trovi l'accordo editoriale
+    e il Protocollo Operativo ad esso allegato. Leggili con calma, firma
+    l'accordo e ricaricalo dal tuo profilo nel gestionale.
   </p>
   <p style="font-size:12px;color:#666">
     Al caricamento ti verrà chiesto di confermare di averlo letto e compreso:
@@ -1125,7 +1146,10 @@ export async function approvaRegistrazione(
     A presto,<br>il team ToothTalk
   </p>
 </div>`,
-      allegati: [{ filename: nomeModello, content: bufferModello, contentType: "application/pdf" }],
+      allegati: [
+        { filename: nomeModello, content: bufferModello, contentType: "application/pdf" },
+        { filename: "3-protocollo-operativo.pdf", content: protocolloPdf, contentType: "application/pdf" },
+      ],
       // "to": la persona — PEC se presente, altrimenti la sua email di
       // accesso (la PEC non è più obbligatoria per partecipare).
       destinatari: [richiedente.pec ?? richiedente.email],
@@ -1333,9 +1357,9 @@ e le istruzioni documentate del Titolare del trattamento.</p>
 
 <h2>Ambito dell'autorizzazione</h2>
 <ul>
-  <li>Raccolta dei recapiti (email o PEC) dei soggetti esterni intervistati, mediante dichiarazione a video in apertura di ripresa;</li>
+  <li>Raccolta dei recapiti (email o PEC) dei soggetti esterni intervistati, mediante apposito video di dichiarazione autonomo registrato prima di ogni intervista (Art. 4.1 del Protocollo Operativo);</li>
   <li>Inserimento immediato di tali recapiti nel gestionale del Progetto, che provvede autonomamente all'invio, alla raccolta della firma digitale e alla conservazione delle liberatorie;</li>
-  <li><strong>Custodia temporanea del materiale grezzo (file video/audio) esclusivamente per il tempo strettamente necessario al caricamento sul gestionale (entro 48-72 ore dalla ripresa, e comunque non oltre 24 ore dalla conferma di avvenuto caricamento).</strong></li>
+  <li><strong>Custodia temporanea del materiale grezzo (file video/audio) esclusivamente per il tempo strettamente necessario al caricamento sul gestionale (entro 48-72 ore dalla ripresa, e comunque non oltre 48 ore dalla conferma di avvenuto caricamento).</strong></li>
 </ul>
 
 <p>Il Collaboratore, nell'esercizio della presente autorizzazione, non ha alcuna autonomia
@@ -1344,7 +1368,7 @@ decisionale sulle finalità e sui mezzi del trattamento, ed è tenuto a:</p>
   <li>Non raccogliere, non custodire e non trasmettere alcun documento cartaceo contenente dati personali degli intervistati, in nessuna circostanza;</li>
   <li>Inserire i recapiti nel gestionale immediatamente dopo la registrazione;</li>
   <li>Non condividere i dati raccolti (recapiti, video, audio) con altri Collaboratori o terzi al di fuori del caricamento diretto sul gestionale;</li>
-  <li><strong>Cancellare la copia locale del materiale grezzo subito dopo la conferma di avvenuto caricamento, e comunque entro 24 ore dalla ricezione della conferma;</strong></li>
+  <li><strong>Cancellare la copia locale del materiale grezzo subito dopo la conferma di avvenuto caricamento, e comunque entro 48 ore dalla ricezione della conferma;</strong></li>
   <li>Mantenere il proprio dispositivo protetto da blocco schermo/PIN e, ove possibile, da crittografia del volume;</li>
   <li>Comunicare al Coordinatore, senza indugio, qualsiasi violazione dei dati personali di cui venga a conoscenza nello svolgimento delle proprie attività.</li>
 </ul>
