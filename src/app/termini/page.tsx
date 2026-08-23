@@ -89,7 +89,7 @@ export default function TerminiPage() {
           <h2 className="text-base font-medium text-slate-900">8. Limitazioni di responsabilità</h2>
           <p className="mt-1">
             La piattaforma è fornita per finalità interne di organizzazione e
-            divulgazione del progetto ToothTalk. Il referente del progetto non è
+            divulgazione del progetto ToothTalk. Il Coordinatore del progetto non è
             responsabile dell&apos;uso improprio dei contenuti da parte dei
             partecipanti, fatto salvo quanto previsto dalla legge.
           </p>
