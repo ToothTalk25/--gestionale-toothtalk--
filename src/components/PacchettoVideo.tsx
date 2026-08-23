@@ -95,6 +95,7 @@ export default function PacchettoVideo({
   const copertinaUploadRef = useRef<UploadDeliverableHandle>(null);
   const liberatoriaUploadRef = useRef<UploadDeliverableHandle>(null);
   const dichiarazioneUploadRef = useRef<UploadDeliverableHandle>(null);
+  const dichiarazioneIntegrazioneUploadRef = useRef<UploadDeliverableHandle>(null);
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
@@ -107,6 +108,7 @@ export default function PacchettoVideo({
   const copertina = elementi.find((e) => e.ruolo === "copertina");
   const liberatoria = elementi.find((e) => e.ruolo === "liberatoria");
   const dichiarazione = elementi.find((e) => e.ruolo === "dichiarazione_identita");
+  const dichiarazioneIntegrazione = elementi.find((e) => e.ruolo === "dichiarazione_integrazione");
   const liberatoriaOtp = liberatoriaInfo?.metodo_firma === "otp";
   const completo =
     !!video &&
@@ -516,7 +518,7 @@ export default function PacchettoVideo({
                 <div className="mt-2">
                   <button
                     onClick={async () => {
-                      const esito = await segnalaErroreDichiarazione(pacchetto.id);
+                      const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_identita");
                       if (!esito.ok) window.alert(esito.errore);
                       else router.refresh();
                     }}
@@ -526,6 +528,63 @@ export default function PacchettoVideo({
                   </button>
                 </div>
               )}
+
+              {/* ---- Seconda parte della dichiarazione (Protocollo 4.1
+                    "Domande non dichiarate"): il video di integrazione con la
+                    domanda aggiuntiva. Facoltativo, stessa riservatezza. ---- */}
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <Slot
+                  id="dichiarazione-integrazione"
+                  titolo="7b · Video di integrazione della dichiarazione"
+                  elemento={dichiarazioneIntegrazione}
+                  confermato={testiConfermati || !inBozza}
+                  onDropFile={
+                    componibile && !dichiarazioneIntegrazione
+                      ? (f) => dichiarazioneIntegrazioneUploadRef.current?.handleFile(f)
+                      : undefined
+                  }
+                  azione={
+                    componibile && !dichiarazioneIntegrazione ? (
+                      <UploadDeliverable
+                        ref={dichiarazioneIntegrazioneUploadRef}
+                        taskId={taskId}
+                        kind="video_grezzo"
+                        isAdmin={false}
+                        locked={locked}
+                        etichetta="Carica video di integrazione"
+                        accept="video/*"
+                        onCaricato={(v) => dopoUpload("dichiarazione_integrazione", v)}
+                      >
+                        {!dichiarazioneIntegrazione && (
+                          <p className="text-xs text-slate-400">Nessun file.</p>
+                        )}
+                      </UploadDeliverable>
+                    ) : null
+                  }
+                  taskId={taskId}
+                  archiviabile={false}
+                />
+                <p className="mt-2 text-xs text-slate-400">
+                  Da caricare solo se durante l&apos;intervista è stata posta una
+                  domanda non dichiarata nel video iniziale (Protocollo Art.
+                  4.1). Visibile solo a chi l&apos;ha caricato e al Coordinatore,
+                  come la dichiarazione principale.
+                </p>
+                {dichiarazioneIntegrazione && !isAdmin && pacchetto && (
+                  <div className="mt-2">
+                    <button
+                      onClick={async () => {
+                        const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_integrazione");
+                        if (!esito.ok) window.alert(esito.errore);
+                        else router.refresh();
+                      }}
+                      className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                    >
+                      Segnala errore (il video va ricaricato)
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -357,6 +357,7 @@ Deno.serve(async (req) => {
       copertina: cartCopertine,
       liberatoria: cartLiberatorie,
       dichiarazione_identita: cartDichiarazioni,
+      dichiarazione_integrazione: cartDichiarazioni,
     };
     for (const el of elementi ?? []) {
       const v = el.deliverable_versions as {

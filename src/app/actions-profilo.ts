@@ -10,6 +10,7 @@ import { requireSession, getSessionContext } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
 import { inviaEmailGmail } from "@/lib/mail";
+import { archiviaAccordoSuDrive } from "@/lib/google-doc";
 import { COOKIE_VERSION, PRIVACY_VERSION, type Profile } from "@/lib/types";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
@@ -915,6 +916,13 @@ export async function caricaAccordo(
     })
     .eq("id", profile.id);
   if (error) return errore(error.message);
+
+  // Copia di sicurezza su Drive nella cartella privata "gestione canale/accordi"
+  // (solo Titolare). Best-effort: se fallisce, l'accordo resta comunque nel
+  // gestionale con la PEC certificata — non blocca mai il caricamento.
+  const dataAccordo = new Date().toISOString().slice(0, 10);
+  const nomeSuDrive = `accordo_${profile.id.slice(0, 8)}_${dataAccordo}.pdf`;
+  await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive));
 
   // Registro granulare consents_and_releases (GDPR): accordo collaboratore.
   // L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage):

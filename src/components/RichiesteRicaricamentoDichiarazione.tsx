@@ -9,6 +9,7 @@ export type RigaRicaricamentoDichiarazione = {
   id: string;
   user_id: string;
   pacchetto_id: string;
+  ruolo: string;
   motivo: string | null;
   stato: "aperta" | "risolta";
   creato_at: string;
@@ -68,6 +69,9 @@ export default function RichiesteRicaricamentoDichiarazione({
               {nomi[r.user_id] ?? r.user_id.slice(0, 8)}
             </p>
             <p className="text-xs text-amber-700">
+              {r.ruolo === "dichiarazione_integrazione"
+                ? "Video di integrazione (domanda aggiuntiva) · "
+                : "Video di dichiarazione · "}
               Segnalato il {new Date(r.creato_at).toLocaleDateString("it-IT")}
               {r.motivo ? ` — "${r.motivo}"` : ""}
             </p>

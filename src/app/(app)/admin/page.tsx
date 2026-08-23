@@ -211,7 +211,7 @@ export default async function AdminPage() {
     // il Coordinatore libera il campo e si può ricaricare.
     supabaseAdmin()
       .from("richieste_ricaricamento_dichiarazione")
-      .select("id, user_id, pacchetto_id, motivo, stato, creato_at, risolta_da, risolta_at")
+      .select("id, user_id, pacchetto_id, ruolo, motivo, stato, creato_at, risolta_da, risolta_at")
       .order("creato_at", { ascending: false })
       .returns<RigaRicaricamentoDichiarazione[]>(),
   ]);

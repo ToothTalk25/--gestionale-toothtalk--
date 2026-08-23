@@ -123,14 +123,33 @@ export async function collegaDichiarazioneIdentita(
 }
 
 /**
+ * Seconda parte della dichiarazione (Protocollo Art. 4.1 "Domande non
+ * dichiarate"): il video di integrazione con la domanda aggiuntiva. Stesso
+ * meccanismo di 'dichiarazione_identita' — riferimento al video_grezzo/audio,
+ * nessuna copia, stesse regole di riservatezza (chi l'ha caricato + Titolare).
+ */
+export async function collegaDichiarazioneIntegrazione(
+  taskId: string,
+  versionId: string,
+): Promise<Esito> {
+  const id = await assicuraPacchettoServer(taskId);
+  if (!id.ok) return id;
+  return collegaElemento(taskId, id.dati, "dichiarazione_integrazione", versionId);
+}
+
+/**
  * "Segnala errore" sul video di dichiarazione (Protocollo Art. 4.1): chi lo
  * ha caricato apre una richiesta nel registro del Coordinatore perché il
  * campo venga liberato. Solo il depositante (o l'admin) — la RLS lo decide.
  */
 export async function segnalaErroreDichiarazione(
   pacchettoId: string,
+  ruolo: RuoloElemento,
   motivo?: string,
 ): Promise<Esito> {
+  if (ruolo !== "dichiarazione_identita" && ruolo !== "dichiarazione_integrazione") {
+    return errore("Ruolo dichiarazione non valido.");
+  }
   const { profile } = await requireSession();
   const supabase = await supabaseServer();
   const { error } = await supabase
@@ -138,6 +157,7 @@ export async function segnalaErroreDichiarazione(
     .insert({
       user_id: profile.id,
       pacchetto_id: pacchettoId,
+      ruolo,
       motivo: motivo?.trim() || null,
     });
   if (error) return errore(error.message);
@@ -159,17 +179,21 @@ export async function liberaCampoDichiarazione(richiestaId: string): Promise<Esi
 
   const { data: richiesta } = await admin
     .from("richieste_ricaricamento_dichiarazione")
-    .select("id, pacchetto_id, stato")
+    .select("id, pacchetto_id, stato, ruolo")
     .eq("id", richiestaId)
-    .single<{ id: string; pacchetto_id: string; stato: string }>();
+    .single<{ id: string; pacchetto_id: string; stato: string; ruolo: string }>();
   if (!richiesta) return errore("Richiesta non trovata.");
   if (richiesta.stato !== "aperta") return errore("Richiesta già risolta.");
+
+  // Quale video va liberato lo dice la richiesta: dichiarazione di identità
+  // o di integrazione (Protocollo Art. 4.1).
+  const ruolo = richiesta.ruolo === "dichiarazione_integrazione" ? "dichiarazione_integrazione" : "dichiarazione_identita";
 
   const { data: elemento } = await admin
     .from("pacchetto_elementi")
     .select("version_id, deliverable_versions!inner(bucket, storage_path)")
     .eq("pacchetto_id", richiesta.pacchetto_id)
-    .eq("ruolo", "dichiarazione_identita")
+    .eq("ruolo", ruolo)
     .single<{
       version_id: string;
       deliverable_versions: { bucket: string; storage_path: string };
@@ -180,7 +204,7 @@ export async function liberaCampoDichiarazione(richiestaId: string): Promise<Esi
       .from("pacchetto_elementi")
       .delete()
       .eq("pacchetto_id", richiesta.pacchetto_id)
-      .eq("ruolo", "dichiarazione_identita");
+      .eq("ruolo", ruolo);
     await ignora(
       admin.storage
         .from(elemento.deliverable_versions.bucket)
@@ -273,7 +297,7 @@ export async function rimuoviElementoPacchetto(
   ruolo: RuoloElemento,
 ): Promise<Esito> {
   await requireSession();
-  if (ruolo === "dichiarazione_identita") {
+  if (ruolo === "dichiarazione_identita" || ruolo === "dichiarazione_integrazione") {
     return errore(
       "Il video di dichiarazione non è rimovibile: usa il flusso 'Segnala errore' e la liberazione del Coordinatore.",
     );

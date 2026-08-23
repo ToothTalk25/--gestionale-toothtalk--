@@ -1,0 +1,14 @@
+-- =====================================================================
+-- 0106_dichiarazione_integrazione_enum.sql — nuovo valore di enum
+-- =====================================================================
+-- Protocollo Art. 4.1 ("Domande non dichiarate"): se durante l'intervista
+-- emerge una domanda non dichiarata nel video iniziale, il Collaboratore
+-- deve integrare la dichiarazione con un NUOVO video (la domanda aggiuntiva),
+-- prima del sigillo. Serve quindi un secondo ruolo di elemento del pacchetto,
+-- distinto da 'dichiarazione_identita'.
+--
+-- ATTENZIONE: eseguire QUESTO FILE DA SOLO, come 0012_enum_liberatoria.sql e
+-- 0092. Postgres non permette di usare un valore di enum appena aggiunto
+-- nella stessa transazione in cui è stato creato: il file successivo (0107)
+-- lo usa, ed è già di per sé una migrazione separata.
+alter type public.ruolo_elemento add value if not exists 'dichiarazione_integrazione';

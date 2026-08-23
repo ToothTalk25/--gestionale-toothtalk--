@@ -217,7 +217,12 @@ export const PACCHETTO_LABEL: Record<PacchettoStato, string> = {
   annullato: "Annullato",
 };
 
-export type RuoloElemento = "video" | "copertina" | "liberatoria" | "dichiarazione_identita";
+export type RuoloElemento =
+  | "video"
+  | "copertina"
+  | "liberatoria"
+  | "dichiarazione_identita"
+  | "dichiarazione_integrazione";
 
 export type PacchettoVideoRow = {
   id: string;

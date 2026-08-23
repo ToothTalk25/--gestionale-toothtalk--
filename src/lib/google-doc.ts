@@ -170,3 +170,57 @@ export async function creaDocumentiLavorazione(
     console.error("creaDocumentiLavorazione:", e);
   }
 }
+
+/**
+ * Copia di sicurezza dell'accordo firmato su Google Drive, nella cartella
+ * privata del Titolare "gestione canale/accordi" (visibile solo a lui:
+ * NON condivisa con i gruppi). Best-effort: l'accordo resta comunque nel
+ * gestionale (Supabase + PEC con SHA-256) — questa è solo una copia di
+ * riserva per il Titolare. La cartella viene trovata o creata al volo.
+ */
+export async function archiviaAccordoSuDrive(
+  buffer: Buffer,
+  nomeFile: string,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  const root = process.env.GOOGLE_DRIVE_ROOT_FOLDER;
+  if (!root) return { ok: false, errore: "GOOGLE_DRIVE_ROOT_FOLDER non configurata" };
+
+  try {
+    const token = await tokenGoogle();
+    const cartellaGestione = await trovaOCreaCartella(token, root, "gestione canale");
+    const cartellaAccordi = await trovaOCreaCartella(token, cartellaGestione, "accordi");
+
+    // Upload resumable (stesso pattern di esporta-drive): l'accordo è piccolo,
+    // ma il percorso resta valido anche per file futuri più grandi.
+    const inizio = await df(
+      token,
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Upload-Content-Length": String(buffer.byteLength),
+          "X-Upload-Content-Type": "application/pdf",
+        },
+        body: JSON.stringify({
+          name: nomeFile,
+          mimeType: "application/pdf",
+          parents: [cartellaAccordi],
+        }),
+      },
+    );
+    if (!inizio.ok) return { ok: false, errore: `Avvio upload: HTTP ${inizio.status}` };
+    const location = inizio.headers.get("location");
+    if (!location) return { ok: false, errore: "Upload: nessuna sessione restituita" };
+
+    const put = await fetch(location, {
+      method: "PUT",
+      headers: { "Content-Type": "application/pdf", "Content-Length": String(buffer.byteLength) },
+      body: new Uint8Array(buffer),
+    });
+    if (!put.ok) return { ok: false, errore: `Upload: HTTP ${put.status}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, errore: e instanceof Error ? e.message : "Errore upload Drive" };
+  }
+}
