@@ -33,7 +33,6 @@ export default function ProfiloPersonale({
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
 
-  const [universita, setUniversita] = useState(profile.universita ?? "");
   const [pec, setPec] = useState(profile.pec ?? "");
   const [dataNascita, setDataNascita] = useState(profile.data_nascita ?? "");
   const [luogoNascita, setLuogoNascita] = useState(profile.luogo_nascita ?? "");
@@ -147,7 +146,6 @@ export default function ProfiloPersonale({
     setMessaggio(null);
     start(async () => {
       const esito = await aggiornaAnagrafica({
-        universita: universita || null,
         pec: pec || null,
         data_nascita: dataNascita || null,
         luogo_nascita: luogoNascita || null,
@@ -240,19 +238,6 @@ export default function ProfiloPersonale({
           Facoltativa: serve solo se vuoi ricevere con valore di consegna
           certificata le comunicazioni (accordo, impronte). Una PEC vera dà
           la certificazione in più, ma non è richiesta per partecipare.
-        </p>
-
-        <label className="mt-4 block text-sm font-medium">Università</label>
-        <input
-          value={universita}
-          onChange={(e) => setUniversita(e.target.value)}
-          placeholder="Es. Università degli Studi di Messina"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        />
-
-        <p className="mt-3 text-xs text-slate-400">
-          Studenti e studentesse di odontoiatria: l'università basta a
-          identificarvi.
         </p>
 
         {!isAdmin && (

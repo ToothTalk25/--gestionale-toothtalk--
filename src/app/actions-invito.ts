@@ -90,24 +90,6 @@ export async function registraConInvito(input: {
 
   const admin = supabaseAdmin();
 
-  // Se l'utente ha indicato una PEC vera, verifichiamo che appartenga
-  // all'ateneo del gruppo; se no, si procede comunque con la sola email.
-  if (pec) {
-    const { data: pecOk } = await admin.rpc("pec_universitaria_valida", {
-      p_polo: verifica.dati.polo_id,
-      p_pec: pec,
-    });
-    if (pecOk === false) {
-      return {
-        ok: false,
-        errore:
-          "La PEC non appartiene al dominio universitario del gruppo. Usa la " +
-          "PEC rilasciata dal tuo ateneo (es. nome.cognome@studenti.unime.it) " +
-          "oppure lascia il campo vuoto.",
-      };
-    }
-  }
-
   const { data: creato, error: eCrea } = await admin.auth.admin.createUser({
     email,
     password: input.password,

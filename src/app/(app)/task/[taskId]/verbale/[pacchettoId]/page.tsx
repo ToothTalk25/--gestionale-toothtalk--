@@ -55,7 +55,7 @@ export default async function VerbalePage({
       </header>
 
       <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-        <Voce t="Gruppo universitario" v={`${m.polo.nome}${m.polo.citta ? ` (${m.polo.citta})` : ""}`} />
+        <Voce t="Polo" v={`${m.polo.nome}${m.polo.citta ? ` (${m.polo.citta})` : ""}`} />
         <Voce t="Progetto" v={m.task.titolo} />
         <Voce t="Sigillato il" v={m.sigillato_at} />
         <Voce

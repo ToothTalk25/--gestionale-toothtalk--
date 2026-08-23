@@ -9,7 +9,6 @@ export type RigaRichiestaRegistrazione = {
   id: string;
   full_name: string | null;
   email: string;
-  universita: string | null;
   pec: string | null;
   on_screen: boolean;
 };
@@ -86,10 +85,7 @@ export default function RichiesteRegistrazione({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-medium">{r.full_name ?? "—"}</p>
-                <p className="text-xs text-slate-500">
-                  {r.email}
-                  {r.universita ? ` · ${r.universita}` : ""}
-                </p>
+                <p className="text-xs text-slate-500">{r.email}</p>
                 {r.pec && <p className="font-mono text-xs text-slate-400">{r.pec}</p>}
               </div>
 

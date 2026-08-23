@@ -24,7 +24,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
 
   h2("Quali dati trattiamo"),
   ul([
-    "Dati anagrafici essenziali: nome, cognome, email, università;",
+    "Dati anagrafici essenziali: nome, cognome, email;",
     "Data di nascita, luogo di nascita e codice fiscale: raccolti esclusivamente per compilare il Modulo di nomina a persona autorizzata al trattamento (Documento 4, art. 29 GDPR), generato automaticamente all'approvazione dell'accordo;",
     "Foto del profilo;",
     "Accordo editoriale firmato (PDF): è un unico documento per tutti i Collaboratori, on-screen o dietro le quinte — per chi appare nei contenuti, la cessione dei diritti di immagine e voce è già inclusa nell'accordo stesso, non in un documento separato;",
@@ -39,7 +39,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
 
   h2("Finalità e base giuridica"),
   ul([
-    "Esecuzione dell'accordo (art. 6.1.b GDPR): organizzare la partecipazione dei gruppi universitari, gestire l'account e la collaborazione, ricevere e conservare l'accordo firmato, il caricamento della foto del profilo e dei materiali prodotti;",
+    "Esecuzione dell'accordo (art. 6.1.b GDPR): organizzare la partecipazione ai poli, gestire l'account e la collaborazione, ricevere e conservare l'accordo firmato, il caricamento della foto del profilo e dei materiali prodotti;",
     "Obbligo connesso all'esecuzione dell'accordo (art. 6.1.b GDPR): trattamento di data di nascita, luogo di nascita e codice fiscale, strettamente limitato alla formalizzazione della nomina a persona autorizzata al trattamento (Documento 4, art. 29 GDPR e art. 2-quaterdecies Codice Privacy) conseguente all'approvazione dell'accordo;",
     "Consenso (art. 6.1.a GDPR): registrazione, pubblicazione e diffusione dell'immagine, della voce e delle dichiarazioni per chi compare nei contenuti pubblicati — revocabile in ogni momento senza conseguenze sulla partecipazione al Progetto;",
     "Interesse legittimo (art. 6.1.f GDPR): tutela legale del contenuto attraverso la certificazione via PEC e il registro append-only.",
@@ -86,5 +86,5 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
   p("Revoca del consenso: sempre possibile in qualsiasi momento, senza obbligo di indicarne il motivo, tramite l'apposita funzione di revoca nel proprio profilo del gestionale (che costituisce comunicazione scritta a tutti gli effetti) oppure scrivendo a enricoguarino25@gmail.com o alla PEC enricomariaguarino@postecertifica.it — non pregiudica la liceità del trattamento basata sul consenso prima della revoca. La revoca comporta l'individuazione e la cancellazione, da parte del Coordinatore, del materiale grezzo non pubblicato che ti ritrae, entro 30 (trenta) giorni dalla revoca — non è una cancellazione automatica: il sistema registra chi ha caricato un file, non chi vi compare, quindi la verifica di quali file eliminare è sempre umana; non comporta invece, di per sé, la rimozione dei contenuti già pubblicati, salvo richiesta esplicita in tal senso. Richieste di rimozione di un contenuto già pubblicato sono valutate caso per caso, alla luce delle finalità editoriali del Progetto e delle eccezioni di cui all'art. 17, par. 3, GDPR (libertà di espressione e informazione), con risposta entro 30 (trenta) giorni, prorogabile a 90 (novanta) giorni con motivazione scritta."),
 
   h2("Obbligo di fornitura dei dati"),
-  p("Il conferimento dei dati anagrafici essenziali (nome, cognome, email, università) e della foto del profilo è necessario per la gestione amministrativa dell'account e della collaborazione: il loro mancato conferimento comporta l'impossibilità di accedere al gestionale e di partecipare al Progetto come Collaboratore. Il consenso alla comparizione con la propria immagine, voce e/o dichiarazioni nei contenuti pubblicati (di cui alla sezione “Consenso per chi appare nei contenuti”) è invece facoltativo e indipendente: il relativo rifiuto o la successiva revoca non pregiudicano in alcun modo la possibilità di partecipare al Progetto per le attività che non comportano la comparizione nei contenuti pubblicati."),
+  p("Il conferimento dei dati anagrafici essenziali (nome, cognome, email) e della foto del profilo è necessario per la gestione amministrativa dell'account e della collaborazione: il loro mancato conferimento comporta l'impossibilità di accedere al gestionale e di partecipare al Progetto come Collaboratore. Il consenso alla comparizione con la propria immagine, voce e/o dichiarazioni nei contenuti pubblicati (di cui alla sezione “Consenso per chi appare nei contenuti”) è invece facoltativo e indipendente: il relativo rifiuto o la successiva revoca non pregiudicano in alcun modo la possibilità di partecipare al Progetto per le attività che non comportano la comparizione nei contenuti pubblicati."),
 ];

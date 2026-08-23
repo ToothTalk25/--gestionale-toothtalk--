@@ -76,7 +76,7 @@ export default async function CertificatoPage({
       </header>
 
       <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-        <Voce t="Gruppo universitario" v={`${polo?.nome ?? "—"}${polo?.citta ? ` (${polo.citta})` : ""}`} />
+        <Voce t="Polo" v={`${polo?.nome ?? "—"}${polo?.citta ? ` (${polo.citta})` : ""}`} />
         <Voce t="Progetto" v={task?.titolo ?? "—"} />
         <Voce t="Tipo di materiale" v={d ? KIND_LABEL[d.kind] : "—"} />
         <Voce t="Nome del file" v={v.file_name} />

@@ -80,7 +80,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo, on_screen, cancellazione_copie_richiesta_at, cancellazione_copie_confermata_at",
+        "id, full_name, email, role, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo, on_screen, cancellazione_copie_richiesta_at, cancellazione_copie_confermata_at",
       )
       .order("role")
       .returns<
@@ -89,7 +89,6 @@ export default async function AdminPage() {
           full_name: string | null;
           email: string;
           role: string;
-          universita: string | null;
           foto_path: string | null;
           accordo_path: string | null;
           accordo_caricato_at: string | null;
@@ -136,7 +135,7 @@ export default async function AdminPage() {
     // senza approvato_at, non admin). È la coda di lavoro dell'admin.
     supabase
       .from("profiles")
-      .select("id, full_name, email, universita, pec, on_screen")
+      .select("id, full_name, email, pec, on_screen")
       .eq("attivo", false)
       .is("approvato_at", null)
       .neq("role", "admin")
@@ -380,7 +379,6 @@ export default async function AdminPage() {
               <tr>
                 <th className="py-2 pr-4">Gruppo</th>
                 <th className="py-2 pr-4">Partecipante</th>
-                <th className="py-2 pr-4">Università</th>
                 <th className="py-2 pr-4">Foto</th>
                 <th className="py-2 pr-4">Accordo editoriale</th>
                 <th className="py-2">Azioni</th>
@@ -401,7 +399,6 @@ export default async function AdminPage() {
                         <ToggleOnScreen userId={p.id} appare={p.on_screen} />
                       </div>
                     </td>
-                    <td className="py-2 pr-4" data-label="Università">{p.universita ?? "—"}</td>
                     <td className="py-2 pr-4" data-label="Foto">
                       {p.foto_path ? (
                         <FotoProfilo path={p.foto_path} className="h-12 w-12 rounded-lg object-cover" />

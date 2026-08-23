@@ -6,7 +6,6 @@ type ProfiloUscente = {
   full_name: string | null;
   email: string;
   role: string;
-  universita: string | null;
   accordo_path: string | null;
   accordo_caricato_at: string | null;
   accordo_verificato: string | null;
@@ -84,8 +83,7 @@ export default function ProfiliUscenti({
                   <p className="text-sm font-medium">{p.full_name ?? p.email}</p>
                   <p className="text-xs text-slate-500">{p.email}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Poli: {poliDi[p.id]?.join(", ") || "—"} · Università:{" "}
-                    {p.universita || "—"}
+                    Poli: {poliDi[p.id]?.join(", ") || "—"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     Materiali depositati:{" "}
@@ -117,7 +115,7 @@ export default function ProfiliUscenti({
                   <p className="font-medium text-red-700">Cosa si perde</p>
                   <ul className="mt-1 list-disc pl-4 text-red-800/80">
                     <li>Foto profilo e dati di contatto</li>
-                    <li>Email, università, PEC</li>
+                    <li>Email, PEC</li>
                     <li>Consensi e appartenenze ai poli</li>
                     <li>Video grezzo (immagine/voce), se richiesto</li>
                   </ul>
