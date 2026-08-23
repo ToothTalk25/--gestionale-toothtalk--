@@ -102,7 +102,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/documenti" className="hover:text-slate-600">
                 Documenti
               </Link>
-              <Link href="/privacy" className="hover:text-slate-600">
+              <Link href="/privacy?from=app" className="hover:text-slate-600">
                 Privacy e cookie
               </Link>
             </div>

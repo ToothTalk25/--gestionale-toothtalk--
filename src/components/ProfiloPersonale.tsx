@@ -378,11 +378,11 @@ export default function ProfiloPersonale({
           )}
           <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
             Informative:{" "}
-            <Link href="/privacy" className="text-tt-blue underline">
+            <Link href="/privacy?from=app" className="text-tt-blue underline">
               privacy policy
             </Link>{" "}
             e{" "}
-            <Link href="/privacy#cookie" className="text-tt-blue underline">
+            <Link href="/privacy?from=app#cookie" className="text-tt-blue underline">
               cookie policy
             </Link>
             .

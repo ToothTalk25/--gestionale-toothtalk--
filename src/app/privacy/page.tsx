@@ -24,7 +24,13 @@ function raggruppaPerSezione(blocchi: Blocco[]): Blocco[][] {
   return gruppi;
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const { from } = await searchParams;
+  const dallGestionale = from === "app";
   const sezioni = raggruppaPerSezione(INFORMATIVA_PRIVACY);
 
   return (
@@ -58,9 +64,15 @@ export default function PrivacyPage() {
 
         <p className="pt-4 text-xs text-slate-400">
           Ultimo aggiornamento: 21 agosto 2026 ·{" "}
-          <Link href="/login" className="underline">
-            Torna al login
-          </Link>
+          {dallGestionale ? (
+            <Link href="/dashboard" className="underline">
+              Torna al gestionale
+            </Link>
+          ) : (
+            <Link href="/login" className="underline">
+              Torna al login
+            </Link>
+          )}
         </p>
       </section>
     </main>

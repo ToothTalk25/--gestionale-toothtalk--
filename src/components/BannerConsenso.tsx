@@ -80,11 +80,11 @@ export default function BannerConsenso() {
         <p className="flex-1 text-xs leading-relaxed text-slate-600">
           Il gestionale usa solo cookie tecnici necessari all&apos;accesso. Leggi
           l&apos;{" "}
-          <Link href="/privacy" className="text-tt-blue underline">
+          <Link href="/privacy?from=app" className="text-tt-blue underline">
             informativa privacy
           </Link>{" "}
           e la{" "}
-          <Link href="/privacy#cookie" className="text-tt-blue underline">
+          <Link href="/privacy?from=app#cookie" className="text-tt-blue underline">
             cookie policy
           </Link>{" "}
           prima di proseguire.
