@@ -1430,9 +1430,9 @@ trattamento e Coordinatore del progetto editoriale &quot;Tooth Talk&quot;,</p>
 
 <h2>DICHIARA E NOMINA</h2>
 
-<p>che <strong>${esc(nome)}</strong>, nato/a a ${esc(c.luogo_nascita)} il ${dataNascitaIt},
+<p>Il/la Collaboratore/trice <strong>${esc(nome)}</strong>, nato/a a ${esc(c.luogo_nascita)} il ${dataNascitaIt},
 C.F. ${esc(c.codice_fiscale)}, avendo sottoscritto in data ${dataSottoscrizioneIt} l'Accordo
-Editoriale per la collaborazione volontaria al Progetto &quot;Tooth Talk&quot;, è nominato/a persona
+Editoriale per la collaborazione volontaria al Progetto &quot;Tooth Talk&quot;, quale persona
 autorizzata al trattamento dei dati personali ai sensi dell'art. 29 del Regolamento (UE) 2016/679
 (GDPR) e dell'art. 2-quaterdecies del D.Lgs. 196/2003 e s.m.i. (Codice Privacy), sotto l'autorità
 e le istruzioni documentate del Titolare del trattamento.</p>
