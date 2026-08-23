@@ -17,7 +17,7 @@ const ul = (voci: string[]): Blocco => ({ tipo: "ul", voci });
 
 export const INFORMATIVA_PRIVACY: Blocco[] = [
   h2("Titolare del trattamento"),
-  p("Il Titolare del trattamento è Enrico Maria Guarino, in qualità di titolare del progetto editoriale “Tooth Talk”, con sede in Via Bozzano n.11 16143 Genova, C.F. GRNNCM05H20C342W. E-mail: enricoguarino25@gmail.com. PEC: enricomariaguarino@postecertifica.it."),
+  p("Il Titolare del trattamento è Enrico Maria Guarino, in qualità di titolare del progetto editoriale “Tooth Talk™”, con sede in Via Bozzano n.11 16143 Genova, C.F. GRNNCM05H20C342W. E-mail: enricoguarino25@gmail.com. PEC: enricomariaguarino@postecertifica.it."),
 
   h2("Responsabile della protezione dei dati (DPO)"),
   p("Non è stato designato un Responsabile della protezione dei dati, in quanto il trattamento non rientra nelle ipotesi di cui all'art. 37 del Regolamento UE 2016/679 (GDPR). Per qualsiasi questione relativa al trattamento dei dati personali, è possibile contattare il Titolare all'indirizzo email o PEC indicati sopra."),

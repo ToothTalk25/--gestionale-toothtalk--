@@ -1465,7 +1465,7 @@ decisionale sulle finalità e sui mezzi del trattamento, ed è tenuto a:</p>
 
 <h2>Durata dell'autorizzazione</h2>
 <p>La presente nomina ha effetto per tutta la durata della collaborazione con il Progetto
-&quot;Tooth Talk&quot;, come definita dall'Accordo Editoriale, e può essere revocata in qualsiasi
+&quot;Tooth Talk™&quot;, come definita dall'Accordo Editoriale, e può essere revocata in qualsiasi
 momento dal Coordinatore con comunicazione scritta.</p>
 
 <p>Le istruzioni operative di cui agli Artt. 6.2 e 6.3 dell'Accordo Editoriale, già sottoscritto
