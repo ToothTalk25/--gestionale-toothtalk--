@@ -9,6 +9,12 @@ const PUBBLICHE = [
   "/privacy",
   "/termini",
   "/registrati",
+  // Link di reset password ricevuto via email: arriva con ?code= (flusso
+  // PKCE di @supabase/ssr) e chi clicca NON ha ancora una sessione — la
+  // ottiene solo dopo che il client scambia il code, cosa che può fare
+  // solo se il proxy lo lascia arrivare alla pagina invece di rimandarlo
+  // subito al login.
+  "/aggiorna-password",
   // Firma della liberatoria da parte di chi è stato intervistato: non ha
   // (e non deve avere) un account nel gestionale, riceve solo un link con
   // token via email. Senza questa riga il proxy lo rimandava al login,
