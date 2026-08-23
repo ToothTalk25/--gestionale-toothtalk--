@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { requireSession } from "@/lib/auth";
+import { requireSession, getSessionContext } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
 import { inviaEmailGmail } from "@/lib/mail";
@@ -53,6 +53,7 @@ type CampiAnagrafica = Partial<
 export async function eliminaAccount(
   userId: string,
   conferma: boolean,
+  art94Confermata?: boolean,
 ): Promise<Esito<{ account: string }>> {
   const { isAdmin, profile } = await requireSession();
   if (!conferma) return errore("Conferma di essere consapevole di cosa stai eliminando.");
@@ -60,6 +61,17 @@ export async function eliminaAccount(
   // Solo chi ha accesso globale, o la persona stessa sul proprio account.
   if (!isAdmin && profile.id !== userId) {
     return errore("Operazione non disponibile da qui.");
+  }
+
+  // Art. 9.4: chi esce da sé deve confermare di aver cancellato le copie
+  // locali (è l'unico modo per registrare la "comunicazione al Coordinatore"
+  // prima che l'account sparisca). Il Titolare non è vincolato a questa
+  // dichiarazione: se elimina un account dopo una chiusura, la conferma
+  // pendente resta visibile nel Registro finché il Collaboratore non la dà.
+  if (profile.id === userId && art94Confermata !== true) {
+    return errore(
+      "Devi confermare di aver cancellato le copie locali dei materiali e dei dati di terzi (Art. 9.4 dell'Accordo Editoriale) prima di uscire.",
+    );
   }
 
   const admin = supabaseAdmin();
@@ -119,6 +131,15 @@ export async function eliminaAccount(
       universita: null,
       foto_path: null,
       attivo: false,
+      // Uscita volontaria: la conferma Art. 9.4 è data in questo stesso
+      // momento (richiesta e conferma coincidono). L'audit sotto ne lascia
+      // traccia immutabile anche dopo l'anonimizzazione del profilo.
+      ...(profile.id === userId
+        ? {
+            cancellazione_copie_richiesta_at: new Date().toISOString(),
+            cancellazione_copie_confermata_at: new Date().toISOString(),
+          }
+        : {}),
     })
     .eq("id", userId);
 
@@ -142,9 +163,62 @@ export async function eliminaAccount(
     }),
   );
 
+  // Uscita volontaria: conferma Art. 9.4 registrata nello stesso atto.
+  if (profile.id === userId) {
+    await ignora(
+      admin.from("audit_log").insert({
+        actor: profile.id,
+        actor_role: profile.role,
+        action: "conferma_cancellazione_copie",
+        entity_type: "profile",
+        entity_id: userId,
+        meta: { articolo: "9.4", mezzo: "uscita volontaria dal gestionale" },
+      }),
+    );
+  }
+
   revalidatePath("/admin");
   revalidatePath("/profilo");
   return { ok: true, dati: { account: "ex" } };
+}
+
+/**
+ * Conferma Art. 9.4 Accordo Editoriale: il Collaboratore uscente dichiara di
+ * aver cancellato tutte le copie locali dei materiali grezzi, dei recapiti e
+ * degli altri dati personali di terzi, entro 48 ore dalla cessazione.
+ * Accessibile SOLO dallo stato "solo conferma uscita" (account disattivato
+ * con richiesta pendente): registra data e ora in audit_log e chiude la
+ * richiesta. Nessun blocco tecnico: se non arriva, resta visibile nel
+ * Registro come "conferma non ancora ricevuta".
+ */
+export async function confermaCancellazioneCopie(): Promise<Esito> {
+  const ctx = await getSessionContext();
+  if (!ctx?.soloConfermaUscita) {
+    return errore("Nessuna conferma di uscita in attesa per questo account.");
+  }
+
+  const admin = supabaseAdmin();
+  const ora = new Date().toISOString();
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ cancellazione_copie_confermata_at: ora })
+    .eq("id", ctx.profile.id);
+  if (error) return errore(error.message);
+
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: ctx.profile.id,
+      actor_role: ctx.profile.role,
+      action: "conferma_cancellazione_copie",
+      entity_type: "profile",
+      entity_id: ctx.profile.id,
+      meta: { articolo: "9.4", mezzo: "pagina di conferma uscita" },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: undefined };
 }
 
 /** Una task collegata a un partecipante (per il riepilogo della revoca). */
@@ -247,7 +321,15 @@ export async function terminaCollaborazione(
 
   const motivo = `Fine collaborazione con ${target.full_name ?? target.id}`;
 
-  await admin.from("profiles").update({ attivo: false }).eq("id", userId);
+  await admin.from("profiles").update({
+    attivo: false,
+    // Art. 9.4 Accordo: la chiusura fa partire le 48 ore entro cui il
+    // Collaboratore deve confermare di aver cancellato le copie locali.
+    // La conferma avviene dal flusso dedicato /uscita (o all'uscita
+    // volontaria via eliminaAccount): nessun blocco tecnico, resta solo
+    // visibile nel Registro come "conferma non ancora ricevuta".
+    cancellazione_copie_richiesta_at: new Date().toISOString(),
+  }).eq("id", userId);
 
   await ignora(
     admin.from("audit_log").insert({
@@ -256,7 +338,7 @@ export async function terminaCollaborazione(
       action: "chiusura_collaborazione",
       entity_type: "profile",
       entity_id: userId,
-      meta: { motivo },
+      meta: { motivo, art94: "conferma_copie_locali_richiesta" },
     }),
   );
 
@@ -1559,6 +1641,27 @@ export async function scaricaDocumentoNomina(userId?: string): Promise<Esito<str
   if (!c?.nomina_path) return errore("Modulo di nomina non ancora generato.");
 
   const { data } = await admin.storage.from("finali").createSignedUrl(c.nomina_path, 300);
+  if (!data?.signedUrl) return errore("Impossibile generare il link.");
+  return { ok: true, dati: data.signedUrl };
+}
+
+/**
+ * Download del proprio accordo firmato. Disponibile anche all'uscente a
+ * prescindere dalla conferma Art. 9.4: il diritto di accesso ai propri
+ * documenti (art. 15 GDPR, promesso nell'informativa) non dipende dagli
+ * adempimenti post-uscita. Il file vive nel bucket "profili".
+ */
+export async function scaricaAccordo(): Promise<Esito<string>> {
+  const { profile } = await requireSession();
+  const admin = supabaseAdmin();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("accordo_path")
+    .eq("id", profile.id)
+    .single<{ accordo_path: string | null }>();
+  if (!c?.accordo_path) return errore("Accordo non ancora caricato.");
+
+  const { data } = await admin.storage.from("profili").createSignedUrl(c.accordo_path, 300);
   if (!data?.signedUrl) return errore("Impossibile generare il link.");
   return { ok: true, dati: data.signedUrl };
 }

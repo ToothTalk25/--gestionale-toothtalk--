@@ -14,6 +14,7 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
   const router = useRouter();
   const [aperta, setAperta] = useState(false);
   const [consapevole, setConsapevole] = useState(false);
+  const [art94, setArt94] = useState(false);
   const [inCorso, setInCorso] = useState(false);
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
@@ -23,7 +24,9 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
     setErrore(null);
     setMessaggio(null);
 
-    const esito = await eliminaAccount(userId, true);
+    // art94: conferma obbligatoria della cancellazione delle copie locali
+    // (Art. 9.4 Accordo) — richiesta SOLO per chi elimina il proprio account.
+    const esito = await eliminaAccount(userId, true, art94);
     if (!esito.ok) {
       setErrore(esito.errore);
       setInCorso(false);
@@ -102,8 +105,24 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
         </span>
       </label>
 
+      {/* Art. 9.4 Accordo: comunicazione obbligatoria della cancellazione
+          delle copie locali, prima che l'account venga eliminato. */}
+      <label className="mt-3 flex items-start gap-2 text-xs text-slate-600">
+        <input
+          type="checkbox"
+          checked={art94}
+          onChange={(e) => setArt94(e.target.checked)}
+          className="mt-0.5 h-4 w-4"
+        />
+        <span>
+          Confermo di aver cancellato tutte le copie locali dei materiali
+          grezzi, dei recapiti e degli altri dati personali di terzi ancora in
+          mio possesso, ai sensi dell&apos;Art. 9.4 dell&apos;Accordo Editoriale.
+        </span>
+      </label>
+
       <button
-        disabled={!consapevole || inCorso}
+        disabled={!consapevole || !art94 || inCorso}
         onClick={elimina}
         className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
       >

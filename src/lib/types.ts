@@ -121,6 +121,8 @@ export type Profile = {
   nomina_path: string | null;
   nomina_sha256: string | null;
   nomina_generata_at: string | null;
+  cancellazione_copie_richiesta_at: string | null;
+  cancellazione_copie_confermata_at: string | null;
 };
 
 export type Polo = {
@@ -374,4 +376,10 @@ export type SessionContext = {
   profile: Profile;
   poli: Polo[];
   isAdmin: boolean;
+  /**
+   * Accesso limitato alla sola conferma Art. 9.4: account disattivato ma con
+   * richiesta di conferma copie locali ancora non data. Chi è in questo stato
+   * può vedere SOLO la pagina /uscita, poi viene scollegato.
+   */
+  soloConfermaUscita?: boolean;
 };

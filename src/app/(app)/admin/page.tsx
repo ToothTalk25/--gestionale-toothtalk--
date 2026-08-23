@@ -80,7 +80,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo, on_screen",
+        "id, full_name, email, role, universita, foto_path, accordo_path, accordo_caricato_at, accordo_verificato, attivo, on_screen, cancellazione_copie_richiesta_at, cancellazione_copie_confermata_at",
       )
       .order("role")
       .returns<
@@ -96,6 +96,8 @@ export default async function AdminPage() {
           accordo_verificato: string | null;
           attivo: boolean;
           on_screen: boolean;
+          cancellazione_copie_richiesta_at: string | null;
+          cancellazione_copie_confermata_at: string | null;
         }[]
       >(),
     supabase

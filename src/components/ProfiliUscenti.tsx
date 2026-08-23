@@ -11,6 +11,8 @@ type ProfiloUscente = {
   accordo_caricato_at: string | null;
   accordo_verificato: string | null;
   attivo: boolean;
+  cancellazione_copie_richiesta_at: string | null;
+  cancellazione_copie_confermata_at: string | null;
 };
 
 /**
@@ -49,6 +51,32 @@ export default function ProfiliUscenti({
       <div className="mt-4 space-y-4">
         {uscenti.map((p) => {
           const materiali = materialiDi[p.id] ?? 0;
+          // Art. 9.4 Accordo: lo stato della conferma di cancellazione delle
+          // copie locali. Nessun blocco tecnico: se non ricevuta entro 48h,
+          // resta segnalata come tale finché il Collaboratore non la dà.
+          const richiesta = p.cancellazione_copie_richiesta_at;
+          const confermata = p.cancellazione_copie_confermata_at;
+          let statoArt94: React.ReactNode = null;
+          if (richiesta) {
+            const termine = new Date(new Date(richiesta).getTime() + 48 * 3600 * 1000);
+            const scaduto = !confermata && new Date() > termine;
+            statoArt94 = confermata ? (
+              <span className="text-emerald-700">
+                Conferma copie locali (Art. 9.4): ricevuta il{" "}
+                {new Date(confermata).toLocaleDateString("it-IT")}
+              </span>
+            ) : scaduto ? (
+              <span className="font-medium text-red-700">
+                Conferma copie locali (Art. 9.4): NON RICEVUTA — oltre le 48
+                ore dal {new Date(richiesta).toLocaleDateString("it-IT")}
+              </span>
+            ) : (
+              <span className="text-amber-700">
+                Conferma copie locali (Art. 9.4): in attesa — termine entro il{" "}
+                {new Date(termine).toLocaleDateString("it-IT")}
+              </span>
+            );
+          }
           return (
             <div key={p.id} className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -73,6 +101,9 @@ export default function ProfiliUscenti({
                       <span className="text-slate-400">non presente</span>
                     )}
                   </p>
+                  {statoArt94 && (
+                    <p className="mt-1 text-xs">{statoArt94}</p>
+                  )}
                 </div>
                 <div className="flex flex-col items-start gap-1">
                   <RiattivaCollaborazione userId={p.id} />

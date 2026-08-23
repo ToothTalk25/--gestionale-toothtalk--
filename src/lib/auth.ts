@@ -37,12 +37,22 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, pec, full_name, role, attivo, on_screen, universita, foto_path, data_nascita, luogo_nascita, codice_fiscale, accordo_path, accordo_sha256, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_verificato_at, accordo_letto_confermato, accordo_approvato_admin_at, accordo_approvato_da, nomina_path, nomina_sha256, nomina_generata_at",
+      "id, email, pec, full_name, role, attivo, on_screen, universita, foto_path, data_nascita, luogo_nascita, codice_fiscale, accordo_path, accordo_sha256, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_verificato_at, accordo_letto_confermato, accordo_approvato_admin_at, accordo_approvato_da, nomina_path, nomina_sha256, nomina_generata_at, cancellazione_copie_richiesta_at, cancellazione_copie_confermata_at",
     )
     .eq("id", session.user.id)
     .single<Profile>();
 
-  if (!profile || !profile.attivo) return null;
+  if (!profile) return null;
+
+  // Uscita con conferma Art. 9.4 pendente: l'account è disattivato ma il
+  // Collaboratore può ancora entrare nella pagina dedicata per confermare
+  // di aver cancellato le copie locali (unico scopo dell'accesso). Ogni
+  // altra pagina lo rimanda lì (vedi layout) e la conferma lo scollega.
+  const soloConfermaUscita =
+    !profile.attivo &&
+    !!profile.cancellazione_copie_richiesta_at &&
+    !profile.cancellazione_copie_confermata_at;
+  if (!profile.attivo && !soloConfermaUscita) return null;
 
   // L'Admin vede tutti i poli, il membro solo i propri: la select è la stessa,
   // è la RLS su "poli" a filtrare.
@@ -57,6 +67,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
     profile,
     poli: ordinaPoli(poli ?? []),
     isAdmin: profile.role === "admin",
+    soloConfermaUscita,
   };
 });
 

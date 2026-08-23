@@ -8,7 +8,14 @@ import NavLink from "@/components/NavLink";
 import { PoloAttivoProvider } from "@/components/PoloAttivoContext";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, poli, isAdmin } = await requireSession();
+  const { profile, poli, isAdmin, soloConfermaUscita } = await requireSession();
+
+  // Uscita con conferma Art. 9.4 pendente: chiunque entri nell'app mentre la
+  // conferma è in attesa viene mandato alla pagina dedicata /uscita (fuori
+  // da questo gruppo di rotte) — nessun altro contenuto è accessibile.
+  if (soloConfermaUscita) {
+    redirect("/uscita");
+  }
 
   // --- Blocco accesso progetti finché l'accordo non è completo ---------
   // Quattro condizioni, TUTTE necessarie per i Collaboratori:
