@@ -72,7 +72,7 @@ export default function RegistratiPage() {
           </p>
           <Link
             href="/login"
-            className="mt-6 inline-block w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white"
+            className="tt-btn mt-6 inline-block w-full bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95"
           >
             Vai al login
           </Link>
@@ -219,7 +219,7 @@ export default function RegistratiPage() {
         <button
           type="submit"
           disabled={inCorso || !gruppo}
-          className="mt-6 w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="tt-btn mt-6 w-full bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
         >
           {inCorso ? "Creazione…" : "Crea account"}
         </button>

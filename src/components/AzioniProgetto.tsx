@@ -89,7 +89,7 @@ export default function AzioniProgetto({
           <button
             onClick={salvaTitolo}
             disabled={pending}
-            className="rounded-lg bg-tt-ink px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="tt-btn bg-tt-ink px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
           >
             Salva
           </button>

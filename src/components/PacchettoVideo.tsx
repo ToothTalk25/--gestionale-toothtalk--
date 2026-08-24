@@ -669,7 +669,7 @@ export default function PacchettoVideo({
                       router.refresh();
                     })
                   }
-                  className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                  className="tt-btn bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-40"
                 >
                   {pending ? "Attendere…" : "Segnala completato"}
                 </button>
@@ -722,7 +722,7 @@ export default function PacchettoVideo({
                       router.refresh();
                     })
                   }
-                  className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                  className="tt-btn bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-40"
                 >
                   {pending ? "Attendere…" : "Sigilla il pacchetto"}
                 </button>

@@ -74,7 +74,7 @@ export default function CaricaModelloAccordo({ modelli }: { modelli: RigaModello
         <button
           onClick={() => inputRef.current?.click()}
           disabled={inCorso}
-          className="rounded-lg bg-tt-ink px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="tt-btn bg-tt-ink px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
         >
           {inCorso ? "Carico…" : "Carica nuovo modello"}
         </button>

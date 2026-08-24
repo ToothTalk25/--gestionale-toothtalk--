@@ -93,7 +93,7 @@ export default function BannerConsenso() {
           <button
             type="button"
             onClick={() => accetta()}
-            className="rounded-lg bg-tt-ink px-4 py-1.5 text-xs font-medium text-white hover:opacity-90"
+            className="tt-btn bg-tt-ink px-4 py-1.5 text-xs text-white hover:brightness-95"
           >
             Ho capito
           </button>

@@ -24,7 +24,7 @@ export default function NewTaskForm({
     return (
       <button
         onClick={() => setAperto(true)}
-        className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white"
+        className="tt-btn bg-tt-blue px-4 py-2 text-sm text-white hover:brightness-95"
       >
         + Nuovo progetto
       </button>
@@ -112,14 +112,14 @@ export default function NewTaskForm({
       <div className="flex gap-2">
         <button
           disabled={pending}
-          className="rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="tt-btn bg-tt-blue px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
         >
           {pending ? "Creo…" : "Crea progetto"}
         </button>
         <button
           type="button"
           onClick={() => setAperto(false)}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+          className="tt-btn border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
         >
           Annulla
         </button>

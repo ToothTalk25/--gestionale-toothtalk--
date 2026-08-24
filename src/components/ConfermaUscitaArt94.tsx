@@ -83,7 +83,7 @@ export default function ConfermaUscitaArt94() {
       <button
         disabled={!conferma || inCorso}
         onClick={invia}
-        className="mt-5 w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="tt-btn mt-5 w-full bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
       >
         {inCorso ? "Registro…" : "Conferma e chiudi"}
       </button>

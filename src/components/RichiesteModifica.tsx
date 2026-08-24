@@ -241,7 +241,7 @@ export default function RichiesteModifica({
                 }
               })
             }
-            className="mt-2 rounded-lg bg-tt-ink px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+            className="tt-btn mt-2 bg-tt-ink px-4 py-2 text-xs text-white hover:brightness-95 disabled:opacity-40"
           >
             {pending ? "Invio…" : "Richiedi modifica"}
           </button>

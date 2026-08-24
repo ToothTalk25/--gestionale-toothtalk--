@@ -277,7 +277,7 @@ export default function ProfiloPersonale({
 
         <button
           onClick={salvaAnagrafica}
-          className="mt-5 rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white"
+          className="tt-btn mt-5 bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95"
         >
           Salva dati
         </button>

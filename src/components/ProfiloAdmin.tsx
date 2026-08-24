@@ -102,7 +102,7 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
         <button
           onClick={salva}
           disabled={inCorso}
-          className="mt-4 rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="tt-btn mt-4 bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
         >
           {inCorso ? "Salvo…" : "Salva"}
         </button>

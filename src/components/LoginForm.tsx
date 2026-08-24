@@ -106,7 +106,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={inCorso}
-          className="mt-6 w-full rounded-lg bg-tt-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="tt-btn mt-6 w-full bg-tt-ink px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
         >
           {inCorso ? "Accesso…" : "Accedi"}
         </button>
