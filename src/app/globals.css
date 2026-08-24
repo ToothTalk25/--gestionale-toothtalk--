@@ -102,17 +102,23 @@ label:has(input[type="checkbox"], input[type="radio"]):active {
  * il corpo del testo resta Regular. I componenti possono comunque forzare un
  * peso diverso con le classi font-medium/font-semibold di Tailwind.
  */
-h1,
-h2,
-h3,
-h4 {
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
+/* Dentro @layer base: le regole senza layer battono QUALSIASI regola dentro
+   un layer, quindi da non-layered questo "button { font-weight: 500 }"
+   vinceva su .tt-btn (@layer components) e su font-semibold — tutti i
+   bottoni dell'app restavano più leggeri del previsto. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
 
-label,
-button {
-  font-weight: 500;
+  label,
+  button {
+    font-weight: 500;
+  }
 }
 
 /* Stampa: le pagine "certificato" devono uscire pulite dalla stampante. */
