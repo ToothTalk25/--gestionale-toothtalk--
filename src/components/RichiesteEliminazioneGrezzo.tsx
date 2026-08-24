@@ -131,7 +131,7 @@ export default function RichiesteEliminazioneGrezzo({
             <button
               disabled={pending}
               onClick={() => esegui(r.id)}
-              className="mt-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="mt-2 tt-btn bg-red-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
             >
               Elimina i selezionati e chiudi
             </button>

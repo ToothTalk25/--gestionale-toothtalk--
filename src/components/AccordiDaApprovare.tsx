@@ -109,7 +109,7 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
               <button
                 onClick={() => approva(a.id)}
                 disabled={inCorso === a.id}
-                className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 {inCorso === a.id ? "Approvo…" : "Approva accordo"}
               </button>

@@ -522,7 +522,7 @@ export default function PacchettoVideo({
                       if (!esito.ok) window.alert(esito.errore);
                       else router.refresh();
                     }}
-                    className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                    className="tt-btn border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
                   >
                     Segnala errore (il video va ricaricato)
                   </button>
@@ -578,7 +578,7 @@ export default function PacchettoVideo({
                         if (!esito.ok) window.alert(esito.errore);
                         else router.refresh();
                       }}
-                      className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      className="tt-btn border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
                     >
                       Segnala errore (il video va ricaricato)
                     </button>
@@ -874,7 +874,7 @@ function DettaglioSigillo({
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={`/task/${taskId}/verbale/${pacchetto.id}`}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+          className="tt-btn border border-slate-300 px-3 py-1.5 text-xs"
         >
           Apri il verbale
         </Link>
@@ -921,7 +921,7 @@ function DettaglioSigillo({
                   else setMessaggio("Pacchetto annullato: resta comunque a registro.");
                 })
               }
-              className="rounded-lg border border-red-300 px-3 py-1 text-xs text-red-700 disabled:opacity-40"
+              className="tt-btn border border-red-300 px-3 py-1 text-xs text-red-700 disabled:opacity-40"
             >
               Annulla pacchetto
             </button>

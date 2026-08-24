@@ -54,7 +54,7 @@ export default function GoogleDocCard({
           </button>
           <button
             onClick={() => setModifica(false)}
-            className="rounded-lg px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100"
+            className="tt-btn px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100"
           >
             Annulla
           </button>

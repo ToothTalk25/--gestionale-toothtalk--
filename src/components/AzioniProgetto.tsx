@@ -95,7 +95,7 @@ export default function AzioniProgetto({
           </button>
           <button
             onClick={() => setInModifica(false)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+            className="tt-btn border border-slate-300 px-3 py-1.5 text-xs"
           >
             Annulla
           </button>
@@ -123,7 +123,7 @@ export default function AzioniProgetto({
           onClick={elimina}
           disabled={pending}
           title="Elimina il progetto"
-          className="rounded-lg border border-slate-200 p-1.5 text-slate-300 hover:border-red-200 hover:text-red-600 disabled:opacity-50"
+          className="tt-btn border border-slate-200 p-1.5 text-slate-300 hover:border-red-200 hover:text-red-600 disabled:opacity-50"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 6h18" />

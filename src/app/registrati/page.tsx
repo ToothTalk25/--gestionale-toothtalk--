@@ -160,7 +160,7 @@ export default function RegistratiPage() {
           <button
             type="button"
             onClick={() => setOnScreen(true)}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            className={`tt-btn border px-3 py-2 text-sm transition ${
               onScreen === true
                 ? "border-tt-blue bg-tt-blue-50 text-tt-blue"
                 : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -171,7 +171,7 @@ export default function RegistratiPage() {
           <button
             type="button"
             onClick={() => setOnScreen(false)}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            className={`tt-btn border px-3 py-2 text-sm transition ${
               onScreen === false
                 ? "border-tt-blue bg-tt-blue-50 text-tt-blue"
                 : "border-slate-200 text-slate-600 hover:bg-slate-50"

@@ -43,7 +43,7 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
       <div className="flex justify-end">
         <button
           onClick={() => setAperta(true)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-400 transition hover:border-red-200 hover:text-red-600"
+          className="tt-btn border border-slate-200 px-3 py-1.5 text-xs text-slate-400 transition hover:border-red-200 hover:text-red-600"
         >
           Fine della collaborazione
         </button>
@@ -124,7 +124,7 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
       <button
         disabled={!consapevole || !art94 || inCorso}
         onClick={elimina}
-        className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className="tt-btn mt-4 bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-50"
       >
         {inCorso ? "Elimino…" : "Elimina il mio account e i miei dati"}
       </button>

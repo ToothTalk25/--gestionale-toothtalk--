@@ -185,7 +185,7 @@ export default async function RevisionePage() {
                   </span>
                   <Link
                     href={`/task/${v.task_id}/verbale/${v.pacchetto_id}`}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                    className="tt-btn border border-slate-300 px-3 py-1.5 text-xs"
                   >
                     Verbale
                   </Link>

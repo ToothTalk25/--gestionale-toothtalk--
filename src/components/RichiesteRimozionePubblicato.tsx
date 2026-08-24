@@ -94,21 +94,21 @@ export default function RichiesteRimozionePubblicato({
                       <button
                         disabled={pending}
                         onClick={() => risolvi(r.id, "rimosso")}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        className="tt-btn bg-red-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
                       >
                         Rimosso
                       </button>
                       <button
                         disabled={pending}
                         onClick={() => risolvi(r.id, "oscurato")}
-                        className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        className="tt-btn bg-amber-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
                       >
                         Oscurato
                       </button>
                       <button
                         disabled={pending}
                         onClick={() => risolvi(r.id, "rifiutato")}
-                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-50"
+                        className="tt-btn border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-50"
                       >
                         Rifiutato (eccezione art. 17.3.a)
                       </button>
@@ -119,7 +119,7 @@ export default function RichiesteRimozionePubblicato({
                           setMotivazione("");
                           setErrore(null);
                         }}
-                        className="rounded-lg px-3 py-1.5 text-xs text-slate-500 hover:bg-white"
+                        className="tt-btn px-3 py-1.5 text-xs text-slate-500 hover:bg-white"
                       >
                         Annulla
                       </button>
@@ -132,7 +132,7 @@ export default function RichiesteRimozionePubblicato({
                       setMotivazione("");
                       setErrore(null);
                     }}
-                    className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                    className="tt-btn mt-2 border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
                   >
                     Valuta
                   </button>

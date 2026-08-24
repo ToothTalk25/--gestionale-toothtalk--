@@ -63,19 +63,19 @@ export default function DocumentiUscente() {
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => apri(() => scaricaAccordo())}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
+          className="tt-btn border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
         >
           Scarica il tuo accordo firmato
         </button>
         <button
           onClick={() => apri(() => scaricaDocumentoNomina())}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
+          className="tt-btn border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
         >
           Scarica il tuo modulo di nomina
         </button>
         <button
           onClick={esporta}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
+          className="tt-btn border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
         >
           Esporta i tuoi dati (portabilità GDPR)
         </button>

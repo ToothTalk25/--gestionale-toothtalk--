@@ -56,7 +56,7 @@ export default function TerminaCollaborazione({
       <button
         onClick={termina}
         disabled={inCorso}
-        className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
+        className="tt-btn w-full border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
       >
         {inCorso ? "Termino…" : "Termina Collaborazione"}
       </button>

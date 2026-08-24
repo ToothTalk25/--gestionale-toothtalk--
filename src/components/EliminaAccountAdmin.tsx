@@ -42,7 +42,7 @@ export default function EliminaAccountAdmin({ userId }: { userId: string }) {
       <button
         onClick={elimina}
         disabled={inCorso}
-        className="w-full rounded-md border border-red-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 sm:w-auto"
+        className="tt-btn w-full border border-red-200 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 sm:w-auto"
       >
         {inCorso ? "Elimino…" : "Elimina account"}
       </button>

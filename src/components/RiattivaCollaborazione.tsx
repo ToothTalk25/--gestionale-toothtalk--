@@ -38,7 +38,7 @@ export default function RiattivaCollaborazione({ userId }: { userId: string }) {
       <button
         onClick={riattiva}
         disabled={inCorso}
-        className="w-full rounded-md border border-emerald-200 px-2.5 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 sm:w-auto"
+        className="tt-btn w-full border border-emerald-200 px-2.5 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 sm:w-auto"
       >
         {inCorso ? "Riattivo…" : "Riattiva"}
       </button>

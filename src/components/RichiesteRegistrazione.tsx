@@ -95,7 +95,7 @@ export default function RichiesteRegistrazione({
                     onClick={() =>
                       setOnScreen((s) => ({ ...s, [r.id]: true }))
                     }
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                    className={`tt-btn px-2.5 py-1 text-xs transition ${
                       onScreen[r.id]
                         ? "bg-tt-blue text-white"
                         : "text-slate-500 hover:bg-slate-50"
@@ -108,7 +108,7 @@ export default function RichiesteRegistrazione({
                     onClick={() =>
                       setOnScreen((s) => ({ ...s, [r.id]: false }))
                     }
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                    className={`tt-btn px-2.5 py-1 text-xs transition ${
                       !onScreen[r.id]
                         ? "bg-tt-blue text-white"
                         : "text-slate-500 hover:bg-slate-50"
@@ -122,7 +122,7 @@ export default function RichiesteRegistrazione({
                 <button
                   onClick={() => approva(r.id)}
                   disabled={inCorso === r.id}
-                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                  className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {inCorso === r.id ? "Approvo…" : "Approva"}
                 </button>

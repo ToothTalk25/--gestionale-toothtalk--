@@ -79,7 +79,7 @@ export default function RichiesteRicaricamentoDichiarazione({
           <button
             disabled={pending}
             onClick={() => libera(r.id)}
-            className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="tt-btn bg-amber-700 px-3 py-1.5 text-xs text-white disabled:opacity-50"
           >
             Libera il campo (consenti ricaricamento)
           </button>

@@ -311,7 +311,7 @@ export default function ProfiloPersonale({
             />
             <button
               onClick={() => fotoInput.current?.click()}
-              className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+              className="mt-4 tt-btn border border-slate-300 px-3 py-1.5 text-xs"
             >
               {fotoPath ? "Sostituisci foto" : "Carica foto"}
             </button>
@@ -336,21 +336,21 @@ export default function ProfiloPersonale({
             <button
               onClick={() => revoca("privacy")}
               disabled={revocaInCorso}
-              className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+              className="tt-btn border border-amber-300 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50 disabled:opacity-50"
             >
               Revoca consenso privacy
             </button>
             <button
               onClick={() => revoca("cookie")}
               disabled={revocaInCorso}
-              className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+              className="tt-btn border border-amber-300 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50 disabled:opacity-50"
             >
               Revoca consenso cookie
             </button>
             <button
               onClick={esportaDati}
               disabled={revocaInCorso}
-              className="rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+              className="tt-btn border border-blue-300 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-50"
             >
               Esporta i miei dati (GDPR)
             </button>
@@ -390,7 +390,7 @@ export default function ProfiloPersonale({
               {!revocaImmagineAperta ? (
                 <button
                   onClick={() => setRevocaImmagineAperta(true)}
-                  className="mt-3 rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                  className="mt-3 tt-btn border border-amber-300 px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50"
                 >
                   Revoca consenso a immagine e voce
                 </button>
@@ -422,7 +422,7 @@ export default function ProfiloPersonale({
                     <button
                       onClick={confermaRevocaImmagine}
                       disabled={revocaImmagineInCorso}
-                      className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      className="tt-btn bg-amber-700 px-3 py-1.5 text-xs text-white disabled:opacity-50"
                     >
                       {revocaImmagineInCorso ? "Revoco…" : "Conferma revoca"}
                     </button>
@@ -432,7 +432,7 @@ export default function ProfiloPersonale({
                         setChiediRimozionePubblicato(false);
                       }}
                       disabled={revocaImmagineInCorso}
-                      className="rounded-lg px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
+                      className="tt-btn px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
                     >
                       Annulla
                     </button>
@@ -474,7 +474,7 @@ export default function ProfiloPersonale({
           <button
             onClick={() => accordoInput.current?.click()}
             disabled={!accordoLetto || !dataNascita || !luogoNascita || !codiceFiscale}
-            className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-4 tt-btn border border-slate-300 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
           >
             {accordoStato ? "Sostituisci accordo" : "Carica accordo"}
           </button>
@@ -586,7 +586,7 @@ export default function ProfiloPersonale({
                   if (finestra) finestra.location.href = esito.dati;
                   else window.open(esito.dati, "_blank");
                 }}
-                className="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                className="mt-2 tt-btn border border-slate-300 px-3 py-1.5 text-xs"
               >
                 Scarica il modulo
               </button>

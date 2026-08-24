@@ -135,7 +135,7 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
         />
         <button
           onClick={() => fotoInput.current?.click()}
-          className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+          className="mt-4 tt-btn border border-slate-300 px-3 py-1.5 text-xs"
         >
           {fotoPath ? "Sostituisci foto" : "Carica foto"}
         </button>

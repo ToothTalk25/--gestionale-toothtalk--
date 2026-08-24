@@ -152,7 +152,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       <button
         onClick={() => input.current?.click()}
         disabled={occupato}
-        className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60 ${
+        className={`tt-btn whitespace-nowrap px-3 py-1.5 text-xs text-white disabled:opacity-60 ${
           archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
         }`}
       >
