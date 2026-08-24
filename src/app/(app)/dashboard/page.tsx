@@ -73,7 +73,41 @@ export default async function DashboardPage() {
       {isAdmin && panoramicaPoli && panoramicaPoli.length > 0 && (
         <section>
           <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Panoramica team</h2>
-          <div className="mt-3.5 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+
+          {/* Mobile: riga compatta nome+conteggio / un'unica frase di stato —
+              la scomposizione in lavorazione/attesa/sigillati (desktop) non
+              ci sta su una riga stretta senza andare a capo su più righe. */}
+          <div className="mt-3.5 flex flex-col gap-2.5 sm:hidden">
+            {panoramicaPoli.map((p) => (
+              <Link
+                key={p.polo_id}
+                href={`/polo/${p.polo_id}`}
+                className="tt-card-piccola flex items-center justify-between px-4 py-3.5"
+              >
+                <div>
+                  <h3 className="text-[13.5px] font-semibold text-tt-ink">{p.polo_nome}</h3>
+                  <p className="mt-0.5 text-[11px] text-slate-400">{p.progetti_totali} progetti</p>
+                </div>
+                <span
+                  className={`text-[11.5px] ${
+                    p.pec_errore > 0
+                      ? "font-semibold text-red-600"
+                      : p.in_attesa_revisione > 0
+                        ? "font-semibold text-amber-700"
+                        : "text-slate-400"
+                  }`}
+                >
+                  {p.pec_errore > 0
+                    ? `${p.pec_errore} errore PEC`
+                    : p.in_attesa_revisione > 0
+                      ? `${p.in_attesa_revisione} in attesa`
+                      : "tutto ok"}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-3.5 hidden gap-3.5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
             {panoramicaPoli.map((p) => (
               <Link
                 key={p.polo_id}
