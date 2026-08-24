@@ -80,7 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             (barra home su iPhone con notch/isola); su desktop basta uno spazio
             leggermente più piccolo perché il footer è su una riga sola.
           */}
-          <div className="mx-auto max-w-6xl px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-16 md:pt-8">
+          <div className="mx-auto max-w-6xl px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-16 md:px-12 md:pt-8">
             {children}
           </div>
         </main>
@@ -93,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           addosso o sotto.
         */}
         <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:pt-4 sm:pb-4">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between md:px-12">
             <span>
               ToothTalk<sup className="ml-0.5 align-super text-[8px]">™</sup> —
               progetto di divulgazione odontoiatrica

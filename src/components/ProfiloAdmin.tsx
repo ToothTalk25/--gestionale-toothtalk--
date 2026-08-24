@@ -73,7 +73,7 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
     <div className="grid gap-6 lg:grid-cols-2">
       {/* ------------------------------------------------ anagrafica */}
       <section className="tt-card p-6">
-        <h2 className="text-lg font-medium">I miei dati</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">I miei dati</h2>
         <p className="mt-1 text-sm text-slate-500">{profile.email}</p>
 
         <label className="mt-5 block text-sm font-medium">Nome e cognome</label>
@@ -113,7 +113,7 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
           ai compagni di gruppo per riconoscerlo negli stessi punti
           dell'app in cui vedono le foto degli altri membri. */}
       <section className="tt-card p-6">
-        <h2 className="text-lg font-medium">Foto</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Foto</h2>
         <p className="mt-1 text-sm text-slate-500">
           La foto che ti identifica nel team.
         </p>

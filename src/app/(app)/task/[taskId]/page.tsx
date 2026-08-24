@@ -261,7 +261,7 @@ export default async function TaskPage({
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-medium">Materiali di lavorazione</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Materiali di lavorazione</h2>
           <p className="text-sm text-slate-500">
             Lo spazio di lavoro condiviso: girato grezzo, bozze, materiali di
             servizio. Trascina o clicca su ogni card per caricare.
@@ -322,7 +322,7 @@ export default async function TaskPage({
       />
 
       <section className="tt-card p-6">
-        <h2 className="text-lg font-medium">Storico stati</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Storico stati</h2>
         <ul className="mt-3 space-y-1 text-sm text-slate-600">
           {(storico ?? []).map((s) => (
             <li key={s.id}>

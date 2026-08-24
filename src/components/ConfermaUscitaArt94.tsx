@@ -52,7 +52,7 @@ export default function ConfermaUscitaArt94() {
       <p className="text-[11px] uppercase tracking-[.12em] text-slate-400">
         ToothTalk — fine della collaborazione
       </p>
-      <h1 className="mt-1 text-lg font-medium">Un&apos;ultima cosa, prima di chiudere</h1>
+      <h1 className="mt-1 text-[17px] font-semibold tracking-[-0.015em]">Un&apos;ultima cosa, prima di chiudere</h1>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
         La tua collaborazione con il Progetto è terminata. L&apos;Accordo
         Editoriale (Art. 9.4) ti chiede di procedere alla cancellazione

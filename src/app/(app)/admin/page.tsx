@@ -262,7 +262,7 @@ export default async function AdminPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold">Registro globale</h1>
+        <h1 className="text-[26px] font-semibold tracking-[-0.015em]">Registro globale</h1>
         <p className="mt-1 text-sm text-slate-500">
           Vista trasversale su tutti i gruppi. Il registro è append-only:
           nessuna voce può essere modificata o cancellata, nemmeno da questa
@@ -312,7 +312,7 @@ export default async function AdminPage() {
             },
             contenuto: (
               <section className="tt-card p-4 md:p-6">
-        <h2 className="text-lg font-medium">Originale vs versione finale</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Originale vs versione finale</h2>
         <div className="mt-3 overflow-x-auto md:overflow-visible">
           <table className="tabella-mobile w-full text-left text-sm">
             <thead className="text-xs text-slate-400">
@@ -395,7 +395,7 @@ export default async function AdminPage() {
             },
             contenuto: (
               <section className="tt-card p-4 md:p-6">
-        <h2 className="text-lg font-medium">Registro partecipanti per sede</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Registro partecipanti per sede</h2>
         <p className="mt-1 text-sm text-slate-500">
           Anagrafica e accordo editoriale dei partecipanti, raggruppati per
           gruppo.

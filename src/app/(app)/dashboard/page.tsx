@@ -50,7 +50,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-[28px] font-semibold tracking-[-0.015em]">
           Ciao {profile.full_name?.split(" ")[0] ?? ""}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -72,31 +72,31 @@ export default async function DashboardPage() {
 
       {isAdmin && panoramicaPoli && panoramicaPoli.length > 0 && (
         <section>
-          <h2 className="text-lg font-medium">Panoramica team</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Panoramica team</h2>
+          <div className="mt-3.5 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
             {panoramicaPoli.map((p) => (
               <Link
                 key={p.polo_id}
                 href={`/polo/${p.polo_id}`}
-                className="tt-card-piccola p-4 transition-shadow hover:shadow-[0_1px_2px_rgba(23,40,55,.04),0_10px_24px_-10px_rgba(23,40,55,.18)]"
+                className="tt-card-piccola p-[18px] transition-shadow hover:shadow-[0_1px_2px_rgba(23,40,55,.04),0_10px_24px_-10px_rgba(23,40,55,.18)]"
               >
-                <h3 className="font-semibold text-slate-800">{p.polo_nome}</h3>
-                <p className="text-xs text-slate-400">{p.progetti_totali} progetti</p>
-                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <h3 className="text-[15px] font-semibold text-tt-ink">{p.polo_nome}</h3>
+                <p className="mt-0.5 mb-3 text-xs text-slate-400">{p.progetti_totali} progetti</p>
+                <div className="grid grid-cols-[1fr_auto] gap-y-1.5 text-[12.5px]">
                   <span className="text-slate-500">In lavorazione</span>
-                  <span className="text-right font-medium text-slate-700">{p.in_lavorazione}</span>
-                  <span className={`${p.in_attesa_revisione > 0 ? "text-amber-700 font-medium" : "text-slate-500"}`}>
+                  <span className="text-right font-semibold">{p.in_lavorazione}</span>
+                  <span className={p.in_attesa_revisione > 0 ? "font-semibold text-amber-700" : "text-slate-500"}>
                     In attesa revisione
                   </span>
-                  <span className={`text-right font-medium ${p.in_attesa_revisione > 0 ? "text-amber-700" : "text-slate-700"}`}>
+                  <span className={`text-right font-semibold ${p.in_attesa_revisione > 0 ? "text-amber-700" : ""}`}>
                     {p.in_attesa_revisione}
                   </span>
                   <span className="text-slate-500">Sigillati</span>
-                  <span className="text-right font-medium text-slate-700">{p.sigillati}</span>
+                  <span className="text-right font-semibold">{p.sigillati}</span>
                   {p.pec_errore > 0 && (
                     <>
-                      <span className="text-red-600 font-medium">Errore PEC</span>
-                      <span className="text-right font-medium text-red-600">{p.pec_errore}</span>
+                      <span className="font-semibold text-red-600">Errore PEC</span>
+                      <span className="text-right font-semibold text-red-600">{p.pec_errore}</span>
                     </>
                   )}
                 </div>
@@ -106,13 +106,13 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      <section className="space-y-3">
+      <section className="space-y-3.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Progetti</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Progetti</h2>
           {poli.length > 0 && (
             <Link
               href={`/polo/${poli[0].id}`}
-              className="tt-btn inline-flex items-center gap-1.5 bg-tt-blue px-4 py-2 text-sm text-white hover:brightness-95"
+              className="tt-btn inline-flex items-center gap-1.5 bg-tt-blue px-4 py-[9px] text-[13.5px] text-white hover:brightness-95"
             >
               Nuovo progetto
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
@@ -132,14 +132,14 @@ export default async function DashboardPage() {
               <li key={t.id}>
                 <Link
                   href={`/task/${t.id}`}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-slate-50"
+                  className="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-5 py-4 hover:bg-slate-50"
                 >
-                  <span className="w-24 shrink-0 text-xs font-medium text-slate-400">
+                  <span className="w-[76px] shrink-0 text-[11.5px] font-semibold uppercase text-slate-400">
                     {t.polo_nome}
                   </span>
                   <span className="flex-1 text-sm font-medium">{t.titolo}</span>
                   {t.locked && (
-                    <span className="text-xs text-slate-400">bloccato</span>
+                    <span className="text-[11.5px] text-slate-400">bloccato</span>
                   )}
                   <span className="text-xs text-slate-400">
                     {t.n_consegne_originali} file
@@ -180,11 +180,11 @@ function Card({
   allerta?: boolean;
 }) {
   return (
-    <div className="tt-card p-5">
+    <div className="tt-card px-6 py-[22px]">
       <div className="flex items-center gap-3">
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-            allerta ? "bg-amber-50 text-amber-700" : "bg-tt-blue-50 text-tt-blue-600"
+          className={`flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[11px] ${
+            allerta ? "bg-[#fef3e2] text-amber-700" : "bg-tt-blue-50 text-tt-blue-600"
           }`}
         >
           {icona === "progetti" ? (
@@ -201,10 +201,10 @@ function Card({
             </svg>
           )}
         </span>
-        <span className="text-sm font-medium text-slate-500">{etichetta}</span>
+        <span className="text-[13px] font-medium text-slate-500">{etichetta}</span>
       </div>
       <div
-        className={`mt-3 text-3xl font-bold tracking-tight ${
+        className={`mt-3.5 text-[34px] font-bold leading-none tracking-[-0.02em] ${
           allerta ? "text-amber-700" : ""
         }`}
       >

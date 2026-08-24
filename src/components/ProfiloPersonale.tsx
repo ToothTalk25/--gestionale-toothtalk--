@@ -218,7 +218,7 @@ export default function ProfiloPersonale({
     <div className="grid gap-6 lg:grid-cols-2">
       {/* -------------------------------------------------- anagrafica */}
       <section className="tt-card p-6">
-        <h2 className="text-lg font-medium">Anagrafica</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Anagrafica</h2>
         <p className="mt-1 text-sm text-slate-500">{profile.email}</p>
 
         <label className="mt-5 block text-sm font-medium">Nome e cognome</label>
@@ -289,7 +289,7 @@ export default function ProfiloPersonale({
             riconoscersi. Chi ha accesso globale non ha bisogno di una foto. */}
         {!isAdmin && (
           <section className="tt-card p-6">
-            <h2 className="text-lg font-medium">Foto</h2>
+            <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Foto</h2>
             <p className="mt-1 text-sm text-slate-500">
               La foto che ti identifica nel gruppo.
             </p>
@@ -325,7 +325,7 @@ export default function ProfiloPersonale({
 
         {/* ------------------------------------------- consensi e privacy */}
         <section className="tt-card p-6">
-          <h2 className="text-lg font-medium">Consensi e privacy</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Consensi e privacy</h2>
           <p className="mt-1 text-sm text-slate-500">
             Puoi revocare in qualsiasi momento il consenso alla privacy e
             alla cookie policy: la revoca viene registrata (chi e quando) e
@@ -448,7 +448,7 @@ export default function ProfiloPersonale({
             non li carica — la sua PEC è già il mittente delle comunicazioni. */}
         {!isAdmin && (
           <section className="tt-card p-6">
-            <h2 className="text-lg font-medium">Accordo editoriale</h2>
+            <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Accordo editoriale</h2>
           <p className="mt-1 text-sm text-slate-500">
             Carica il PDF firmato dell'accordo: verrà inviato automaticamente
             via PEC a chi ha accesso globale, con data certa e copia alla tua

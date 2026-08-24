@@ -17,7 +17,7 @@ export default async function ProfiloPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Il mio profilo</h1>
+        <h1 className="text-[25px] font-semibold tracking-[-0.015em]">Il mio profilo</h1>
         <p className="mt-1 text-sm text-slate-500">
           {isAdmin
             ? "I tuoi dati e gli strumenti del Coordinatore."

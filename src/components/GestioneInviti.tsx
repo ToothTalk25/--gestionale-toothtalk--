@@ -36,7 +36,7 @@ export default function GestioneInviti({
 
   return (
     <section className="tt-card p-6">
-      <h2 className="text-lg font-medium">Codici di ingresso</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Codici di ingresso</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-500">
         Un codice per gruppo. Lo condividi con loro una volta sola: chi lo usa
         crea il proprio account ed entra automaticamente in quel gruppo, senza

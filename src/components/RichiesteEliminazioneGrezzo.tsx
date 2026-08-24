@@ -76,7 +76,7 @@ export default function RichiesteEliminazioneGrezzo({
 
   return (
     <section className="rounded-2xl bg-white p-6 ring-1 ring-amber-200">
-      <h2 className="text-lg font-medium">Richieste di eliminazione materiale grezzo</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di eliminazione materiale grezzo</h2>
       <p className="mt-1 max-w-3xl text-sm text-slate-500">
         Quando un Collaboratore revoca il consenso a immagine/voce si apre una
         richiesta con termine di 30 giorni. La cancellazione NON è automatica:

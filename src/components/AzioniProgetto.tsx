@@ -81,7 +81,7 @@ export default function AzioniProgetto({
           className="rounded-lg border border-slate-300 px-3 py-1.5 text-2xl font-semibold"
         />
       ) : (
-        <h1 className="text-2xl font-semibold">{titolo}</h1>
+        <h1 className="text-[26px] font-semibold tracking-[-0.015em]">{titolo}</h1>
       )}
 
       {inModifica ? (

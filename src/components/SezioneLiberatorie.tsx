@@ -34,7 +34,7 @@ export default function SezioneLiberatorie({
     <section className="tt-card p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-medium">Registro liberatorie e accordi</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Registro liberatorie e accordi</h2>
           <p className="mt-1 text-xs text-slate-400">
             Registro granulare (consents_and_releases): liberatorie firmate e accordi di
             collaborazione, con impronta SHA-256 e stato di revoca. Append-only: nessun documento

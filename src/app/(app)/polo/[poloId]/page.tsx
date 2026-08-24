@@ -89,7 +89,7 @@ export default async function PoloPage({
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold">{polo.nome}</h1>
+        <h1 className="text-[26px] font-semibold tracking-[-0.015em]">{polo.nome}</h1>
         <p className="mt-1 text-sm text-slate-500">
           {polo.citta ? `${polo.citta} · ` : ""}
           {membri?.length ?? 0} partecipanti, tutti con gli stessi permessi.
@@ -106,7 +106,7 @@ export default async function PoloPage({
       <NewTaskForm poloId={polo.id} formati={formati ?? []} />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Progetti del gruppo</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Progetti del gruppo</h2>
         {!tasks?.length ? (
           <p className="tt-card-piccola p-6 text-sm text-slate-500">
             Ancora nessun progetto.
@@ -117,7 +117,7 @@ export default async function PoloPage({
               <li key={t.id}>
                 <Link
                   href={`/task/${t.id}`}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-slate-50"
+                  className="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-5 py-4 hover:bg-slate-50"
                 >
                   <span className="flex-1 text-sm font-medium">{t.titolo}</span>
                   {t.scadenza && (
@@ -133,7 +133,7 @@ export default async function PoloPage({
                     />
                   )}
                   {!!richiesteApertePerTask[t.id] && (
-                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
                       {richiesteApertePerTask[t.id]} modifica richiesta
                     </span>
                   )}

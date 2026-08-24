@@ -81,7 +81,7 @@ export default async function RevisionePage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold">Video da rivedere</h1>
+        <h1 className="text-[26px] font-semibold tracking-[-0.015em]">Video da rivedere</h1>
         <p className="mt-1 max-w-2xl text-sm text-slate-500">
           Quando il gruppo segnala un pacchetto come completato, lo rivedi qui:
           decidi se sigillarlo o, se manca qualcosa, apri una richiesta di
@@ -93,7 +93,7 @@ export default async function RevisionePage() {
       {inAttesa.length > 0 && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-lg font-medium">In attesa della tua revisione</h2>
+            <h2 className="text-[17px] font-semibold tracking-[-0.015em]">In attesa della tua revisione</h2>
             <p className="text-sm text-slate-500">
               I gruppi hanno segnalato questi pacchetti come completati: apri
               la scheda, rivedi il materiale e decidi se sigillare o rimandare
@@ -105,9 +105,9 @@ export default async function RevisionePage() {
               <li key={v.pacchetto_id}>
                 <Link
                   href={`/task/${v.task_id}`}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                  className="flex flex-wrap items-center gap-3.5 px-5 py-4 hover:bg-slate-50"
                 >
-                  <span className="w-24 shrink-0 text-xs font-medium text-slate-400">
+                  <span className="w-[76px] shrink-0 text-[11.5px] font-semibold uppercase text-slate-400">
                     {v.gruppo}
                   </span>
                   <span className="flex-1 text-sm font-medium">{v.progetto}</span>
@@ -116,7 +116,7 @@ export default async function RevisionePage() {
                       ? `segnalato il ${new Date(v.pronto_at).toLocaleString("it-IT")}`
                       : ""}
                   </span>
-                  <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                  <span className="rounded-full bg-violet-100 px-[11px] py-[3px] text-xs font-semibold text-violet-800">
                     {PACCHETTO_LABEL[v.stato]}
                   </span>
                 </Link>
@@ -157,7 +157,7 @@ export default async function RevisionePage() {
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                     {v.gruppo}
                   </p>
-                  <h2 className="mt-0.5 text-lg font-medium">
+                  <h2 className="mt-0.5 text-[17px] font-semibold tracking-[-0.015em]">
                     <Link href={`/task/${v.task_id}`} className="hover:underline">
                       {v.progetto}
                     </Link>
@@ -176,11 +176,11 @@ export default async function RevisionePage() {
 
                 <div className="flex items-center gap-2">
                   {v.richieste_aperte > 0 && (
-                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
                       {v.richieste_aperte} da correggere
                     </span>
                   )}
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-[11px] py-[3px] text-xs font-semibold text-slate-600">
                     {PACCHETTO_LABEL[v.stato]}
                   </span>
                   <Link
@@ -212,7 +212,7 @@ export default async function RevisionePage() {
 
       {(daArchiviare ?? []).length > 0 && (
         <section className="tt-card p-6">
-          <h2 className="text-lg font-medium">Da archiviare</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Da archiviare</h2>
           <p className="mt-1 text-sm text-slate-500">
             Pacchetti già sigillati e certificati via PEC: puoi liberare spazio
             su Supabase una volta che sono al sicuro su Drive e hard disk esterno.

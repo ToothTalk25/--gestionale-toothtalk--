@@ -58,7 +58,7 @@ export default function RichiesteModifica({
     <div className={compatta ? "" : "tt-card p-6"}>
       {!compatta && (
         <>
-          <h2 className="text-lg font-medium">Modifiche richieste</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Modifiche richieste</h2>
           <p className="mt-1 text-sm text-slate-500">
             Le correzioni da fare prima di sigillare. Aprirne una rimanda il
             pacchetto in composizione: il gruppo la vede e può intervenire

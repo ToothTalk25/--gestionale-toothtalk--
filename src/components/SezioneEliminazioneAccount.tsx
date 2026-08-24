@@ -54,7 +54,7 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
   return (
     <section className="tt-card border border-red-200 p-6">
       <div className="flex items-start justify-between gap-4">
-        <h2 className="text-lg font-medium text-red-700">Fine della collaborazione</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em] text-red-700">Fine della collaborazione</h2>
         <button
           onClick={() => setAperta(false)}
           className="rounded-lg px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"

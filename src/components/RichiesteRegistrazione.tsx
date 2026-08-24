@@ -50,7 +50,7 @@ export default function RichiesteRegistrazione({
   if (richieste.length === 0) {
     return (
       <section className="tt-card p-4 md:p-6">
-        <h2 className="text-lg font-medium">Richieste di registrazione</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di registrazione</h2>
         <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           Nessuna richiesta in attesa di approvazione. ✅
         </p>
@@ -62,7 +62,7 @@ export default function RichiesteRegistrazione({
     <section className="tt-card p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-medium">Richieste di registrazione</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di registrazione</h2>
           <p className="mt-1 text-xs text-slate-400">
             Account creati ma non ancora attivi. Conferma se la persona appare in video
             (o no) e approva: l&apos;accordo editoriale parte via PEC al momento

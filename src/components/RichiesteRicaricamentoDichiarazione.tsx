@@ -52,7 +52,7 @@ export default function RichiesteRicaricamentoDichiarazione({
 
   return (
     <section className="rounded-2xl bg-white p-6 ring-1 ring-amber-200">
-      <h2 className="text-lg font-medium">Richieste di ricaricamento video di dichiarazione</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di ricaricamento video di dichiarazione</h2>
       <p className="mt-1 max-w-3xl text-sm text-slate-500">
         Chi ha caricato per errore il video di dichiarazione può segnalarlo.
         Qui liberi il campo: il vecchio file viene cancellato e la persona può

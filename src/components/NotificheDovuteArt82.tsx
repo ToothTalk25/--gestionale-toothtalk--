@@ -42,7 +42,7 @@ export default function NotificheDovuteArt82({
 
   return (
     <section className="tt-card p-6">
-      <h2 className="text-lg font-medium">Notifiche dovute (Art. 8.2 dell&apos;Accordo)</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Notifiche dovute (Art. 8.2 dell&apos;Accordo)</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-500">
         Quando un Collaboratore revoca il consenso a immagine/voce senza
         chiedere anche la rimozione del pubblicato, l&apos;Accordo impone di

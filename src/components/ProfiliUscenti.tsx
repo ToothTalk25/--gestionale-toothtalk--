@@ -36,7 +36,7 @@ export default function ProfiliUscenti({
   return (
     <section className="rounded-2xl bg-white p-6 ring-1 ring-amber-200">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Profili uscenti</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Profili uscenti</h2>
         <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
           {uscenti.length} {uscenti.length === 1 ? "profilo" : "profili"}
         </span>

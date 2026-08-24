@@ -53,7 +53,7 @@ export default function RichiesteRimozionePubblicato({
 
   return (
     <section className="tt-card p-6">
-      <h2 className="text-lg font-medium">Richieste di rimozione contenuti pubblicati</h2>
+      <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di rimozione contenuti pubblicati</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-500">
         Aperte quando un Collaboratore, revocando il consenso a immagine/voce,
         chiede anche la rimozione dei contenuti già pubblicati che lo
