@@ -190,7 +190,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       {controlli}
     </div>
   ) : (
-    <div>
+    <div className="flex flex-col items-center gap-2 text-center">
       {controlli}
       {children}
     </div>
