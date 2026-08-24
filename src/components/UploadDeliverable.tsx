@@ -14,6 +14,21 @@ function sanifica(nome: string) {
   return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
 }
 
+/** L'SDK di Supabase Storage restituisce messaggi in inglese: qui i più
+ *  comuni diventano italiano, il resto è nascosto dietro un avviso generico
+ *  (mai un testo tecnico grezzo mostrato a chi carica). */
+function traduciErroreStorage(messaggio: string): string {
+  const m = messaggio.toLowerCase();
+  if (m.includes("already exists")) return "Un file con lo stesso nome esiste già. Riprova.";
+  if (m.includes("payload too large") || m.includes("exceeded the maximum")) {
+    return "Il file è troppo grande.";
+  }
+  if (m.includes("failed to fetch") || m.includes("network")) {
+    return "Connessione assente o instabile. Controlla la rete e riprova.";
+  }
+  return "Caricamento non riuscito. Riprova, o contatta l'assistenza se il problema persiste.";
+}
+
 export type UploadDeliverableHandle = {
   handleFile: (file: File) => void;
 };
@@ -81,7 +96,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
         upsert: false,
         contentType: file.type || "application/octet-stream",
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(traduciErroreStorage(error.message));
 
       setFase("registro");
       const esito = await registraVersione({
@@ -103,7 +118,11 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       router.refresh();
     } catch (e) {
       setFase("errore");
-      setMessaggio(e instanceof Error ? e.message : "Errore imprevisto");
+      // I punti sopra lanciano già testo in italiano (server action, hash,
+      // storage); un errore JavaScript imprevisto (bug, rete interrotta a
+      // metà) non lo è: meglio un avviso generico che un testo tecnico.
+      const testoConosciuto = e instanceof Error && /[àèéìòù]|[.!?]$/.test(e.message);
+      setMessaggio(testoConosciuto ? (e as Error).message : "Caricamento non riuscito. Riprova.");
     } finally {
       inCorso.current = false;
       if (input.current) input.current.value = "";

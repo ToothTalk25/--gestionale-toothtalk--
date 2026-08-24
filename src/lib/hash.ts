@@ -17,8 +17,18 @@ export async function sha256File(
   file: File,
   onProgress?: (frazione: number) => void,
 ): Promise<string> {
-  const { createSHA256 } = await import("hash-wasm");
-  const hasher = await createSHA256();
+  let hasher;
+  try {
+    const { createSHA256 } = await import("hash-wasm");
+    hasher = await createSHA256();
+  } catch {
+    // Il browser ha rifiutato di eseguire WebAssembly (es. una Content
+    // Security Policy troppo restrittiva): un errore tecnico del browser,
+    // in inglese, non va mai mostrato direttamente a chi sta caricando.
+    throw new Error(
+      "Impossibile calcolare l'impronta del file in questo browser. Riprova, o contatta l'assistenza se il problema persiste.",
+    );
+  }
   hasher.init();
 
   const CHUNK = 8 * 1024 * 1024;

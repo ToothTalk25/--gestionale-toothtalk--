@@ -27,13 +27,19 @@ const config: NextConfig = {
           // caricati: riduce l'impatto di un eventuale XSS. 'unsafe-inline'
           // su script/style resta necessario per l'hydration di Next.js e
           // per le classi Tailwind; niente domini di terze parti altrove.
-          // 'unsafe-eval' solo in sviluppo: Turbopack/webpack lo usano per
-          // l'hot-reload, ma React non lo usa mai in produzione.
+          // 'wasm-unsafe-eval' è sempre presente (anche in produzione): serve
+          // a hash-wasm per calcolare l'impronta SHA-256 di ogni file
+          // caricato — senza, ogni upload fallisce con un errore CSP. È un
+          // permesso molto più ristretto di 'unsafe-eval' (consente solo
+          // WebAssembly.instantiate, non eval()/Function()), quindi non
+          // riapre la superficie che 'unsafe-eval' proteggeva.
+          // 'unsafe-eval' pieno resta solo in sviluppo: Turbopack/webpack lo
+          // usano per l'hot-reload, React non lo usa mai in produzione.
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
+              `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
