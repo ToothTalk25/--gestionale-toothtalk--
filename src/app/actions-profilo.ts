@@ -917,12 +917,19 @@ export async function caricaAccordo(
     .eq("id", profile.id);
   if (error) return errore(error.message);
 
-  // Copia di sicurezza su Drive nella cartella privata "gestione canale/accordi"
-  // (solo Titolare). Best-effort: se fallisce, l'accordo resta comunque nel
-  // gestionale con la PEC certificata — non blocca mai il caricamento.
-  const dataAccordo = new Date().toISOString().slice(0, 10);
-  const nomeSuDrive = `accordo_${profile.id.slice(0, 8)}_${dataAccordo}.pdf`;
-  await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive));
+  // Copia di sicurezza su Drive in "Gestione canale/accordi/<polo>/Nome Cognome.pdf".
+  // Best-effort: se fallisce, l'accordo resta comunque nel gestionale con la
+  // PEC certificata — non blocca mai il caricamento. Il nome del file è quello
+  // del Collaboratore (lo stesso che compare nell'accordo), ripulito dai
+  // caratteri non validi per i nomi di file di Drive.
+  const nomeSuDrive = `${(profile.full_name ?? "accordo").replace(/[/\\:*?"<>|]/g, "_")}.pdf`;
+  const { data: membriPoli } = await supabase
+    .from("memberships")
+    .select("poli!inner(nome)")
+    .eq("user_id", profile.id);
+  const membri = (membriPoli ?? []) as { poli: { nome: string }[] }[];
+  const poliUtente = membri.flatMap((m) => m.poli.map((p) => p.nome));
+  await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive, poliUtente));
 
   // Registro granulare consents_and_releases (GDPR): accordo collaboratore.
   // L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage):

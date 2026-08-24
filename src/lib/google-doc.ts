@@ -173,52 +173,59 @@ export async function creaDocumentiLavorazione(
 
 /**
  * Copia di sicurezza dell'accordo firmato su Google Drive, nella cartella
- * privata del Titolare "gestione canale/accordi" (visibile solo a lui:
- * NON condivisa con i gruppi). Best-effort: l'accordo resta comunque nel
- * gestionale (Supabase + PEC con SHA-256) — questa è solo una copia di
- * riserva per il Titolare. La cartella viene trovata o creata al volo.
+ * "Gestione canale/accordi" del Drive del progetto (fuori da "Archivio
+ * video"), divisa per polo: dentro la sottocartella del polo dell'utente
+ * con nome "Nome Cognome.pdf" (il nome del Collaboratore). Best-effort:
+ * l'accordo resta comunque nel gestionale (Supabase + PEC con SHA-256) —
+ * questa è solo una copia di riserva. Le cartelle vengono trovate o
+ * create al volo.
  */
+const GESTIONE_CANALE_FOLDER = "1Kwo27smMsRCKfUy1rgcBwHVZpcjsYTyY";
+
 export async function archiviaAccordoSuDrive(
   buffer: Buffer,
   nomeFile: string,
+  poliUtente: string[],
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
-  const root = process.env.GOOGLE_DRIVE_ROOT_FOLDER;
-  if (!root) return { ok: false, errore: "GOOGLE_DRIVE_ROOT_FOLDER non configurata" };
-
   try {
     const token = await tokenGoogle();
-    const cartellaGestione = await trovaOCreaCartella(token, root, "gestione canale");
-    const cartellaAccordi = await trovaOCreaCartella(token, cartellaGestione, "accordi");
+    const cartellaAccordi = await trovaOCreaCartella(token, GESTIONE_CANALE_FOLDER, "accordi");
+    // Un utente può appartenere a più gruppi: l'accordo va in ciascuno.
+    const cartelle = poliUtente.length ? poliUtente : ["Senza gruppo"];
 
-    // Upload resumable (stesso pattern di esporta-drive): l'accordo è piccolo,
-    // ma il percorso resta valido anche per file futuri più grandi.
-    const inizio = await df(
-      token,
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Upload-Content-Length": String(buffer.byteLength),
-          "X-Upload-Content-Type": "application/pdf",
+    for (const polo of cartelle) {
+      const cartellaPolo = await trovaOCreaCartella(token, cartellaAccordi, polo);
+
+      // Upload resumable (stesso pattern di esporta-drive): l'accordo è
+      // piccolo, ma il percorso resta valido anche per file futuri più grandi.
+      const inizio = await df(
+        token,
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Upload-Content-Length": String(buffer.byteLength),
+            "X-Upload-Content-Type": "application/pdf",
+          },
+          body: JSON.stringify({
+            name: nomeFile,
+            mimeType: "application/pdf",
+            parents: [cartellaPolo],
+          }),
         },
-        body: JSON.stringify({
-          name: nomeFile,
-          mimeType: "application/pdf",
-          parents: [cartellaAccordi],
-        }),
-      },
-    );
-    if (!inizio.ok) return { ok: false, errore: `Avvio upload: HTTP ${inizio.status}` };
-    const location = inizio.headers.get("location");
-    if (!location) return { ok: false, errore: "Upload: nessuna sessione restituita" };
+      );
+      if (!inizio.ok) return { ok: false, errore: `Avvio upload: HTTP ${inizio.status}` };
+      const location = inizio.headers.get("location");
+      if (!location) return { ok: false, errore: "Upload: nessuna sessione restituita" };
 
-    const put = await fetch(location, {
-      method: "PUT",
-      headers: { "Content-Type": "application/pdf", "Content-Length": String(buffer.byteLength) },
-      body: new Uint8Array(buffer),
-    });
-    if (!put.ok) return { ok: false, errore: `Upload: HTTP ${put.status}` };
+      const put = await fetch(location, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf", "Content-Length": String(buffer.byteLength) },
+        body: new Uint8Array(buffer),
+      });
+      if (!put.ok) return { ok: false, errore: `Upload: HTTP ${put.status}` };
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, errore: e instanceof Error ? e.message : "Errore upload Drive" };
