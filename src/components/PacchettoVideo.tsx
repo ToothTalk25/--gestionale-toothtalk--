@@ -998,8 +998,8 @@ function Slot({
         dragOver ? "bg-tt-blue/5 ring-2 ring-inset ring-tt-blue" : elemento ? "bg-tt-blue-50/60" : ""
       }`}
     >
-      <div className="flex items-start gap-2">
-        <h3 className="flex-1 text-sm font-medium">{titolo}</h3>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <h3 className="text-sm font-medium sm:flex-1">{titolo}</h3>
         {azione}
       </div>
       {elemento ? (
