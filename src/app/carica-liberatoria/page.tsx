@@ -26,7 +26,8 @@ function CaricaLiberatoriaForm() {
   if (!token) {
     return (
       <div className="mx-auto max-w-sm px-4 py-20">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+        <img src="/logo-toothtalk.svg" alt="ToothTalk" className="mx-auto h-8 w-auto" />
+        <div className="mt-6 tt-card border border-red-200 p-6 text-center">
           <h2 className="text-lg font-semibold text-red-800">Link non valido</h2>
           <p className="mt-1 text-sm text-red-600">Token mancante o scaduto. Chiedi un nuovo link.</p>
         </div>
@@ -64,10 +65,11 @@ function CaricaLiberatoriaForm() {
   if (fatto) {
     return (
       <div className="mx-auto max-w-sm px-4 py-20">
-        <div className="rounded-lg border border-green-200 bg-green-50 p-8 text-center">
+        <img src="/logo-toothtalk.svg" alt="ToothTalk" className="mx-auto h-8 w-auto" />
+        <div className="mt-6 tt-card border border-emerald-200 p-8 text-center">
           <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-xl font-semibold text-green-800">Fatto!</h2>
-          <p className="mt-2 text-sm text-green-700">{messaggio!.testo}</p>
+          <h2 className="text-xl font-semibold text-emerald-800">Fatto!</h2>
+          <p className="mt-2 text-sm text-emerald-700">{messaggio!.testo}</p>
         </div>
       </div>
     );
@@ -75,15 +77,16 @@ function CaricaLiberatoriaForm() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-10">
-      <form ref={formRef} onSubmit={e => e.preventDefault()}>
-        <h1 className="text-2xl font-semibold text-gray-800">Liberatoria Privacy</h1>
-        <p className="mt-2 text-sm text-gray-600">
+      <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-8 w-auto" />
+      <form ref={formRef} onSubmit={e => e.preventDefault()} className="mt-6 tt-card p-6">
+        <h1 className="text-xl font-semibold text-tt-ink">Liberatoria Privacy</h1>
+        <p className="mt-2 text-sm text-slate-500">
           Firma digitale tramite codice monouso. Riceverai un codice di 6 cifre alla tua email.
         </p>
 
         {messaggio && (
           <div className={`mt-4 rounded-lg border p-3 text-sm ${
-            messaggio.tipo === "errore" ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"
+            messaggio.tipo === "errore" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
           }`}>
             {messaggio.testo}
           </div>
@@ -91,10 +94,10 @@ function CaricaLiberatoriaForm() {
 
         <div className={`mt-6 space-y-4 ${step === "otp" ? "pointer-events-none opacity-60" : ""}`}>
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Nome e Cognome</span>
+            <span className="text-sm font-medium text-tt-ink">Nome e Cognome</span>
             <input
               type="text"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-tt-blue focus:ring-1 focus:ring-tt-blue"
               placeholder="Mario Rossi"
               value={nome}
               onChange={e => setNome(e.target.value)}
@@ -104,34 +107,34 @@ function CaricaLiberatoriaForm() {
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-tt-blue focus:ring-tt-blue"
               checked={consenso}
               onChange={e => setConsenso(e.target.checked)}
               disabled={isPending || step === "otp"}
             />
-            <span className="text-xs text-gray-600 leading-relaxed">
+            <span className="text-xs text-slate-500 leading-relaxed">
               Acconsento al trattamento dei miei dati personali e alla pubblicazione della mia immagine/voce
               per le finalita&apos; del progetto ToothTalk, come da{" "}
-              <a href="/privacy" target="_blank" className="text-blue-600 underline">informativa privacy</a>.
+              <a href="/privacy" target="_blank" className="text-tt-blue underline">informativa privacy</a>.
             </span>
           </label>
           <button
             type="button"
             onClick={richiediOtp}
             disabled={isPending || step === "otp"}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-50"
+            className="tt-btn w-full bg-tt-blue px-4 py-2.5 text-sm text-white hover:brightness-95 disabled:opacity-50"
           >
             {isPending ? "Invio codice…" : "Invia codice di verifica"}
           </button>
         </div>
         {step === "otp" && (
-          <div className="mt-6 space-y-4 border-t border-gray-200 pt-6">
-            <p className="text-sm font-medium text-gray-700">Inserisci il codice di 6 cifre ricevuto via email</p>
+          <div className="mt-6 space-y-4 border-t border-slate-100 pt-6">
+            <p className="text-sm font-medium text-tt-ink">Inserisci il codice di 6 cifre ricevuto via email</p>
             <input
               type="text"
               inputMode="numeric"
               maxLength={6}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-3 text-center text-2xl tracking-[0.5em] font-mono shadow-sm focus:border-green-500 focus:ring-1 focus:ring-green-500"
+              className="block w-full rounded-lg border border-slate-300 px-3 py-3 text-center text-2xl tracking-[0.5em] font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               placeholder="000000"
               value={otp}
               onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -142,7 +145,7 @@ function CaricaLiberatoriaForm() {
               type="button"
               onClick={firma}
               disabled={isPending || otp.length !== 6}
-              className="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-green-700 disabled:opacity-50"
+              className="tt-btn w-full bg-emerald-600 px-4 py-2.5 text-sm text-white hover:brightness-95 disabled:opacity-50"
             >
               {isPending ? "Verifica…" : "Firma ✍️"}
             </button>
@@ -150,7 +153,7 @@ function CaricaLiberatoriaForm() {
               type="button"
               onClick={() => { setStep("nome"); setOtp(""); setMessaggio(null); }}
               disabled={isPending}
-              className="w-full text-xs text-gray-500 underline hover:text-gray-700"
+              className="w-full text-xs text-slate-500 underline hover:text-slate-700"
             >
               ← Non hai ricevuto il codice? Torna indietro e riprova
             </button>

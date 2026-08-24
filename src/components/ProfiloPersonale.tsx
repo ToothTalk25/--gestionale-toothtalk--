@@ -411,7 +411,7 @@ export default function ProfiloPersonale({
                       type="checkbox"
                       checked={chiediRimozionePubblicato}
                       onChange={(e) => setChiediRimozionePubblicato(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-tt-blue"
                     />
                     <span className="text-xs text-amber-900">
                       Chiedo anche la rimozione dei contenuti già pubblicati
@@ -490,7 +490,7 @@ export default function ProfiloPersonale({
               type="checkbox"
               checked={accordoLetto}
               onChange={(e) => setAccordoLetto(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-tt-blue"
             />
             <span className="text-xs text-slate-600 leading-relaxed">
               Ho letto e compreso tutto ciò che è scritto all&apos;interno

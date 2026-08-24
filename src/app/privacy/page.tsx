@@ -34,14 +34,15 @@ export default async function PrivacyPage({
   const sezioni = raggruppaPerSezione(INFORMATIVA_PRIVACY);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
-      <h1 className="mt-6 text-2xl font-semibold">Informativa privacy</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 21 agosto 2026
-      </p>
+    <main className="min-h-screen px-4 py-10">
+      <div className="mx-auto max-w-3xl">
+        <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
+        <h1 className="mt-6 text-2xl font-semibold text-tt-ink">Informativa privacy</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 21 agosto 2026
+        </p>
 
-      <section className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
+      <section className="mt-6 tt-card space-y-6 p-6 text-sm leading-relaxed text-slate-700 sm:p-8">
         {sezioni.map((gruppo, i) => (
           <div key={i}>
             {gruppo.map((b, j) => (
@@ -75,6 +76,7 @@ export default async function PrivacyPage({
           )}
         </p>
       </section>
+      </div>
     </main>
   );
 }

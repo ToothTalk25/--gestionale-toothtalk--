@@ -126,12 +126,18 @@ export default async function RevisionePage() {
         </section>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <Card etichetta="Video sigillati" valore={lista.length} />
-        <Card etichetta="Con modifiche aperte" valore={daFare.length} />
+      <section className="grid gap-4 sm:grid-cols-3">
+        <Card etichetta="Video sigillati" valore={lista.length} icona="sigillo" />
+        <Card
+          etichetta="Con modifiche aperte"
+          valore={daFare.length}
+          icona="modifiche"
+          allerta={daFare.length > 0}
+        />
         <Card
           etichetta="Certificati via PEC"
           valore={lista.filter((v) => v.pec_inviata_at).length}
+          icona="pec"
         />
       </section>
 
@@ -234,11 +240,51 @@ export default async function RevisionePage() {
   );
 }
 
-function Card({ etichetta, valore }: { etichetta: string; valore: number }) {
+/** Stesso riquadro di sintesi con icona tinta usato in dashboard: qui erano
+ *  rimasti piatti, la stessa card visivamente diversa in due pagine. */
+function Card({
+  etichetta,
+  valore,
+  icona,
+  allerta = false,
+}: {
+  etichetta: string;
+  valore: number;
+  icona: "sigillo" | "modifiche" | "pec";
+  allerta?: boolean;
+}) {
   return (
     <div className="tt-card-piccola p-4">
-      <div className="text-2xl font-semibold">{valore}</div>
-      <div className="text-xs text-slate-500">{etichetta}</div>
+      <div className="flex items-center gap-2.5">
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+            allerta ? "bg-amber-50 text-amber-700" : "bg-tt-blue-50 text-tt-blue-600"
+          }`}
+        >
+          {icona === "sigillo" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 12l2 2 4-4" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          )}
+          {icona === "modifiche" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+          )}
+          {icona === "pec" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="M3 7l9 6 9-6" />
+            </svg>
+          )}
+        </span>
+        <span className="text-xs font-medium text-slate-500">{etichetta}</span>
+      </div>
+      <div className={`mt-2.5 text-2xl font-bold tracking-tight ${allerta ? "text-amber-700" : ""}`}>
+        {valore}
+      </div>
     </div>
   );
 }

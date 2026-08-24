@@ -2,14 +2,15 @@ import Link from "next/link";
 
 export default function TerminiPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
-      <h1 className="mt-6 text-2xl font-semibold">Termini di servizio</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Condizioni d&apos;uso della piattaforma ToothTalk — aggiornate al 12 agosto 2026
-      </p>
+    <main className="min-h-screen px-4 py-10">
+      <div className="mx-auto max-w-3xl">
+        <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
+        <h1 className="mt-6 text-2xl font-semibold text-tt-ink">Termini di servizio</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Condizioni d&apos;uso della piattaforma ToothTalk — aggiornate al 12 agosto 2026
+        </p>
 
-      <section className="mt-8 space-y-6 text-sm leading-relaxed text-slate-700">
+      <section className="mt-6 tt-card space-y-6 p-6 text-sm leading-relaxed text-slate-700 sm:p-8">
         <div>
           <h2 className="text-base font-medium text-slate-900">1. Oggetto</h2>
           <p className="mt-1">
@@ -114,6 +115,7 @@ export default function TerminiPage() {
           </Link>
         </p>
       </section>
+      </div>
     </main>
   );
 }

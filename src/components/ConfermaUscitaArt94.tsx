@@ -69,7 +69,7 @@ export default function ConfermaUscitaArt94() {
           type="checkbox"
           checked={conferma}
           onChange={(e) => setConferma(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600"
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-tt-blue"
         />
         <span>
           Confermo di aver cancellato tutte le copie locali dei materiali
