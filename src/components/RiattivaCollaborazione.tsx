@@ -3,18 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { riattivaCollaborazione } from "@/app/actions-profilo";
+import { useConferma } from "@/components/ConfermaAzione";
 
 /** Pulsante per riattivare un account disattivato (solo accesso globale). */
 export default function RiattivaCollaborazione({ userId }: { userId: string }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState(false);
   const [messaggio, setMessaggio] = useState<string | null>(null);
+  const { chiedi, dialogo } = useConferma();
 
   async function riattiva() {
-    const ok = window.confirm(
-      "Riattivare questo account? L'accesso torna disponibile. I vecchi consensi " +
-        "restano revocati: la persona li ridà da capo dal proprio profilo.",
-    );
+    const ok = await chiedi({
+      titolo: "Riattivare questo account?",
+      descrizione:
+        "L'accesso torna disponibile. I vecchi consensi restano revocati: la persona li ridà da capo dal proprio profilo.",
+      peso: "leggero",
+      testoConferma: "Riattiva",
+    });
     if (!ok) return;
     setInCorso(true);
     setMessaggio(null);
@@ -38,6 +43,7 @@ export default function RiattivaCollaborazione({ userId }: { userId: string }) {
         {inCorso ? "Riattivo…" : "Riattiva"}
       </button>
       {messaggio && <span className="text-xs text-slate-500">{messaggio}</span>}
+      {dialogo}
     </div>
   );
 }

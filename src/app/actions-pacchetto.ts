@@ -172,7 +172,7 @@ export async function segnalaErroreDichiarazione(
  */
 export async function liberaCampoDichiarazione(richiestaId: string): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
   const admin = supabaseAdmin();
   // La chiusura usa la sessione admin: il trigger valorizza risolta_da.
   const supabase = await supabaseServer();

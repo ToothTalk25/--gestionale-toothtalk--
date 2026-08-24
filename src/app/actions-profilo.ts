@@ -88,7 +88,7 @@ export async function eliminaAccount(
   // di ruolo esplicito prima, altrimenti si perderebbe l'accesso globale.
   if (profilo.role === "admin") {
     return errore(
-      "Non è possibile eliminare un account con ruolo Titolare da qui — serve un cambio di ruolo esplicito prima.",
+      "Non è possibile eliminare un account con ruolo Coordinatore da qui — serve un cambio di ruolo esplicito prima.",
     );
   }
   if (profilo.foto_path) {
@@ -302,7 +302,7 @@ export async function terminaCollaborazione(
   conferma: boolean,
 ): Promise<Esito<{ on_screen: boolean }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
   if (!conferma) return errore("Conferma esplicita richiesta per terminare la collaborazione.");
 
   const admin = supabaseAdmin();
@@ -315,7 +315,7 @@ export async function terminaCollaborazione(
   if (!target) return errore("Profilo non trovato.");
   if (target.role === "admin") {
     return errore(
-      "Non è possibile terminare un account con ruolo Titolare da qui — serve un cambio di ruolo esplicito prima.",
+      "Non è possibile terminare un account con ruolo Coordinatore da qui — serve un cambio di ruolo esplicito prima.",
     );
   }
   if (!target.attivo) return errore("La collaborazione di questo partecipante è già terminata.");
@@ -355,7 +355,7 @@ export async function terminaCollaborazione(
  */
 export async function riattivaCollaborazione(userId: string): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
   const admin = supabaseAdmin();
 
   const { data: target } = await admin
@@ -364,7 +364,7 @@ export async function riattivaCollaborazione(userId: string): Promise<Esito> {
     .eq("id", userId)
     .single<{ id: string; attivo: boolean; role: string }>();
   if (!target) return errore("Profilo non trovato.");
-  if (target.role === "admin") return errore("Gli account con ruolo Titolare non passano da qui.");
+  if (target.role === "admin") return errore("Gli account con ruolo Coordinatore non passano da qui.");
   if (target.attivo) return errore("Questo account è già attivo.");
 
   const { error } = await admin.from("profiles").update({ attivo: true }).eq("id", userId);
@@ -377,7 +377,7 @@ export async function riattivaCollaborazione(userId: string): Promise<Esito> {
       action: "riattivazione_collaborazione",
       entity_type: "profile",
       entity_id: userId,
-      meta: { motivo: "Riattivazione manuale da parte del Titolare" },
+      meta: { motivo: "Riattivazione manuale da parte del Coordinatore" },
     }),
   );
 
@@ -494,7 +494,7 @@ export type RigaNotificaArt82 = {
  */
 export async function notificaArt82(id: string): Promise<Esito> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
 
   // L'update usa la sessione dell'admin loggato (non il service_role): il
   // trigger fn_notifiche82_guard valorizza notificata_da := auth.uid(), e
@@ -571,7 +571,7 @@ export async function risolviRichiestaRimozione(
   motivazione: string,
 ): Promise<Esito> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
   if (!motivazione.trim()) return errore("Indica una motivazione per la decisione.");
 
   const supabase = await supabaseServer();
@@ -635,7 +635,7 @@ export async function eseguiEliminazioneGrezzo(
   note?: string,
 ): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
   if (!versionIds.length) return errore("Seleziona almeno un file da eliminare.");
 
   const admin = supabaseAdmin();
@@ -1074,7 +1074,7 @@ export async function caricaModelloAccordo(
   storagePath: string,
 ): Promise<Esito<{ id: string }>> {
   const { profile } = await requireSession();
-  if (profile.role !== "admin") return errore("Solo il Titolare può caricare il modello.");
+  if (profile.role !== "admin") return errore("Solo il Coordinatore può caricare il modello.");
 
   const supabase = await supabaseServer();
 
@@ -1114,7 +1114,7 @@ export async function approvaRegistrazione(
   onScreenConfermato: boolean,
 ): Promise<Esito<{ messageId: string }>> {
   const { profile: admin } = await requireSession();
-  if (admin.role !== "admin") return errore("Solo il Titolare può approvare registrazioni.");
+  if (admin.role !== "admin") return errore("Solo il Coordinatore può approvare registrazioni.");
 
   const supabase = await supabaseServer();
 
@@ -1355,7 +1355,7 @@ export async function impostaOnScreen(
   appare: boolean,
 ): Promise<Esito<{ appare: boolean }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
 
   const supabase = await supabaseServer();
   const { error } = await supabase
@@ -1519,7 +1519,7 @@ della generazione, ne garantisce l'immodificabilità.</p>
       destinatario: c.pec ?? c.email,
       oggetto: "[ToothTalk] Modulo di nomina disponibile",
       testo:
-        `Ciao ${nome},\n\nIl tuo accordo editoriale è stato approvato. Il Titolare ha ` +
+        `Ciao ${nome},\n\nIl tuo accordo editoriale è stato approvato. Il Coordinatore ha ` +
         `contestualmente generato il tuo Modulo di nomina a persona autorizzata al ` +
         `trattamento dei dati (Documento 4): lo trovi nel tuo profilo sul gestionale, ` +
         `sezione "Accordo editoriale".\n\nNon devi fare nulla: è un documento a tua ` +
@@ -1544,7 +1544,7 @@ export async function approvaAccordoManualmente(
   userId: string,
 ): Promise<Esito<{ approvatoAt: string; nomina: "ok" | "errore"; nominaErrore?: string }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Titolare.");
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
 
   const supabase = await supabaseServer();
 

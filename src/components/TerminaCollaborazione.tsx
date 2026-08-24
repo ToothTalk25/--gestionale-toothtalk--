@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { terminaCollaborazione } from "@/app/actions-profilo";
+import { useConferma } from "@/components/ConfermaAzione";
 
 /**
  * "Termina Collaborazione" — visibile SOLO nel Registro partecipanti (pagina
@@ -24,15 +25,16 @@ export default function TerminaCollaborazione({
   const router = useRouter();
   const [inCorso, setInCorso] = useState(false);
   const [messaggio, setMessaggio] = useState<string | null>(null);
+  const { chiedi, dialogo } = useConferma();
 
   async function termina() {
-    const ok = window.confirm(
-      `Terminare la collaborazione con ${fullName ?? "questo partecipante"}?\n\n` +
-        `Disattiva solo l'accesso: nessun file viene toccato, in nessun caso — ` +
-        `anche se appare in video, i contenuti restano dove sono. La revoca del ` +
-        `consenso a immagine/voce è un atto separato, che spetta a lui/lei dal ` +
-        `proprio profilo.`,
-    );
+    const ok = await chiedi({
+      titolo: `Terminare la collaborazione con ${fullName ?? "questo partecipante"}?`,
+      descrizione:
+        "Disattiva solo l'accesso: nessun file viene toccato, in nessun caso — anche se appare in video, i contenuti restano dove sono. La revoca del consenso a immagine/voce è un atto separato, che spetta a lui/lei dal proprio profilo.",
+      peso: "grave",
+      testoConferma: "Termina Collaborazione",
+    });
     if (!ok) return;
 
     setInCorso(true);
@@ -59,6 +61,7 @@ export default function TerminaCollaborazione({
         {inCorso ? "Termino…" : "Termina Collaborazione"}
       </button>
       {messaggio && <span className="text-xs text-slate-500">{messaggio}</span>}
+      {dialogo}
     </div>
   );
 }

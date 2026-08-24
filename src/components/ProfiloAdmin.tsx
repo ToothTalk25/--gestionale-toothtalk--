@@ -12,11 +12,11 @@ function sanifica(nome: string) {
 }
 
 /**
- * Profilo dell'Admin (Titolare). L'admin non compila un accordo — gestisce
- * il progetto dal Registro. Ha però una foto come gli altri membri: il
- * Titolare è anche membro del team del proprio polo, e la foto serve ai
- * compagni di gruppo per riconoscersi negli stessi punti dell'app in cui
- * vedono le foto degli altri.
+ * Profilo dell'Admin (Coordinatore). L'admin non compila un accordo —
+ * gestisce il progetto dal Registro. Ha però una foto come gli altri
+ * membri: il Coordinatore è anche membro del team del proprio polo, e la
+ * foto serve ai compagni di gruppo per riconoscersi negli stessi punti
+ * dell'app in cui vedono le foto degli altri.
  */
 export default function ProfiloAdmin({ profile }: { profile: Profile }) {
   const router = useRouter();
@@ -109,9 +109,9 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
       </section>
 
       {/* -------------------------------------------------------- foto
-          Anche il Titolare fa parte di un team di polo: la foto serve ai
-          compagni di gruppo per riconoscerlo negli stessi punti dell'app
-          in cui vedono le foto degli altri membri. */}
+          Anche il Coordinatore fa parte di un team di polo: la foto serve
+          ai compagni di gruppo per riconoscerlo negli stessi punti
+          dell'app in cui vedono le foto degli altri membri. */}
       <section className="tt-card p-6">
         <h2 className="text-lg font-medium">Foto</h2>
         <p className="mt-1 text-sm text-slate-500">

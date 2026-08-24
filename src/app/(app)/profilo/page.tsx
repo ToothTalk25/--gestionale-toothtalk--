@@ -12,7 +12,7 @@ export default async function ProfiloPage() {
         <h1 className="text-2xl font-semibold">Il mio profilo</h1>
         <p className="mt-1 text-sm text-slate-500">
           {isAdmin
-            ? "I tuoi dati e gli strumenti del Titolare."
+            ? "I tuoi dati e gli strumenti del Coordinatore."
             : "I tuoi dati personali e l'accordo editoriale. L'accordo, una volta caricato, viene inviato automaticamente a chi ha accesso globale via PEC con data certa."}
         </p>
       </header>

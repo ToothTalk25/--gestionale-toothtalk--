@@ -16,6 +16,7 @@ import {
 } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
+import { useConferma } from "@/components/ConfermaAzione";
 
 function sanifica(nome: string) {
   return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
@@ -63,13 +64,16 @@ export default function ProfiloPersonale({
   const [revocaImmagineAperta, setRevocaImmagineAperta] = useState(false);
   const [chiediRimozionePubblicato, setChiediRimozionePubblicato] = useState(false);
   const [revocaImmagineInCorso, setRevocaImmagineInCorso] = useState(false);
+  const { chiedi, dialogo } = useConferma();
 
   async function revoca(tipo: "privacy" | "cookie") {
-    const ok = window.confirm(
-      "Revocare il consenso " +
-        (tipo === "privacy" ? "alla privacy policy" : "alla cookie policy") +
-        "? La revoca viene registrata (chi, quando) e non è retroattiva. Non tocca le liberatorie firmate e i materiali già depositati come prova legale.",
-    );
+    const ok = await chiedi({
+      titolo: `Revocare il consenso ${tipo === "privacy" ? "alla privacy policy" : "alla cookie policy"}?`,
+      descrizione:
+        "La revoca viene registrata (chi, quando) e non è retroattiva. Non tocca le liberatorie firmate e i materiali già depositati come prova legale.",
+      peso: "leggero",
+      testoConferma: "Revoca",
+    });
     if (!ok) return;
     setRevocaInCorso(true);
     setErroreRevoca(null);
@@ -86,21 +90,17 @@ export default function ProfiloPersonale({
   }
 
   async function confermaRevocaImmagine() {
-    const ok = window.confirm(
-      "Revocare il consenso a immagine e voce?\n\n" +
-        "Il materiale grezzo non ancora pubblicato che ti ritrae verrà " +
-        "individuato ed eliminato dal Coordinatore entro 30 giorni, previa " +
-        "verifica di quali file ti ritraggono davvero — non è una " +
-        "cancellazione automatica." +
+    const ok = await chiedi({
+      titolo: "Revocare il consenso a immagine e voce?",
+      descrizione:
+        "Il materiale grezzo non ancora pubblicato che ti ritrae verrà individuato ed eliminato dal Coordinatore entro 30 giorni, previa verifica di quali file ti ritraggono davvero — non è una cancellazione automatica. " +
         (chiediRimozionePubblicato
-          ? "\n\nHai anche chiesto la rimozione dei contenuti già pubblicati: " +
-            "si apre una richiesta che il Titolare valuta entro 30 giorni " +
-            "(prorogabili a 90) — non viene rimosso nulla in automatico."
-          : "\n\nI contenuti già pubblicati restano online, a meno che tu non " +
-            "chieda anche la loro rimozione qui sopra.") +
-        "\n\nQuesto NON incide sulla tua partecipazione al progetto: puoi " +
-        "restare come Collaboratore anche dopo la revoca.\n\nConfermi?",
-    );
+          ? "Hai anche chiesto la rimozione dei contenuti già pubblicati: si apre una richiesta che il Coordinatore valuta entro 30 giorni (prorogabili a 90) — non viene rimosso nulla in automatico. "
+          : "I contenuti già pubblicati restano online, a meno che tu non chieda anche la loro rimozione qui sopra. ") +
+        "Questo non incide sulla tua partecipazione al progetto: puoi restare come Collaboratore anche dopo la revoca.",
+      peso: "grave",
+      testoConferma: "Revoca il consenso",
+    });
     if (!ok) return;
     setRevocaImmagineInCorso(true);
     setErroreRevoca(null);
@@ -114,7 +114,7 @@ export default function ProfiloPersonale({
     setMessaggioRevoca(
       "Consenso a immagine/voce revocato. Il Coordinatore individuerà ed eliminerà il materiale grezzo che ti ritrae entro 30 giorni." +
         (esito.dati.richiestaRimozioneAperta
-          ? " Richiesta di rimozione del pubblicato aperta: il Titolare la valuterà entro i termini di legge."
+          ? " Richiesta di rimozione del pubblicato aperta: il Coordinatore la valuterà entro i termini di legge."
           : ""),
     );
     setRevocaImmagineAperta(false);
@@ -403,7 +403,7 @@ export default function ProfiloPersonale({
                     davvero — non è una cancellazione automatica. I contenuti
                     già pubblicati restano online, a meno che tu non chieda
                     anche la loro rimozione qui sotto — in quel caso si apre
-                    una richiesta valutata dal Titolare, non una rimozione
+                    una richiesta valutata dal Coordinatore, non una rimozione
                     automatica.
                   </p>
                   <label className="mt-3 flex items-start gap-2 cursor-pointer">
@@ -541,7 +541,7 @@ export default function ProfiloPersonale({
                 )}
               </li>
               <li className={profile.accordo_approvato_admin_at ? "text-emerald-700" : "text-slate-400"}>
-                {profile.accordo_approvato_admin_at ? "☑" : "☐"} Approvato dal Titolare
+                {profile.accordo_approvato_admin_at ? "☑" : "☐"} Approvato dal Coordinatore
               </li>
             </ul>
             {(!profile.accordo_path ||
@@ -601,6 +601,7 @@ export default function ProfiloPersonale({
 
       {messaggio && <p className="text-sm text-emerald-700 lg:col-span-2">{messaggio}</p>}
       {errore && <p className="text-sm text-red-600 lg:col-span-2">{errore}</p>}
+      {dialogo}
     </div>
   );
 }

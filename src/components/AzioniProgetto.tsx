@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { aggiornaTesti, eliminaProgetto } from "@/app/actions";
+import { useConferma } from "@/components/ConfermaAzione";
 
 export default function AzioniProgetto({
   taskId,
@@ -21,6 +22,7 @@ export default function AzioniProgetto({
   const [errore, setErrore] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const { chiedi, dialogo } = useConferma();
 
   const modificabile = status === "da_fare";
 
@@ -44,10 +46,13 @@ export default function AzioniProgetto({
     });
   }
 
-  function elimina() {
-    const ok = window.confirm(
-      "Eliminare questo progetto? Verranno rimossi tutti i file caricati. Azione irreversibile.",
-    );
+  async function elimina() {
+    const ok = await chiedi({
+      titolo: `Eliminare "${titolo}"?`,
+      descrizione: "Tutti i file caricati per questo progetto vengono rimossi. L'operazione non si può annullare.",
+      peso: "grave",
+      testoConferma: "Elimina progetto",
+    });
     if (!ok) return;
 
     start(async () => {
@@ -132,6 +137,7 @@ export default function AzioniProgetto({
 
       {errore && <span className="text-xs text-red-600">{errore}</span>}
       {messaggio && <span className="text-xs text-emerald-700">{messaggio}</span>}
+      {dialogo}
     </div>
   );
 }

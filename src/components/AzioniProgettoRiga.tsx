@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { aggiornaTesti, eliminaProgetto } from "@/app/actions";
+import { useConferma } from "@/components/ConfermaAzione";
 
 export default function AzioniProgettoRiga({
   taskId,
@@ -19,6 +20,7 @@ export default function AzioniProgettoRiga({
   const [errore, setErrore] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const { chiedi, dialogo } = useConferma();
 
   function salvaTitolo(e: React.MouseEvent) {
     e.preventDefault();
@@ -42,12 +44,15 @@ export default function AzioniProgettoRiga({
     });
   }
 
-  function elimina(e: React.MouseEvent) {
+  async function elimina(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const ok = window.confirm(
-      "Eliminare questo progetto? Verranno rimossi tutti i file caricati. Azione irreversibile.",
-    );
+    const ok = await chiedi({
+      titolo: `Eliminare "${titolo}"?`,
+      descrizione: "Tutti i file caricati per questo progetto vengono rimossi. L'operazione non si può annullare.",
+      peso: "grave",
+      testoConferma: "Elimina progetto",
+    });
     if (!ok) return;
 
     start(async () => {
@@ -128,6 +133,7 @@ export default function AzioniProgettoRiga({
           <line x1="14" y1="11" x2="14" y2="17" />
         </svg>
       </button>
+      {dialogo}
     </span>
   );
 }
