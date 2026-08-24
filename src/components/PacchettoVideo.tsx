@@ -418,174 +418,204 @@ export default function PacchettoVideo({
               : undefined
           }
         />
-      </div>
 
-      {coinvolgeTerzi && (
-        <div className="mt-4">
-          {isAdmin ? (
-            <Slot
-              titolo="6 · Liberatoria privacy/immagine"
-              elemento={liberatoria}
-              confermato={testiConfermati || !inBozza}
-              onRimuovi={
-                componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
+        {componibile && (
+          <div className="px-5 py-4">
+            <button
+              disabled={pending}
+              onClick={() =>
+                start(async () => {
+                  setErrore(null);
+                  setMessaggio(null);
+                  const esito = await salvaPacchetto(taskId, {
+                    descrizione,
+                    script,
+                    titolo_youtube: titoloYoutube,
+                  });
+                  if (!esito.ok) setErrore(esito.errore);
+                  else {
+                    setMessaggio(
+                      esito.dati.avvisi.length
+                        ? esito.dati.avvisi.join(" · ")
+                        : "Testi salvati.",
+                    );
+                    router.refresh();
+                  }
+                })
               }
-              onDropFile={componibile ? (f) => liberatoriaUploadRef.current?.handleFile(f) : undefined}
-              azione={
-                componibile ? (
-                  <UploadDeliverable
-                    ref={liberatoriaUploadRef}
-                    taskId={taskId}
-                    kind="finale_liberatoria"
-                    archivio="finale"
-                    isAdmin={false}
-                    locked={locked}
-                    etichetta={liberatoria ? "Sostituisci" : "Carica liberatoria"}
-                    accept="application/pdf,image/*"
-                    onCaricato={(v) => dopoUpload("liberatoria", v)}
-                  >
-                    {!liberatoria && <p className="text-xs text-slate-400">Nessun file.</p>}
-                  </UploadDeliverable>
-                ) : null
-              }
-              taskId={taskId}
-              archiviabile={archiviabile}
-            />
-          ) : (
-            <div className="rounded-xl border border-slate-200 p-3">
-              <h3 className="text-sm font-medium">6 · Liberatoria privacy/immagine</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                {liberatoria ? "Presente ✓ — il file non è visibile qui per motivi di privacy." : "Assente"}
-              </p>
-              {coinvolgeTerzi && liberatoria && (
-                <p className={`mt-1 text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
-                  {liberatoriaOtp
-                    ? "Firmata via codice OTP ✓"
-                    : "Non ancora firmata via codice OTP: il sigillo richiede la firma sicura del contatto."}
-                </p>
-              )}
-            </div>
-          )}
-          {isAdmin && coinvolgeTerzi && (
-            <p className={`mt-2 text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
-              {liberatoriaOtp
-                ? "Liberatoria firmata via codice OTP ✓"
-                : "Attenzione: la liberatoria vale per il sigillo solo se firmata via codice OTP (non basta un caricamento manuale)."}
-            </p>
-          )}
-          {coinvolgeTerzi && (
-            <div className="mt-4">
+              className="tt-btn border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-50"
+            >
+              Salva descrizione, script e titolo
+            </button>
+          </div>
+        )}
+
+        {coinvolgeTerzi && (
+          <>
+            {isAdmin ? (
               <Slot
-                id="dichiarazione"
-                titolo="7 · Video di dichiarazione"
-                elemento={dichiarazione}
+                titolo="6 · Liberatoria privacy/immagine"
+                elemento={liberatoria}
                 confermato={testiConfermati || !inBozza}
-                onDropFile={
-                  componibile && !dichiarazione
-                    ? (f) => dichiarazioneUploadRef.current?.handleFile(f)
-                    : undefined
+                onRimuovi={
+                  componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
                 }
+                onDropFile={componibile ? (f) => liberatoriaUploadRef.current?.handleFile(f) : undefined}
                 azione={
-                  componibile && !dichiarazione ? (
+                  componibile ? (
                     <UploadDeliverable
-                      ref={dichiarazioneUploadRef}
+                      ref={liberatoriaUploadRef}
                       taskId={taskId}
-                      kind="video_grezzo"
+                      kind="finale_liberatoria"
+                      archivio="finale"
                       isAdmin={false}
                       locked={locked}
-                      etichetta="Carica video di dichiarazione"
-                      accept="video/*"
-                      onCaricato={(v) => dopoUpload("dichiarazione_identita", v)}
+                      etichetta={liberatoria ? "Sostituisci" : "Carica liberatoria"}
+                      accept="application/pdf,image/*"
+                      onCaricato={(v) => dopoUpload("liberatoria", v)}
                     >
-                      {!dichiarazione && (
-                        <p className="text-xs text-slate-400">Nessun file.</p>
-                      )}
+                      {!liberatoria && <p className="text-xs text-slate-400">Nessun file.</p>}
                     </UploadDeliverable>
                   ) : null
                 }
                 taskId={taskId}
-                archiviabile={false}
+                archiviabile={archiviabile}
+                footer={
+                  <p className={`text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
+                    {liberatoriaOtp
+                      ? "Liberatoria firmata via codice OTP ✓"
+                      : "Attenzione: la liberatoria vale per il sigillo solo se firmata via codice OTP (non basta un caricamento manuale)."}
+                  </p>
+                }
               />
-              <p className="mt-2 text-xs text-slate-400">
-                Visibile solo a chi l&apos;ha caricato e al Coordinatore. Una
-                volta caricato non è modificabile né rimovibile: se è sbagliato,
-                segnala l&apos;errore e il Coordinatore libererà il campo.
-              </p>
-              {dichiarazione && !isAdmin && pacchetto && (
-                <div className="mt-2">
-                  <button
-                    onClick={async () => {
-                      const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_identita");
-                      if (!esito.ok) window.alert(esito.errore);
-                      else router.refresh();
-                    }}
-                    className="tt-btn border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
-                  >
-                    Segnala errore (il video va ricaricato)
-                  </button>
-                </div>
-              )}
-
-              {/* ---- Seconda parte della dichiarazione (Protocollo 4.1
-                    "Domande non dichiarate"): il video di integrazione con la
-                    domanda aggiuntiva. Facoltativo, stessa riservatezza. ---- */}
-              <div className="mt-5 border-t border-slate-100 pt-4">
-                <Slot
-                  id="dichiarazione-integrazione"
-                  titolo="7b · Video di integrazione della dichiarazione"
-                  elemento={dichiarazioneIntegrazione}
-                  confermato={testiConfermati || !inBozza}
-                  onDropFile={
-                    componibile && !dichiarazioneIntegrazione
-                      ? (f) => dichiarazioneIntegrazioneUploadRef.current?.handleFile(f)
-                      : undefined
-                  }
-                  azione={
-                    componibile && !dichiarazioneIntegrazione ? (
-                      <UploadDeliverable
-                        ref={dichiarazioneIntegrazioneUploadRef}
-                        taskId={taskId}
-                        kind="video_grezzo"
-                        isAdmin={false}
-                        locked={locked}
-                        etichetta="Carica video di integrazione"
-                        accept="video/*"
-                        onCaricato={(v) => dopoUpload("dichiarazione_integrazione", v)}
-                      >
-                        {!dichiarazioneIntegrazione && (
-                          <p className="text-xs text-slate-400">Nessun file.</p>
-                        )}
-                      </UploadDeliverable>
-                    ) : null
-                  }
-                  taskId={taskId}
-                  archiviabile={false}
-                />
-                <p className="mt-2 text-xs text-slate-400">
-                  Da caricare solo se durante l&apos;intervista è stata posta una
-                  domanda non dichiarata nel video iniziale (Protocollo Art.
-                  4.1). Visibile solo a chi l&apos;ha caricato e al Coordinatore,
-                  come la dichiarazione principale.
+            ) : (
+              <div className="px-5 py-4">
+                <h3 className="text-sm font-medium">6 · Liberatoria privacy/immagine</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {liberatoria ? "Presente ✓ — il file non è visibile qui per motivi di privacy." : "Assente"}
                 </p>
-                {dichiarazioneIntegrazione && !isAdmin && pacchetto && (
-                  <div className="mt-2">
+                {liberatoria && (
+                  <p className={`mt-1 text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
+                    {liberatoriaOtp
+                      ? "Firmata via codice OTP ✓"
+                      : "Non ancora firmata via codice OTP: il sigillo richiede la firma sicura del contatto."}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <Slot
+              id="dichiarazione"
+              titolo="7 · Video di dichiarazione"
+              elemento={dichiarazione}
+              confermato={testiConfermati || !inBozza}
+              onDropFile={
+                componibile && !dichiarazione
+                  ? (f) => dichiarazioneUploadRef.current?.handleFile(f)
+                  : undefined
+              }
+              azione={
+                componibile && !dichiarazione ? (
+                  <UploadDeliverable
+                    ref={dichiarazioneUploadRef}
+                    taskId={taskId}
+                    kind="video_grezzo"
+                    isAdmin={false}
+                    locked={locked}
+                    etichetta="Carica video di dichiarazione"
+                    accept="video/*"
+                    onCaricato={(v) => dopoUpload("dichiarazione_identita", v)}
+                  >
+                    {!dichiarazione && (
+                      <p className="text-xs text-slate-400">Nessun file.</p>
+                    )}
+                  </UploadDeliverable>
+                ) : null
+              }
+              taskId={taskId}
+              archiviabile={false}
+              footer={
+                <>
+                  <p className="text-xs text-slate-400">
+                    Visibile solo a chi l&apos;ha caricato e al Coordinatore. Una
+                    volta caricato non è modificabile né rimovibile: se è sbagliato,
+                    segnala l&apos;errore e il Coordinatore libererà il campo.
+                  </p>
+                  {dichiarazione && !isAdmin && pacchetto && (
+                    <button
+                      onClick={async () => {
+                        const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_identita");
+                        if (!esito.ok) window.alert(esito.errore);
+                        else router.refresh();
+                      }}
+                      className="tt-btn mt-2 border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
+                    >
+                      Segnala errore (il video va ricaricato)
+                    </button>
+                  )}
+                </>
+              }
+            />
+
+            {/* Seconda parte della dichiarazione (Protocollo 4.1 "Domande non
+                dichiarate"): il video di integrazione con la domanda aggiuntiva.
+                Facoltativo, stessa riservatezza. */}
+            <Slot
+              id="dichiarazione-integrazione"
+              titolo="7b · Video di integrazione della dichiarazione"
+              elemento={dichiarazioneIntegrazione}
+              confermato={testiConfermati || !inBozza}
+              onDropFile={
+                componibile && !dichiarazioneIntegrazione
+                  ? (f) => dichiarazioneIntegrazioneUploadRef.current?.handleFile(f)
+                  : undefined
+              }
+              azione={
+                componibile && !dichiarazioneIntegrazione ? (
+                  <UploadDeliverable
+                    ref={dichiarazioneIntegrazioneUploadRef}
+                    taskId={taskId}
+                    kind="video_grezzo"
+                    isAdmin={false}
+                    locked={locked}
+                    etichetta="Carica video di integrazione"
+                    accept="video/*"
+                    onCaricato={(v) => dopoUpload("dichiarazione_integrazione", v)}
+                  >
+                    {!dichiarazioneIntegrazione && (
+                      <p className="text-xs text-slate-400">Nessun file.</p>
+                    )}
+                  </UploadDeliverable>
+                ) : null
+              }
+              taskId={taskId}
+              archiviabile={false}
+              footer={
+                <>
+                  <p className="text-xs text-slate-400">
+                    Da caricare solo se durante l&apos;intervista è stata posta una
+                    domanda non dichiarata nel video iniziale (Protocollo Art.
+                    4.1). Visibile solo a chi l&apos;ha caricato e al Coordinatore,
+                    come la dichiarazione principale.
+                  </p>
+                  {dichiarazioneIntegrazione && !isAdmin && pacchetto && (
                     <button
                       onClick={async () => {
                         const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_integrazione");
                         if (!esito.ok) window.alert(esito.errore);
                         else router.refresh();
                       }}
-                      className="tt-btn border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
+                      className="tt-btn mt-2 border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
                     >
                       Segnala errore (il video va ricaricato)
                     </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                  )}
+                </>
+              }
+            />
+          </>
+        )}
+      </div>
 
       {isAdmin && inBozza && (
         <p className="mt-3 text-xs text-slate-400">
@@ -593,35 +623,6 @@ export default function PacchettoVideo({
           deposito. Quando lo segnalano come completato, lo rivedi qui e decidi
           tu: sigillarlo o rimandarlo in composizione.
         </p>
-      )}
-
-      {componibile && (
-        <button
-          disabled={pending}
-          onClick={() =>
-            start(async () => {
-              setErrore(null);
-              setMessaggio(null);
-              const esito = await salvaPacchetto(taskId, {
-                descrizione,
-                script,
-                titolo_youtube: titoloYoutube,
-              });
-              if (!esito.ok) setErrore(esito.errore);
-              else {
-                setMessaggio(
-                  esito.dati.avvisi.length
-                    ? esito.dati.avvisi.join(" · ")
-                    : "Testi salvati.",
-                );
-                router.refresh();
-              }
-            })
-          }
-          className="tt-btn mt-3 border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-50"
-        >
-          Salva descrizione, script e titolo
-        </button>
       )}
 
       {/* ------------------------------------------------------ sigillo */}
@@ -939,6 +940,7 @@ function Slot({
   taskId,
   archiviabile,
   confermato,
+  footer,
 }: {
   id?: string;
   titolo: string;
@@ -950,6 +952,8 @@ function Slot({
   archiviabile: boolean;
   /** true quando il testo è confermato come versione definitiva o il pacchetto non è più in bozza. */
   confermato: boolean;
+  /** Nota e azioni proprie dello slot (es. "Segnala errore"): dentro la riga, non fuori. */
+  footer?: React.ReactNode;
 }) {
   const [conferma, setConferma] = useState(false);
   const [confermaArchivia, setConfermaArchivia] = useState(false);
@@ -1072,6 +1076,7 @@ function Slot({
       ) : azione ? null : (
         <p className="mt-2 text-xs text-slate-400">Nessun file.</p>
       )}
+      {footer && <div className="mt-2">{footer}</div>}
     </div>
   );
 }
