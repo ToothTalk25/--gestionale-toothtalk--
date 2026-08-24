@@ -4,14 +4,22 @@ import { cookies } from "next/headers";
 type CookieDaImpostare = { name: string; value: string; options: CookieOptions };
 
 /**
- * Cookie di sessione con flag di sicurezza rigidi: HttpOnly, Secure e
- * SameSite=Strict. Il token di sessione Supabase non vive mai in
- * localStorage (dove un XSS potrebbe leggerlo), solo in questi cookie.
- * SameSite=Strict limita l'invio ai contesti first-party: previene
- * CSRF e mitigherebbe il furto di sessione via cross-site.
+ * Cookie di sessione con flag di sicurezza: Secure e SameSite=Strict. Il
+ * token di sessione Supabase non vive mai in localStorage (dove un XSS
+ * potrebbe leggerlo), solo in questi cookie. SameSite=Strict limita l'invio
+ * ai contesti first-party: previene CSRF e mitigherebbe il furto di sessione
+ * via cross-site.
+ *
+ * NON HttpOnly: gli upload dei file grandi vanno dal browser dritti a
+ * Supabase Storage (mai attraverso il server Next, vedi
+ * src/lib/supabase/client.ts), e il client Supabase lato browser
+ * (createBrowserClient) legge la sessione da questi stessi cookie per
+ * autenticare quelle richieste — con HttpOnly non potrebbe leggerli, la
+ * richiesta partirebbe come anonima e Storage la respingerebbe con un
+ * errore RLS generico (osservato davvero: ogni upload falliva così, sia
+ * da collaboratore che da admin, con lo stesso identico sintomo).
  */
 const COOKIE_SICURI: CookieOptions = {
-  httpOnly: true,
   secure: true,
   sameSite: "strict",
   path: "/",

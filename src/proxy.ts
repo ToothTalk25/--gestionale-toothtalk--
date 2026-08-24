@@ -30,11 +30,16 @@ const PUBBLICHE = [
   "/documenti",
 ];
 
-// Flag di sicurezza rigidi per i cookie di sessione (HttpOnly, Secure,
-// SameSite=Strict): il token non vive in localStorage e non viaggia in
-// contesti cross-site.
+// Flag di sicurezza per i cookie di sessione (Secure, SameSite=Strict): il
+// token non vive in localStorage e non viaggia in contesti cross-site.
+// NON httpOnly: gli upload dei file grandi vanno dal browser dritti a
+// Supabase Storage (mai attraverso il server Next, vedi src/lib/supabase/
+// client.ts), e il client Supabase lato browser (createBrowserClient) legge
+// la sessione da questi stessi cookie per autenticare quelle richieste —
+// con httpOnly non potrebbe leggerli, la richiesta partirebbe come anonima
+// e Storage la respingerebbe con un errore RLS generico (osservato
+// davvero: ogni upload falliva così, sia da collaboratore che da admin).
 const COOKIE_SICURI: CookieOptions = {
-  httpOnly: true,
   secure: true,
   sameSite: "strict",
   path: "/",
