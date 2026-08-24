@@ -42,7 +42,7 @@ export default function SezioneLiberatorie({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+          <span className="rounded-full bg-slate-100 px-[11px] py-[3px] text-xs font-semibold text-slate-600">
             {(documenti ?? []).length} documenti
           </span>
           <select

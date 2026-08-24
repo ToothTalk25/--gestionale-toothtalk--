@@ -48,7 +48,7 @@ export default function GoogleDocCard({
           <button
             onClick={salva}
             disabled={pending}
-            className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+            className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-60"
           >
             Salva
           </button>
@@ -71,7 +71,7 @@ export default function GoogleDocCard({
           href={googleDocUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white"
+          className="inline-block tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95"
         >
           Apri Google Doc ↗
         </a>
@@ -99,7 +99,7 @@ export default function GoogleDocCard({
         <div className="flex justify-center">
           <button
             onClick={() => setModifica(true)}
-            className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white"
+            className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95"
           >
             + Collega Google Doc
           </button>

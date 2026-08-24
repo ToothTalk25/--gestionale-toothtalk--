@@ -67,7 +67,7 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
             sbloccare l&apos;accesso ai progetti.
           </p>
         </div>
-        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+        <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
           {accordi.length} in attesa
         </span>
       </div>

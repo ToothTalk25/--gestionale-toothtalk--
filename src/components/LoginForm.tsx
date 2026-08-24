@@ -148,7 +148,7 @@ export default function LoginForm() {
                 type="button"
                 disabled={inCorso || !email}
                 onClick={inviaReset}
-                className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
               >
                 Invia
               </button>

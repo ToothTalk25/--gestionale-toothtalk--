@@ -178,7 +178,7 @@ export default function PacchettoVideo({
           </p>
         </div>
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${COLORI[stato]}`}
+          className={`rounded-full px-[11px] py-[3px] text-xs font-semibold ${COLORI[stato]}`}
         >
           {PACCHETTO_LABEL[stato]}
         </span>
@@ -286,7 +286,7 @@ export default function PacchettoVideo({
                     );
                   })
                 }
-                className="rounded-lg bg-tt-blue px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
               >
                 Invia link per la liberatoria
               </button>
@@ -898,7 +898,7 @@ function DettaglioSigillo({
                   );
               })
             }
-            className="rounded-lg bg-tt-blue px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="tt-btn bg-tt-blue px-4 py-2 text-xs text-white hover:brightness-95 disabled:opacity-50"
           >
             {pacchetto.stato === "pec_errore" ? "Ritenta la PEC" : "Conferma e spedisci la PEC"}
           </button>
@@ -1134,7 +1134,7 @@ function Testo({
           <button
             onClick={handleImporta}
             disabled={importando}
-            className="ml-auto rounded-lg bg-tt-blue px-2.5 py-1 text-[11px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="tt-btn ml-auto bg-tt-blue px-2.5 py-1 text-[11px] text-white hover:brightness-95 disabled:opacity-50"
           >
             {importando ? "…" : "⬇ Importa dal Doc"}
           </button>
