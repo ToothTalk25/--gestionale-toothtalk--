@@ -38,6 +38,8 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
     .toUpperCase();
 
   async function esci() {
+    // Logout esplicito: la scelta "ricordami" riparte da zero al prossimo login.
+    window.localStorage.removeItem("tt_ricordami");
     await supabaseBrowser().auth.signOut();
     router.replace("/login");
     router.refresh();

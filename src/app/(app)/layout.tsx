@@ -6,6 +6,7 @@ import MenuUtente from "@/components/MenuUtente";
 import BannerConsenso from "@/components/BannerConsenso";
 import NavLink from "@/components/NavLink";
 import { PoloAttivoProvider } from "@/components/PoloAttivoContext";
+import ControlloRicordami from "@/components/ControlloRicordami";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, poli, isAdmin, soloConfermaUscita } = await requireSession();
@@ -110,6 +111,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </footer>
 
         <BannerConsenso />
+        <ControlloRicordami />
       </div>
     </PoloAttivoProvider>
   );

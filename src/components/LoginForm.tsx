@@ -11,6 +11,7 @@ export default function LoginForm() {
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [ricordami, setRicordami] = useState(true);
   const [errore, setErrore] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [inCorso, setInCorso] = useState(false);
@@ -52,6 +53,16 @@ export default function LoginForm() {
       setInCorso(false);
       return;
     }
+
+    // "Ricordami su questo dispositivo": di default la sessione è ricordata
+    // (cookie a lunga durata). Se NON spuntato, lo segnaliamo con un flag:
+    // ControlloRicordami farà il logout alla chiusura del browser/tab.
+    if (ricordami) {
+      localStorage.removeItem("tt_ricordami");
+    } else {
+      localStorage.setItem("tt_ricordami", "0");
+    }
+
     // Il parametro "next" viene usato solo se è un percorso INTERNO:
     // altrimenti (es. next=https://maligno.com, //evil.com) si va sulla
     // dashboard. È la difesa contro l'open redirect dopo il login.
@@ -102,6 +113,16 @@ export default function LoginForm() {
         />
 
         {errore && <p className="mt-3 text-sm text-red-600">{errore}</p>}
+
+        <label className="mt-4 flex items-center gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={ricordami}
+            onChange={(e) => setRicordami(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+          />
+          <span>Ricordami su questo dispositivo</span>
+        </label>
 
         <button
           type="submit"
