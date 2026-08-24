@@ -6,6 +6,25 @@ import GoogleDocCard from "@/components/GoogleDocCard";
 import VersionList from "@/components/VersionList";
 import type { DeliverableKind, DeliverableVersion } from "@/lib/types";
 
+/** Un'icona per tipo di materiale: lo stesso set di forme (video, immagine,
+ *  documento) ovunque nel gestionale compaia quel tipo di file. */
+function IconaKind({ kind }: { kind: DeliverableKind }) {
+  const comuni = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  if (kind === "video_grezzo") {
+    return <svg {...comuni}><rect x="2" y="5" width="15" height="14" rx="2" /><path d="M17 10l5-3v10l-5-3" /></svg>;
+  }
+  if (kind === "immagini_montaggio" || kind === "thumbnail") {
+    return <svg {...comuni}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5L5 21" /></svg>;
+  }
+  if (kind === "script" || kind === "descrizione") {
+    return <svg {...comuni}><path d="M4 4h16v16H4z" stroke="none" /><path d="M6 4v16M6 8h12M6 12h12M6 16h8" /></svg>;
+  }
+  if (kind === "titolo_youtube") {
+    return <svg {...comuni}><rect x="2" y="6" width="20" height="12" rx="3" /><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" stroke="none" /></svg>;
+  }
+  return <svg {...comuni}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>;
+}
+
 /**
  * Una card di "Materiali di lavorazione". Il rilascio drag&drop è gestito
  * qui, sulla card intera (stesso pattern di Slot in PacchettoVideo): così
@@ -75,7 +94,7 @@ export default function KindCard({
             }
           : undefined
       }
-      className={`group rounded-lg p-2 ring-1 flex flex-col transition-colors sm:min-h-[150px] ${
+      className={`group rounded-xl p-2 ring-1 flex flex-col transition-colors sm:min-h-[150px] ${
         dragOver
           ? "ring-2 ring-tt-blue bg-tt-blue/5"
           : versioni.length > 0
@@ -87,6 +106,7 @@ export default function KindCard({
       <div className="flex items-center gap-2 sm:hidden">
         {/* Metà sinistra: titolo + "+"/numero, centrati insieme. */}
         <div className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-center">
+          <span className="text-slate-400"><IconaKind kind={kind} /></span>
           <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
           {!isGoogleDoc && !mancaNumeroVideo && (
             <span className="text-2xl font-light leading-none text-slate-300" aria-hidden>
@@ -114,7 +134,8 @@ export default function KindCard({
 
       {/* ================= DESKTOP: card quadrata invariata ================= */}
       <div className="hidden sm:block">
-        <h3 className="pt-2 text-base font-semibold text-slate-700 text-center">{label}</h3>
+        <div className="flex justify-center pt-2 text-slate-400"><IconaKind kind={kind} /></div>
+        <h3 className="mt-1 text-base font-semibold text-slate-700 text-center">{label}</h3>
         <div className="flex-1 flex items-center justify-center pb-2">
           <Contenuto
             ref={refDesktop}

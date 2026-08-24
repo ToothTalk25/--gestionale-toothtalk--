@@ -254,6 +254,11 @@ export default async function AdminPage() {
       }));
   }
 
+  const collaboratoriAttivi = (profili ?? []).filter((p) => p.attivo && p.role !== "admin").length;
+  const richiesteRegistrazioneAperte = (richieste ?? []).length;
+  const richiesteRimozioneAperte = (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length;
+  const notificheArt82Pendenti = (notificheArt82 ?? []).filter((n) => !n.notificata_at).length;
+
   return (
     <div className="space-y-8">
       <header>
@@ -264,6 +269,28 @@ export default async function AdminPage() {
           pagina.
         </p>
       </header>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatAdmin etichetta="Collaboratori attivi" valore={collaboratoriAttivi} icona="collaboratori" />
+        <StatAdmin
+          etichetta="Richieste di registrazione"
+          valore={richiesteRegistrazioneAperte}
+          icona="registrazione"
+          allerta={richiesteRegistrazioneAperte > 0}
+        />
+        <StatAdmin
+          etichetta="Richieste di rimozione"
+          valore={richiesteRimozioneAperte}
+          icona="rimozione"
+          allerta={richiesteRimozioneAperte > 0}
+        />
+        <StatAdmin
+          etichetta="Notifiche dovute (Art. 8.2)"
+          valore={notificheArt82Pendenti}
+          icona="notifiche"
+          allerta={notificheArt82Pendenti > 0}
+        />
+      </section>
 
       <NavigazioneAdmin
         sezioni={[
@@ -564,6 +591,63 @@ export default async function AdminPage() {
           },
         ]}
       />
+    </div>
+  );
+}
+
+/** Stesso riquadro di sintesi con icona tinta usato in dashboard e revisione. */
+function StatAdmin({
+  etichetta,
+  valore,
+  icona,
+  allerta = false,
+}: {
+  etichetta: string;
+  valore: number;
+  icona: "collaboratori" | "registrazione" | "rimozione" | "notifiche";
+  allerta?: boolean;
+}) {
+  return (
+    <div className="tt-card-piccola p-4">
+      <div className="flex items-center gap-2.5">
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+            allerta ? "bg-amber-50 text-amber-700" : "bg-tt-blue-50 text-tt-blue-600"
+          }`}
+        >
+          {icona === "collaboratori" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          )}
+          {icona === "registrazione" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <path d="M20 8v6M23 11h-6" />
+            </svg>
+          )}
+          {icona === "rimozione" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+          )}
+          {icona === "notifiche" && (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          )}
+        </span>
+        <span className="text-xs font-medium text-slate-500">{etichetta}</span>
+      </div>
+      <div className={`mt-2.5 text-2xl font-bold tracking-tight ${allerta ? "text-amber-700" : ""}`}>
+        {valore}
+      </div>
     </div>
   );
 }
