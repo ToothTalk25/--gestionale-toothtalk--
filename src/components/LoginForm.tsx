@@ -119,7 +119,7 @@ export default function LoginForm() {
             type="checkbox"
             checked={ricordami}
             onChange={(e) => setRicordami(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+            className="h-4 w-4 rounded border-slate-300 text-tt-blue"
           />
           <span>Ricordami su questo dispositivo</span>
         </label>
