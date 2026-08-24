@@ -1017,7 +1017,7 @@ export async function caricaAccordo(
         "aver letto e compreso integralmente il contenuto dell'accordo editoriale e del Protocollo Operativo ad esso allegato.",
         "",
         "Il PDF allegato è firmato e viene registrato con data certa: fa parte",
-        `del registro dei partecipanti. Università: ${profile.universita ?? "non indicata"}.`,
+        "del registro dei partecipanti.",
         "",
         "Impronta SHA-256 del file:",
         `  ${sha256}`,
@@ -1034,7 +1034,7 @@ export async function caricaAccordo(
     compreso integralmente il contenuto dell'accordo editoriale e del Protocollo
     Operativo ad esso allegato.
     Il PDF allegato è firmato e viene registrato con data certa: fa parte del
-    registro dei partecipanti. Università: ${profile.universita ?? "non indicata"}.
+    registro dei partecipanti.
   </p>
   <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
   <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
