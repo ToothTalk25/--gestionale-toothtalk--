@@ -296,7 +296,7 @@ export default function PacchettoVideo({
       )}
 
       {/* ---------------------------------------------------- elementi */}
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-5 tt-card-piccola divide-y divide-slate-100 overflow-hidden">
         <Slot
           id="video"
           titolo="1 · Video montato"
@@ -353,9 +353,6 @@ export default function PacchettoVideo({
           taskId={taskId}
           archiviabile={archiviabile}
         />
-      </div>
-
-      <div className="mt-4 space-y-4">
         <Testo
           id="script"
           titolo={scriptTitolo}
@@ -993,12 +990,8 @@ function Slot({
             }
           : undefined
       }
-      className={`rounded-xl border p-3 transition-colors ${
-        dragOver
-          ? "border-tt-blue bg-tt-blue/5 ring-2 ring-tt-blue"
-          : elemento
-            ? "border-tt-blue/20 bg-tt-blue-50"
-            : "border-slate-200"
+      className={`px-5 py-4 transition-colors ${
+        dragOver ? "bg-tt-blue/5 ring-2 ring-inset ring-tt-blue" : elemento ? "bg-tt-blue-50/60" : ""
       }`}
     >
       <div className="flex items-start gap-2">
@@ -1119,27 +1112,23 @@ function Testo({
   return (
     <div
       id={id}
-      className={`rounded-xl border p-3 ${
-        !valore.trim()
-          ? "border-slate-200"
-          : confermato
-            ? "border-tt-blue/20 bg-tt-blue-50"
-            : "border-amber-200 bg-amber-50"
+      className={`px-5 py-4 ${
+        !valore.trim() ? "" : confermato ? "bg-tt-blue-50/60" : "bg-amber-50"
       }`}
     >
-      <h3 className="flex items-center gap-2 text-sm font-medium">
-        <span>{titolo}</span>
-        {nota && <span className="font-normal text-xs text-slate-400">{nota}</span>}
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-medium">{titolo}</h3>
         {modificabile && onImporta && (
           <button
             onClick={handleImporta}
             disabled={importando}
-            className="tt-btn ml-auto bg-tt-blue px-2.5 py-1 text-[11px] text-white hover:brightness-95 disabled:opacity-50"
+            className="tt-btn ml-auto shrink-0 bg-tt-blue px-2.5 py-1 text-[11px] text-white hover:brightness-95 disabled:opacity-50"
           >
             {importando ? "…" : "⬇ Importa dal Doc"}
           </button>
         )}
-      </h3>
+      </div>
+      {nota && <p className="mt-0.5 text-xs text-slate-400">{nota}</p>}
       {modificabile ? (
         <textarea
           rows={righe}
