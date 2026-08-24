@@ -63,7 +63,7 @@ export default function AggiornaPasswordPage() {
     <main className="flex min-h-screen items-center justify-center px-4">
       <form
         onSubmit={aggiorna}
-        className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm ring-1 ring-black/5"
+        className="w-full max-w-sm tt-card p-8 shadow-sm"
       >
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
         <p className="mt-2 text-sm text-slate-500">Nuova password</p>

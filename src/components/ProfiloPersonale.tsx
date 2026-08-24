@@ -217,7 +217,7 @@ export default function ProfiloPersonale({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* -------------------------------------------------- anagrafica */}
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+      <section className="tt-card p-6">
         <h2 className="text-lg font-medium">Anagrafica</h2>
         <p className="mt-1 text-sm text-slate-500">{profile.email}</p>
 
@@ -288,7 +288,7 @@ export default function ProfiloPersonale({
             Solo per i partecipanti: la foto serve ai compagni di gruppo per
             riconoscersi. Chi ha accesso globale non ha bisogno di una foto. */}
         {!isAdmin && (
-          <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+          <section className="tt-card p-6">
             <h2 className="text-lg font-medium">Foto</h2>
             <p className="mt-1 text-sm text-slate-500">
               La foto che ti identifica nel gruppo.
@@ -324,7 +324,7 @@ export default function ProfiloPersonale({
         )}
 
         {/* ------------------------------------------- consensi e privacy */}
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+        <section className="tt-card p-6">
           <h2 className="text-lg font-medium">Consensi e privacy</h2>
           <p className="mt-1 text-sm text-slate-500">
             Puoi revocare in qualsiasi momento il consenso alla privacy e
@@ -447,7 +447,7 @@ export default function ProfiloPersonale({
             Solo per i partecipanti: chi ha accesso globale stipula i contratti,
             non li carica — la sua PEC è già il mittente delle comunicazioni. */}
         {!isAdmin && (
-          <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+          <section className="tt-card p-6">
             <h2 className="text-lg font-medium">Accordo editoriale</h2>
           <p className="mt-1 text-sm text-slate-500">
             Carica il PDF firmato dell'accordo: verrà inviato automaticamente

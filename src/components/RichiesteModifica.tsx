@@ -55,7 +55,7 @@ export default function RichiesteModifica({
   const risolte = richieste.filter((r) => r.stato === "risolta");
 
   return (
-    <div className={compatta ? "" : "rounded-2xl bg-white p-6 ring-1 ring-black/5"}>
+    <div className={compatta ? "" : "tt-card p-6"}>
       {!compatta && (
         <>
           <h2 className="text-lg font-medium">Modifiche richieste</h2>

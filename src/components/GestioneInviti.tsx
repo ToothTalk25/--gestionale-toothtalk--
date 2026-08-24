@@ -35,7 +35,7 @@ export default function GestioneInviti({
   const attivi = inviti.filter((i) => i.attivo);
 
   return (
-    <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+    <section className="tt-card p-6">
       <h2 className="text-lg font-medium">Codici di ingresso</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-500">
         Un codice per gruppo. Lo condividi con loro una volta sola: chi lo usa

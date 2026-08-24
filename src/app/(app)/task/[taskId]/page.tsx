@@ -168,7 +168,7 @@ export default async function TaskPage({
         </div>
       )}
       <SegnalaPolo poloId={task.polo_id} />
-      <header className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+      <header className="tt-card p-6">
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex-1">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -231,7 +231,7 @@ export default async function TaskPage({
       )}
 
       {(isAdmin || task.note_admin) && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+        <section className="tt-card p-6">
           {isAdmin ? (
             <>
               <h3 className="text-sm font-medium text-slate-600">
@@ -321,7 +321,7 @@ export default async function TaskPage({
         haRichiesteAperte={(richieste ?? []).some((r) => r.stato === "aperta" || r.stato === "da_verificare")}
       />
 
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+      <section className="tt-card p-6">
         <h2 className="text-lg font-medium">Storico stati</h2>
         <ul className="mt-3 space-y-1 text-sm text-slate-600">
           {(storico ?? []).map((s) => (

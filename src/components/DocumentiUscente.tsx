@@ -53,7 +53,7 @@ export default function DocumentiUscente() {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+    <section className="tt-card p-6">
       <h2 className="text-base font-medium">I tuoi documenti</h2>
       <p className="mt-1 text-sm leading-relaxed text-slate-500">
         Restano a tua disposizione, a prescindere dalla conferma qui sotto

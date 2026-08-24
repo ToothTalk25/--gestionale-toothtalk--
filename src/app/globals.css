@@ -20,6 +20,42 @@
 
 :root {
   color-scheme: light;
+
+  /*
+   * Elevazione. Prima le superfici erano definite da un contorno netto
+   * (ring-1 ring-black/5): a schermo intero sembravano ritagliate. Ora la
+   * separazione la fa un'ombra molto larga e appena percettibile, con un
+   * pelo di contorno solo per tenere il bordo definito sugli schermi
+   * chiari. Tinta dell'ombra presa dall'inchiostro, non nera: su fondo
+   * sabbia il grigio neutro vira al verde.
+   */
+  --ombra-sottile: 0 1px 2px rgba(23, 40, 55, 0.04), 0 6px 16px -10px rgba(23, 40, 55, 0.10);
+  --ombra-media: 0 1px 2px rgba(23, 40, 55, 0.04), 0 10px 28px -16px rgba(23, 40, 55, 0.12);
+  --ombra-alta: 0 1px 2px rgba(23, 40, 55, 0.06), 0 28px 60px -24px rgba(23, 40, 55, 0.42);
+}
+
+/*
+ * Superfici e comandi condivisi. Stanno qui e non in ogni componente
+ * perché il raggio e l'ombra sono decisioni di sistema: cambiarle in un
+ * punto solo deve bastare a cambiarle ovunque.
+ */
+@layer components {
+  .tt-card {
+    background: #fff;
+    border-radius: 1.25rem;
+    box-shadow: var(--ombra-media);
+  }
+  .tt-card-piccola {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: var(--ombra-sottile);
+  }
+  /* Comando: raggio e peso uniformi, la variante la danno le classi colore. */
+  .tt-btn {
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: filter 0.12s ease, background-color 0.12s ease;
+  }
 }
 
 body {

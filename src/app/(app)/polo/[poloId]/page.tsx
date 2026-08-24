@@ -108,11 +108,11 @@ export default async function PoloPage({
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Progetti del gruppo</h2>
         {!tasks?.length ? (
-          <p className="rounded-xl bg-white p-6 text-sm text-slate-500 ring-1 ring-black/5">
+          <p className="tt-card-piccola p-6 text-sm text-slate-500">
             Ancora nessun progetto.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+          <ul className="divide-y divide-slate-100 overflow-hidden tt-card-piccola">
             {tasks.map((t) => (
               <li key={t.id}>
                 <Link

@@ -52,7 +52,7 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
   }
 
   return (
-    <section className="rounded-2xl border border-red-200 bg-white p-6 ring-1 ring-black/5">
+    <section className="tt-card border border-red-200 p-6">
       <div className="flex items-start justify-between gap-4">
         <h2 className="text-lg font-medium text-red-700">Fine della collaborazione</h2>
         <button

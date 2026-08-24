@@ -284,7 +284,7 @@ export default async function AdminPage() {
               attenzione: "solo consultazione — nessuna azione possibile da qui.",
             },
             contenuto: (
-              <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
+              <section className="tt-card p-4 md:p-6">
         <h2 className="text-lg font-medium">Originale vs versione finale</h2>
         <div className="mt-3 overflow-x-auto md:overflow-visible">
           <table className="tabella-mobile w-full text-left text-sm">
@@ -367,7 +367,7 @@ export default async function AdminPage() {
               attenzione: "\"Termina Collaborazione\" disattiva solo l'accesso: NON tocca alcun file, per nessuno, indipendentemente dallo stato \"in video\". Uscire dal progetto e revocare il consenso a immagine/voce sono due atti distinti — la revoca la avvia il Collaboratore dal proprio profilo, e la cancellazione del materiale grezzo è sempre una verifica manuale del Coordinatore (sezione \"Eliminazione grezzo\").",
             },
             contenuto: (
-              <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
+              <section className="tt-card p-4 md:p-6">
         <h2 className="text-lg font-medium">Registro partecipanti per sede</h2>
         <p className="mt-1 text-sm text-slate-500">
           Anagrafica e accordo editoriale dei partecipanti, raggruppati per

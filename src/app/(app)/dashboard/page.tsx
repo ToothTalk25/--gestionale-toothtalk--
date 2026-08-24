@@ -60,9 +60,14 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <Card etichetta="Progetti totali" valore={righe.length} />
-        <Card etichetta="In attesa di revisione" valore={inAttesaRevisione} />
+      <section className="grid gap-4 sm:grid-cols-2">
+        <Card etichetta="Progetti totali" valore={righe.length} icona="progetti" />
+        <Card
+          etichetta="In attesa di revisione"
+          valore={inAttesaRevisione}
+          icona="attesa"
+          allerta={inAttesaRevisione > 0}
+        />
       </section>
 
       {isAdmin && panoramicaPoli && panoramicaPoli.length > 0 && (
@@ -73,7 +78,7 @@ export default async function DashboardPage() {
               <Link
                 key={p.polo_id}
                 href={`/polo/${p.polo_id}`}
-                className="rounded-xl bg-white p-4 ring-1 ring-black/5 hover:ring-2 hover:ring-tt-blue/30 transition-shadow"
+                className="tt-card-piccola p-4 transition-shadow hover:shadow-[0_1px_2px_rgba(23,40,55,.04),0_10px_24px_-10px_rgba(23,40,55,.18)]"
               >
                 <h3 className="font-semibold text-slate-800">{p.polo_nome}</h3>
                 <p className="text-xs text-slate-400">{p.progetti_totali} progetti</p>
@@ -115,11 +120,11 @@ export default async function DashboardPage() {
         </div>
 
         {righe.length === 0 ? (
-          <p className="rounded-xl bg-white p-6 text-sm text-slate-500 ring-1 ring-black/5">
+          <p className="tt-card p-6 text-sm text-slate-500">
             Nessun progetto. Apri un polo per crearne uno.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+          <ul className="tt-card divide-y divide-slate-100 overflow-hidden">
             {righe.map((t) => (
               <li key={t.id}>
                 <Link
@@ -154,11 +159,54 @@ export default async function DashboardPage() {
   );
 }
 
-function Card({ etichetta, valore }: { etichetta: string; valore: number }) {
+/**
+ * Riquadro di sintesi. L'icona in un quadrato tinto dà al numero un ancoraggio
+ * visivo: senza, due riquadri identici si distinguono solo leggendo l'etichetta.
+ * "allerta" vira il numero all'ambra quando c'è qualcosa che aspetta davvero
+ * una tua azione — lo zero resta neutro, così il colore significa qualcosa.
+ */
+function Card({
+  etichetta,
+  valore,
+  icona,
+  allerta = false,
+}: {
+  etichetta: string;
+  valore: number;
+  icona: "progetti" | "attesa";
+  allerta?: boolean;
+}) {
   return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-black/5">
-      <div className="text-2xl font-semibold">{valore}</div>
-      <div className="text-xs text-slate-500">{etichetta}</div>
+    <div className="tt-card p-5">
+      <div className="flex items-center gap-3">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+            allerta ? "bg-amber-50 text-amber-700" : "bg-tt-blue-50 text-tt-blue-600"
+          }`}
+        >
+          {icona === "progetti" ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 3" />
+            </svg>
+          )}
+        </span>
+        <span className="text-sm font-medium text-slate-500">{etichetta}</span>
+      </div>
+      <div
+        className={`mt-3 text-3xl font-bold tracking-tight ${
+          allerta ? "text-amber-700" : ""
+        }`}
+      >
+        {valore}
+      </div>
     </div>
   );
 }

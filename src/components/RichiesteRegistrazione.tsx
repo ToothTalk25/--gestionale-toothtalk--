@@ -49,7 +49,7 @@ export default function RichiesteRegistrazione({
 
   if (richieste.length === 0) {
     return (
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
+      <section className="tt-card p-4 md:p-6">
         <h2 className="text-lg font-medium">Richieste di registrazione</h2>
         <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           Nessuna richiesta in attesa di approvazione. ✅
@@ -59,7 +59,7 @@ export default function RichiesteRegistrazione({
   }
 
   return (
-    <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
+    <section className="tt-card p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-medium">Richieste di registrazione</h2>

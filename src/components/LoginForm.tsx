@@ -71,6 +71,9 @@ export default function LoginForm() {
       <div className="flex flex-1 flex-col justify-center sm:flex-none">
       {/* Solo il logo (con la scritta sotto) nudgiato un filo più in alto,
           il resto del blocco resta dov'era. */}
+      {/* Su telefono logo e sottotitolo restano centrati: da soli in cima allo
+          schermo, allineati a sinistra sembrano appoggiati al bordo. Da sm in
+          su la card ha una sua cornice e l'allineamento a sinistra funziona. */}
       <div className="-mt-10 flex flex-col items-center text-center sm:mt-0 sm:items-start sm:text-left">
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-10 w-auto sm:h-9" />
         <p className="mt-2 text-sm text-slate-500">Gestionale interno</p>

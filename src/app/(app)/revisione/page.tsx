@@ -100,7 +100,7 @@ export default async function RevisionePage() {
               in composizione.
             </p>
           </div>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-black/5">
+          <ul className="divide-y divide-slate-100 overflow-hidden tt-card-piccola">
             {inAttesa.map((v) => (
               <li key={v.pacchetto_id}>
                 <Link
@@ -136,7 +136,7 @@ export default async function RevisionePage() {
       </section>
 
       {lista.length === 0 ? (
-        <p className="rounded-xl bg-white p-6 text-sm text-slate-500 ring-1 ring-black/5">
+        <p className="tt-card-piccola p-6 text-sm text-slate-500">
           Nessun video sigillato, per ora.
         </p>
       ) : (
@@ -144,7 +144,7 @@ export default async function RevisionePage() {
           {lista.map((v) => (
             <article
               key={v.pacchetto_id}
-              className="rounded-2xl bg-white p-6 ring-1 ring-black/5"
+              className="tt-card p-6"
             >
               <div className="flex flex-wrap items-start gap-3">
                 <div className="flex-1">
@@ -205,7 +205,7 @@ export default async function RevisionePage() {
       )}
 
       {(daArchiviare ?? []).length > 0 && (
-        <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+        <section className="tt-card p-6">
           <h2 className="text-lg font-medium">Da archiviare</h2>
           <p className="mt-1 text-sm text-slate-500">
             Pacchetti già sigillati e certificati via PEC: puoi liberare spazio
@@ -236,7 +236,7 @@ export default async function RevisionePage() {
 
 function Card({ etichetta, valore }: { etichetta: string; valore: number }) {
   return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-black/5">
+    <div className="tt-card-piccola p-4">
       <div className="text-2xl font-semibold">{valore}</div>
       <div className="text-xs text-slate-500">{etichetta}</div>
     </div>

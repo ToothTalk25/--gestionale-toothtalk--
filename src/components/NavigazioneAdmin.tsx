@@ -26,7 +26,7 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-black/5">
+      <div className="flex items-center gap-3 tt-card p-3">
         <label htmlFor="sezione-admin" className="text-sm font-medium text-slate-600">
           Vai a:
         </label>

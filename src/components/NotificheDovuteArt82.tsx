@@ -41,7 +41,7 @@ export default function NotificheDovuteArt82({
   if (pendenti.length === 0 && evase.length === 0) return null;
 
   return (
-    <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+    <section className="tt-card p-6">
       <h2 className="text-lg font-medium">Notifiche dovute (Art. 8.2 dell&apos;Accordo)</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-500">
         Quando un Collaboratore revoca il consenso a immagine/voce senza

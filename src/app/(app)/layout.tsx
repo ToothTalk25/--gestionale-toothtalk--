@@ -41,7 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <PoloAttivoProvider>
       <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+        <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:flex-nowrap md:gap-x-6 md:px-8">
             <Link href="/dashboard" className="order-1 shrink-0">
               <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-6 w-auto" />

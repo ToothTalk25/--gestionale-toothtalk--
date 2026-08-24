@@ -57,7 +57,7 @@ export default function DocumentiPage() {
             key={d.href}
             href={d.href}
             download
-            className="block rounded-2xl bg-white p-5 ring-1 ring-black/5 transition hover:ring-tt-blue/40"
+            className="block tt-card p-5 transition hover:ring-tt-blue/40"
           >
             <p className="text-xs font-medium uppercase tracking-wide text-tt-blue">{d.numero}</p>
             <p className="mt-1 text-base font-medium text-slate-900">{d.titolo}</p>

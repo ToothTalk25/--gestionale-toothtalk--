@@ -47,7 +47,7 @@ export default function ToggleOnScreen({
         }`}
         title="Appare nei video (ha diritto di revoca GDPR sui propri video)"
       >
-        In video
+        📹 In video
       </button>
       <button
         onClick={() => cambia(false)}
@@ -59,7 +59,7 @@ export default function ToggleOnScreen({
         }`}
         title="Non appare nei video (dietro le quinte)"
       >
-        Dietro le quinte
+        🎨 Dietro le quinte
       </button>
       {messaggio && <span className="text-[11px] text-red-600">{messaggio}</span>}
     </span>

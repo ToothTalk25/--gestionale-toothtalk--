@@ -49,7 +49,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
         onClick={() => setAperto((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={aperto}
-        className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1 text-sm hover:bg-slate-50"
+        className="flex items-center gap-2 rounded-xl border border-slate-200 px-2.5 py-1.5 text-sm transition-colors hover:bg-slate-50"
       >
         {profile.foto_path ? (
           <FotoProfilo path={profile.foto_path} className="h-6 w-6 rounded-full object-cover" alt="" />
@@ -72,7 +72,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
       {aperto && (
         <div
           role="menu"
-          className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-lg ring-1 ring-black/5"
+          className="absolute right-0 z-10 mt-1 w-48 overflow-hidden rounded-2xl border border-slate-100 bg-white py-1.5 shadow-[0_10px_30px_-8px_rgba(23,40,55,.22)]"
         >
           {/* Profilo come prima voce: è la sezione personale, poi il resto.
               "Video da rivedere" e "Registro" stanno solo qui, non nella

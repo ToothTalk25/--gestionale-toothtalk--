@@ -31,7 +31,7 @@ export default function SezioneLiberatorie({
   const [dettaglio, setDettaglio] = useState<"sintesi" | "esteso">("sintesi");
 
   return (
-    <section className="rounded-2xl bg-white p-4 ring-1 ring-black/5 md:p-6">
+    <section className="tt-card p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-medium">Registro liberatorie e accordi</h2>

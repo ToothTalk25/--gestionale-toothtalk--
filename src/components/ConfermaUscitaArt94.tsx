@@ -38,7 +38,7 @@ export default function ConfermaUscitaArt94() {
 
   if (fatto) {
     return (
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 text-center ring-1 ring-black/5">
+      <div className="w-full max-w-lg tt-card p-6 text-center">
         <p className="text-sm text-emerald-700">
           Grazie: la tua conferma è stata registrata con data e ora nel
           registro del gestionale. Buona continuazione!
@@ -48,7 +48,7 @@ export default function ConfermaUscitaArt94() {
   }
 
   return (
-    <div className="w-full max-w-lg rounded-2xl bg-white p-6 ring-1 ring-black/5">
+    <div className="w-full max-w-lg tt-card p-6">
       <p className="text-[11px] uppercase tracking-[.12em] text-slate-400">
         ToothTalk — fine della collaborazione
       </p>

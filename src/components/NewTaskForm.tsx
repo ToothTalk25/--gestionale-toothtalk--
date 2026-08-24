@@ -50,7 +50,7 @@ export default function NewTaskForm({
           }
         })
       }
-      className="space-y-3 rounded-xl bg-white p-5 ring-1 ring-black/5"
+      className="space-y-3 tt-card-piccola p-5"
     >
       <input type="hidden" name="polo_id" value={poloId} />
 

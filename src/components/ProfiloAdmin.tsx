@@ -72,7 +72,7 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* ------------------------------------------------ anagrafica */}
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+      <section className="tt-card p-6">
         <h2 className="text-lg font-medium">I miei dati</h2>
         <p className="mt-1 text-sm text-slate-500">{profile.email}</p>
 
@@ -112,7 +112,7 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
           Anche il Titolare fa parte di un team di polo: la foto serve ai
           compagni di gruppo per riconoscerlo negli stessi punti dell'app
           in cui vedono le foto degli altri membri. */}
-      <section className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+      <section className="tt-card p-6">
         <h2 className="text-lg font-medium">Foto</h2>
         <p className="mt-1 text-sm text-slate-500">
           La foto che ti identifica nel team.
