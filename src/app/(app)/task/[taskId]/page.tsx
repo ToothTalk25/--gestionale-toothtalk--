@@ -234,12 +234,12 @@ export default async function TaskPage({
         <section className="tt-card p-6">
           {isAdmin ? (
             <>
-              <h3 className="text-sm font-medium text-slate-600">
+              <h2 className="text-[17px] font-semibold tracking-[-0.015em]">
                 Note di revisione{" "}
-                <span className="font-normal text-slate-400">
+                <span className="text-sm font-normal text-slate-400">
                   (visibili al gruppo, scrivibili solo da qui)
                 </span>
-              </h3>
+              </h2>
               <TaskTextEditor
                 taskId={task.id}
                 campo="note_admin"
@@ -250,7 +250,7 @@ export default async function TaskPage({
             </>
           ) : (
             <>
-              <h3 className="text-sm font-medium text-slate-600">Note di revisione</h3>
+              <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Note di revisione</h2>
               <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
                 {task.note_admin}
               </p>
@@ -268,7 +268,7 @@ export default async function TaskPage({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {KIND_LAVORAZIONE.map((kind) => {
             const d = (deliverables ?? []).find((x) => x.kind === kind);
             const vs = (versioni ?? []).filter((v) => v.deliverable_id === d?.id);

@@ -109,9 +109,9 @@ export default function GoogleDocCard({
   }
 
   return (
-    <div className={compatto ? "text-right" : "text-center"}>
+    <div className="text-center">
       <div className={compatto ? "mb-1 text-xl text-slate-300 font-light" : "mb-1 text-4xl text-slate-300 font-light"}>📄</div>
-      <p className={compatto ? "max-w-[10rem] text-[10px] text-slate-400" : "px-2 text-[10px] text-slate-400"}>
+      <p className={compatto ? "text-[10px] text-slate-400" : "px-2 text-[10px] text-slate-400"}>
         Nessun documento collegato
       </p>
     </div>
