@@ -91,7 +91,7 @@ export default function KindCard({
       className={`group flex flex-col rounded-2xl p-3 ring-1 transition-colors sm:p-4 sm:min-h-[150px] ${
         dragOver
           ? "ring-2 ring-tt-blue bg-tt-blue/5"
-          : versioni.length > 0
+          : versioni.length > 0 || (isGoogleDoc && !!googleDocUrl)
             ? "bg-tt-blue-50 ring-tt-blue-100"
             : "bg-white ring-black/5"
       }`}
