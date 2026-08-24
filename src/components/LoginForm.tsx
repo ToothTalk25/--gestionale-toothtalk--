@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { percorsoInternoValido } from "@/lib/percorsi";
+import CampoPassword from "@/components/CampoPassword";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -103,12 +104,10 @@ export default function LoginForm() {
         />
 
         <label className="mt-4 block text-sm font-medium">Password</label>
-        <input
-          type="password"
-          required
+        <CampoPassword
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          onChange={setPassword}
+          required
           autoComplete="current-password"
         />
 

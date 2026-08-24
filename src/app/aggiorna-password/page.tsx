@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import CampoPassword from "@/components/CampoPassword";
 
 /**
  * Callback del reset password: l'utente arriva qui dal link ricevuto via email.
@@ -69,13 +70,11 @@ export default function AggiornaPasswordPage() {
         <p className="mt-2 text-sm text-slate-500">Nuova password</p>
 
         <label className="mt-6 block text-sm font-medium">Password</label>
-        <input
-          type="password"
+        <CampoPassword
+          value={password}
+          onChange={setPassword}
           required
           minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           autoComplete="new-password"
           placeholder="Almeno 8 caratteri"
         />

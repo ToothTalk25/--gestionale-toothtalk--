@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { registraConInvito, verificaCodice } from "@/app/actions-invito";
+import CampoPassword from "@/components/CampoPassword";
 
 export default function RegistratiPage() {
   const [nome, setNome] = useState("");
@@ -182,13 +183,11 @@ export default function RegistratiPage() {
         </div>
 
         <label className="mt-4 block text-sm font-medium">Password</label>
-        <input
-          type="password"
+        <CampoPassword
+          value={password}
+          onChange={setPassword}
           required
           minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           autoComplete="new-password"
         />
         <p className="mt-1 text-xs text-slate-400">Almeno 8 caratteri.</p>
