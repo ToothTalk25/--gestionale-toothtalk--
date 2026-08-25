@@ -176,7 +176,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
         aria-label={etichette[fase]}
         className={`tt-btn text-white disabled:opacity-60 ${
           archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
-        } ${cardIntera ? "flex items-center justify-center p-2" : "whitespace-nowrap px-3 py-1.5 text-xs"}`}
+        } ${cardIntera ? "mx-auto flex items-center justify-center p-2" : "whitespace-nowrap px-3 py-1.5 text-xs"}`}
       >
         {cardIntera ? (
           occupato ? <IconaSpinner /> : <IconaCarica />
