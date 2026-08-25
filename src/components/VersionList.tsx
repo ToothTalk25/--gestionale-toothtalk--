@@ -69,22 +69,27 @@ function Riga({
   }
 
   return (
-    <li className="rounded-lg bg-slate-50 p-2.5">
-      <div className="flex items-center gap-2">
-        <span className="flex-1 truncate text-sm" title={v.file_name}>
-          {v.file_name}
-        </span>
+    <li className="rounded-lg bg-slate-50 p-2.5 text-left">
+      <p className="truncate text-sm" title={v.file_name}>
+        {v.file_name}
+      </p>
+      <p className="mt-0.5 truncate text-[11px] text-slate-400">
+        {formatBytes(v.size_bytes)} ·{" "}
+        {new Date(v.uploaded_at).toLocaleString("it-IT")} ·{" "}
+        {nomi[v.uploaded_by] ?? "—"}
+      </p>
 
+      <div className="mt-1.5 flex items-center gap-3 text-xs">
         <button
           onClick={scarica}
           disabled={inCorso}
-          className="text-xs text-tt-blue hover:underline disabled:opacity-50"
+          className="text-tt-blue hover:underline disabled:opacity-50"
         >
           {inCorso ? "…" : "Scarica"}
         </button>
 
         {confermaElimina ? (
-          <span className="flex items-center gap-1.5 text-xs">
+          <span className="flex items-center gap-1.5">
             <span className="text-slate-500">Eliminare?</span>
             <button
               disabled={pending}
@@ -102,32 +107,26 @@ function Riga({
               }
               className="font-medium text-red-600 hover:underline disabled:opacity-50"
             >
-              {pending ? "…" : "Sì"}
+              {pending ? "…" : "Sì, elimina"}
             </button>
             <button
               onClick={() => setConfermaElimina(false)}
               className="text-slate-500 hover:underline"
             >
-              No
+              Annulla
             </button>
           </span>
         ) : (
           <button
             onClick={() => setConfermaElimina(true)}
-            className="text-xs text-slate-400 hover:text-red-600 hover:underline"
+            className="text-slate-400 hover:text-red-600 hover:underline"
           >
             Elimina
           </button>
         )}
       </div>
 
-      <div className="mt-1 text-xs text-slate-400">
-        {formatBytes(v.size_bytes)} ·{" "}
-        {new Date(v.uploaded_at).toLocaleString("it-IT")} ·{" "}
-        {nomi[v.uploaded_by] ?? "—"}
-      </div>
-
-      {errore && <p className="mt-1 text-xs text-red-600">{errore}</p>}
+      {errore && <p className="mt-1.5 text-xs text-red-600">{errore}</p>}
     </li>
   );
 }

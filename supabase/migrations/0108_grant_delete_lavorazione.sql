@@ -1,0 +1,35 @@
+-- =====================================================================
+-- 0108_grant_delete_lavorazione.sql — ripristina il DELETE perso in 0071
+-- =====================================================================
+-- 0071_hardening_rls.sql ha revocato in blocco il DELETE per il ruolo
+-- "authenticated" su TUTTE le tabelle di public (riga 40: "revoke delete
+-- on all tables in schema public from authenticated"), come base di
+-- sicurezza di default. Essendo successiva, ha annullato senza saperlo
+-- due grant specifici e voluti, mai più riaffermati dopo:
+--
+--   deliverable_versions -> il pulsante "Elimina" nello spazio di lavoro
+--                            condiviso (girato grezzo, bozze, materiali:
+--                            vedi 0014_elimina_lavorazione). La policy
+--                            versions_delete già limita l'operazione a
+--                            bucket <> 'finali' e a chi ha accesso al
+--                            polo — il grant non aggira nulla, è il
+--                            prerequisito che Postgres controlla PRIMA
+--                            della RLS.
+--   pacchetto_elementi   -> il pulsante "Rimuovi" un elemento dal Video
+--                            completo finché è ancora in bozza. La
+--                            policy elementi_delete già limita
+--                            l'operazione a stato = 'bozza' e a chi ha
+--                            accesso al polo.
+--
+-- Sintomo reale osservato: entrambi i pulsanti restituivano l'errore
+-- grezzo di Postgres "permission denied for table ..." — non un rifiuto
+-- RLS (quello direbbe "new row violates row-level security policy"),
+-- ma l'assenza del grant di tabella, un controllo precedente e
+-- indipendente dalle policy. Colpiva chiunque, Admin compreso: le
+-- sessioni autenticate condividono tutte lo stesso ruolo Postgres
+-- "authenticated" — la distinzione Admin/membro è solo applicativa,
+-- verificata dentro le policy stesse (is_admin()/is_member_of()).
+-- =====================================================================
+
+grant delete on public.deliverable_versions to authenticated;
+grant delete on public.pacchetto_elementi to authenticated;

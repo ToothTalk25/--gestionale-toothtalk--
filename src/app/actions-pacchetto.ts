@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
 import { salvaPacchettoSchema } from "@/lib/schemi";
+import { traduciErroreDb } from "@/lib/erroriDb";
 import {
   budgetAllegati,
   corpoHtml,
@@ -333,7 +334,7 @@ export async function rimuoviElementoPacchetto(
     .delete()
     .eq("id", elemento.version_id);
 
-  if (eRiga) return errore(eRiga.message);
+  if (eRiga) return errore(traduciErroreDb(eRiga.message));
 
   await supabase.storage
     .from(elemento.deliverable_versions.bucket)

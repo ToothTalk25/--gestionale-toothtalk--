@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
+import { traduciErroreDb } from "@/lib/erroriDb";
 import {
   aggiornaTestiSchema,
   archiviaFileFinaleSchema,
@@ -51,11 +52,7 @@ function bucketPer(origin: VersionOrigin, archivio: Archivio): string {
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
 function fallita(e: { message: string } | null, fallback: string): Esito<never> {
-  const msg = e?.message ?? fallback;
-  // Gli errori sollevati dai trigger arrivano già in italiano e parlanti.
-  if (msg.includes("row-level security") || msg.includes("violates"))
-    return { ok: false, errore: "Operazione non consentita dal tuo ruolo." };
-  return { ok: false, errore: msg };
+  return { ok: false, errore: traduciErroreDb(e?.message ?? fallback) };
 }
 
 // ------------------------------------------------------------------ task
