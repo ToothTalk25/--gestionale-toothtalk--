@@ -104,15 +104,15 @@ export async function salvaPacchetto(
 }
 
 /**
- * Segna un file già caricato nei "materiali di lavorazione" (video_grezzo)
- * come quello che contiene la dichiarazione di identità e recapito
- * dell'intervistato (Art. 4.1 Protocollo Operativo): lo aggancia al
- * pacchetto da sigillare con ruolo 'dichiarazione_identita' — non copia
- * il file, resta un riferimento alla stessa riga di deliverable_versions,
- * quindi la sua visibilità resta quella ristretta (chi l'ha caricato +
- * Titolare, vedi migrazione 0091). Chi può chiamarla lo decide la RLS di
- * pacchetto_elementi/deliverable_versions, non un controllo qui: solo chi
- * vede già quel file (il suo caricatore, o il Titolare) può marcarlo.
+ * Aggancia al pacchetto il video di dichiarazione appena caricato nello
+ * slot dedicato 7 del "Video completo" (kind video_grezzo, bucket
+ * originali): crea l'elemento con ruolo 'dichiarazione_identita' — non
+ * copia il file, resta un riferimento alla stessa riga di
+ * deliverable_versions. Il caricamento vero avviene nello slot (via
+ * UploadDeliverable -> registraVersione); questa funzione lo collega subito
+ * dopo, come fa oggi PacchettoVideo chiamando direttamente collegaElemento.
+ * La visibilità del file è riservata al solo Titolare (migrazione 0109):
+ * chi ha caricato vede solo i metadati dello slot e può segnalare un errore.
  */
 export async function collegaDichiarazioneIdentita(
   taskId: string,
@@ -126,8 +126,10 @@ export async function collegaDichiarazioneIdentita(
 /**
  * Seconda parte della dichiarazione (Protocollo Art. 4.1 "Domande non
  * dichiarate"): il video di integrazione con la domanda aggiuntiva. Stesso
- * meccanismo di 'dichiarazione_identita' — riferimento al video_grezzo/audio,
- * nessuna copia, stesse regole di riservatezza (chi l'ha caricato + Titolare).
+ * meccanismo di 'dichiarazione_identita' — caricato nello slot dedicato 7b
+ * e qui agganciato al pacchetto, nessuna copia del file. Stesse regole di
+ * riservatezza: il file resta visibile solo al Titolare (migrazione 0109),
+ * chi ha caricato vede i metadati dello slot e può segnalare un errore.
  */
 export async function collegaDichiarazioneIntegrazione(
   taskId: string,

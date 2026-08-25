@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import UploadDeliverable, { type UploadDeliverableHandle } from "@/components/UploadDeliverable";
+import RegistraVideoDichiarazione from "@/components/RegistraVideoDichiarazione";
 import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
 import { impostaCoinvolgeTerzi } from "@/app/actions";
@@ -516,20 +517,25 @@ export default function PacchettoVideo({
               }
               azione={
                 componibile && !dichiarazione ? (
-                  <UploadDeliverable
-                    ref={dichiarazioneUploadRef}
-                    taskId={taskId}
-                    kind="video_grezzo"
-                    isAdmin={false}
-                    locked={locked}
-                    etichetta="Carica video di dichiarazione"
-                    accept="video/*"
-                    onCaricato={(v) => dopoUpload("dichiarazione_identita", v)}
-                  >
-                    {!dichiarazione && (
-                      <p className="text-xs text-slate-400">Nessun file.</p>
-                    )}
-                  </UploadDeliverable>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <UploadDeliverable
+                      ref={dichiarazioneUploadRef}
+                      taskId={taskId}
+                      kind="video_grezzo"
+                      isAdmin={false}
+                      locked={locked}
+                      etichetta="Carica video di dichiarazione"
+                      accept="video/*"
+                      onCaricato={(v) => dopoUpload("dichiarazione_identita", v)}
+                    >
+                      {!dichiarazione && (
+                        <p className="text-xs text-slate-400">Nessun file.</p>
+                      )}
+                    </UploadDeliverable>
+                    <RegistraVideoDichiarazione
+                      onFileReady={(f) => dichiarazioneUploadRef.current?.handleFile(f)}
+                    />
+                  </div>
                 ) : null
               }
               taskId={taskId}
@@ -537,9 +543,10 @@ export default function PacchettoVideo({
               footer={
                 <>
                   <p className="text-xs text-slate-400">
-                    Visibile solo a chi l&apos;ha caricato e al Coordinatore. Una
-                    volta caricato non è modificabile né rimovibile: se è sbagliato,
-                    segnala l&apos;errore e il Coordinatore libererà il campo.
+                    Dopo la conferma resta visibile solo al Coordinatore: lo
+                    hai già rivisto prima di caricarlo. Non è modificabile né
+                    rimovibile: se è sbagliato, segnala l&apos;errore e il
+                    Coordinatore libererà il campo.
                   </p>
                   {dichiarazione && !isAdmin && pacchetto && (
                     <button
@@ -572,20 +579,25 @@ export default function PacchettoVideo({
               }
               azione={
                 componibile && !dichiarazioneIntegrazione ? (
-                  <UploadDeliverable
-                    ref={dichiarazioneIntegrazioneUploadRef}
-                    taskId={taskId}
-                    kind="video_grezzo"
-                    isAdmin={false}
-                    locked={locked}
-                    etichetta="Carica video di integrazione"
-                    accept="video/*"
-                    onCaricato={(v) => dopoUpload("dichiarazione_integrazione", v)}
-                  >
-                    {!dichiarazioneIntegrazione && (
-                      <p className="text-xs text-slate-400">Nessun file.</p>
-                    )}
-                  </UploadDeliverable>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <UploadDeliverable
+                      ref={dichiarazioneIntegrazioneUploadRef}
+                      taskId={taskId}
+                      kind="video_grezzo"
+                      isAdmin={false}
+                      locked={locked}
+                      etichetta="Carica video di integrazione"
+                      accept="video/*"
+                      onCaricato={(v) => dopoUpload("dichiarazione_integrazione", v)}
+                    >
+                      {!dichiarazioneIntegrazione && (
+                        <p className="text-xs text-slate-400">Nessun file.</p>
+                      )}
+                    </UploadDeliverable>
+                    <RegistraVideoDichiarazione
+                      onFileReady={(f) => dichiarazioneIntegrazioneUploadRef.current?.handleFile(f)}
+                    />
+                  </div>
                 ) : null
               }
               taskId={taskId}
@@ -595,7 +607,7 @@ export default function PacchettoVideo({
                   <p className="text-xs text-slate-400">
                     Da caricare solo se durante l&apos;intervista è stata posta una
                     domanda non dichiarata nel video iniziale (Protocollo Art.
-                    4.1). Visibile solo a chi l&apos;ha caricato e al Coordinatore,
+                    4.1). Dopo la conferma è visibile solo al Coordinatore,
                     come la dichiarazione principale.
                   </p>
                   {dichiarazioneIntegrazione && !isAdmin && pacchetto && (

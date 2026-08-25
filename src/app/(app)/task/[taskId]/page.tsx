@@ -37,14 +37,12 @@ export default async function TaskPage({
 
   type ElementoRaw = {
     ruolo: RuoloElemento;
-    deliverable_versions: {
-      version_id: string;
-      file_name: string;
-      sha256: string;
-      size_bytes: number | null;
-      uploaded_at: string;
-      archiviato_esterno: boolean;
-    };
+    version_id: string;
+    file_name: string;
+    sha256: string;
+    size_bytes: number | null;
+    uploaded_at: string;
+    archiviato_esterno: boolean;
   };
 
   // Tutte le query di questa pagina dipendono solo da taskId (nessuna
@@ -109,11 +107,7 @@ export default async function TaskPage({
             .returns<DeliverableVersion[]>()
         : Promise.resolve({ data: [] as DeliverableVersion[] }),
       pacchetto
-        ? supabase
-            .from("pacchetto_elementi")
-            .select("ruolo, deliverable_versions!inner(version_id:id, file_name, sha256, size_bytes, uploaded_at, archiviato_esterno)")
-            .eq("pacchetto_id", pacchetto.id)
-            .returns<ElementoRaw[]>()
+        ? supabase.rpc("pacchetto_elementi_meta", { p_pacchetto: pacchetto.id })
         : Promise.resolve({ data: [] as ElementoRaw[] }),
       // Stato della copia su Google Drive (RLS: accesso globale o membri del gruppo).
       pacchetto
@@ -135,19 +129,16 @@ export default async function TaskPage({
         .maybeSingle<{ stato: string; metodo_firma: string | null }>(),
     ]);
 
-  const elementiPacchetto: ElementoCaricato[] = (elementiRaw ?? []).map((e) => ({
-    ruolo: e.ruolo,
-    ...e.deliverable_versions,
-  }));
+  const elementiPacchetto: ElementoCaricato[] = (elementiRaw ?? []) as ElementoCaricato[];
 
   // I video di dichiarazione si caricano nel kind "video_grezzo" (stesso
   // deliverable dello spazio di lavoro condiviso) ma sono riservati: chi li
   // ha caricati li vede solo dentro il Video completo, mai qui, altrimenti
   // risulterebbero scaricabili come un qualunque girato di montaggio.
   const versioniDichiarazione = new Set(
-    (elementiRaw ?? [])
+    ((elementiRaw ?? []) as ElementoRaw[])
       .filter((e) => e.ruolo === "dichiarazione_identita" || e.ruolo === "dichiarazione_integrazione")
-      .map((e) => e.deliverable_versions.version_id),
+      .map((e) => e.version_id),
   );
 
   // Una sola query per tutti i nomi che compaiono nella pagina: chi ha

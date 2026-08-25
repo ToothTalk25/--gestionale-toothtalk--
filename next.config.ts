@@ -42,12 +42,31 @@ const config: NextConfig = {
               `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
+              // 'blob:' serve alla revisione del video di dichiarazione
+              // registrato in-app: il blob vive solo nel browser del
+              // Collaboratore e non viene mai trasferito prima della
+              // conferma esplicita.
+              "media-src 'self' blob:",
               "font-src 'self' data:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
             ].join("; "),
+          },
+        ],
+      },
+      // La registrazione in-app del video di dichiarazione (slot 7/7b del
+      // "Video completo") usa camera e microfono: la Permissions-Policy
+      // globale sopra li nega, quindi qui li riapre SOLO sulle pagine del
+      // progetto, dove il componente RegistraVideoDichiarazione vive.
+      // Tutto il resto dell'app resta con la policy stretta.
+      {
+        source: "/task/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(self), geolocation=()",
           },
         ],
       },
