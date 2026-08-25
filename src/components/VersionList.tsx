@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { eliminaVersione, urlFirmato } from "@/app/actions";
 import { formatBytes } from "@/lib/hash";
+import { IconaAnnulla, IconaConferma, IconaElimina, IconaScarica, IconaSpinner } from "@/components/icone-azioni";
 import type { DeliverableVersion } from "@/lib/types";
 
 /**
@@ -79,18 +80,19 @@ function Riga({
         {nomi[v.uploaded_by] ?? "—"}
       </p>
 
-      <div className="mt-1.5 flex items-center gap-3 text-xs">
+      <div className="mt-1.5 flex items-center gap-1">
         <button
           onClick={scarica}
           disabled={inCorso}
-          className="text-tt-blue hover:underline disabled:opacity-50"
+          title="Scarica"
+          aria-label="Scarica"
+          className="rounded-md p-1.5 text-tt-blue hover:bg-tt-blue-50 disabled:opacity-50"
         >
-          {inCorso ? "…" : "Scarica"}
+          {inCorso ? <IconaSpinner /> : <IconaScarica />}
         </button>
 
         {confermaElimina ? (
-          <span className="flex items-center gap-1.5">
-            <span className="text-slate-500">Eliminare?</span>
+          <>
             <button
               disabled={pending}
               onClick={() =>
@@ -105,23 +107,29 @@ function Riga({
                   }
                 })
               }
-              className="font-medium text-red-600 hover:underline disabled:opacity-50"
+              title="Conferma eliminazione"
+              aria-label="Conferma eliminazione"
+              className="rounded-md bg-red-600 p-1.5 text-white hover:bg-red-700 disabled:opacity-50"
             >
-              {pending ? "…" : "Sì, elimina"}
+              {pending ? <IconaSpinner /> : <IconaConferma />}
             </button>
             <button
               onClick={() => setConfermaElimina(false)}
-              className="text-slate-500 hover:underline"
+              title="Annulla"
+              aria-label="Annulla"
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-200"
             >
-              Annulla
+              <IconaAnnulla />
             </button>
-          </span>
+          </>
         ) : (
           <button
             onClick={() => setConfermaElimina(true)}
-            className="text-slate-400 hover:text-red-600 hover:underline"
+            title="Elimina"
+            aria-label="Elimina"
+            className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
           >
-            Elimina
+            <IconaElimina />
           </button>
         )}
       </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
 import { preparaUpload, registraVersione } from "@/app/actions";
+import { IconaCarica, IconaSpinner } from "@/components/icone-azioni";
 import type { Archivio, DeliverableKind } from "@/lib/types";
 
 type Fase = "idle" | "hash" | "upload" | "registro" | "fatto" | "errore";
@@ -171,12 +172,20 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       <button
         onClick={() => input.current?.click()}
         disabled={occupato}
-        className={`tt-btn whitespace-nowrap px-3 py-1.5 text-xs text-white disabled:opacity-60 ${
+        title={etichette[fase]}
+        aria-label={etichette[fase]}
+        className={`tt-btn text-white disabled:opacity-60 ${
           archivio === "finale" ? "bg-tt-ink" : "bg-tt-blue"
-        }`}
+        } ${cardIntera ? "flex items-center justify-center p-2" : "whitespace-nowrap px-3 py-1.5 text-xs"}`}
       >
-        <span className="sm:hidden">{etichetteCorte[fase]}</span>
-        <span className="hidden sm:inline">{etichette[fase]}</span>
+        {cardIntera ? (
+          occupato ? <IconaSpinner /> : <IconaCarica />
+        ) : (
+          <>
+            <span className="sm:hidden">{etichetteCorte[fase]}</span>
+            <span className="hidden sm:inline">{etichette[fase]}</span>
+          </>
+        )}
       </button>
       {isAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
         <p className="mx-auto mt-1.5 max-w-[11rem] text-[11px] leading-tight text-amber-600">

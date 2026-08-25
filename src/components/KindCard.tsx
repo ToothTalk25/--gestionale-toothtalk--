@@ -174,6 +174,7 @@ function Contenuto({
         locked={locked}
         esisteOriginale={versioni.some((v) => v.origin === "originale")}
         accept={accetta}
+        etichetta="Carica file"
         cardIntera
       >
         <div className="text-center text-xl font-semibold text-tt-blue-600 sm:text-2xl">{versioni.length}</div>
@@ -192,6 +193,7 @@ function Contenuto({
       locked={locked}
       esisteOriginale={false}
       accept={accetta}
+      etichetta="Carica file"
       cardIntera
     >
       <div className="text-xl text-slate-300 font-light text-center sm:text-2xl">+</div>
