@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import UploadDeliverable, { type UploadDeliverableHandle } from "@/components/UploadDeliverable";
 import RegistraVideoDichiarazione from "@/components/RegistraVideoDichiarazione";
+import ControlliAdminDichiarazione from "@/components/ControlliAdminDichiarazione";
 import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
 import { impostaCoinvolgeTerzi } from "@/app/actions";
@@ -542,12 +543,14 @@ export default function PacchettoVideo({
               archiviabile={false}
               footer={
                 <>
-                  <p className="text-xs text-slate-400">
-                    Dopo la conferma resta visibile solo al Coordinatore: lo
-                    hai già rivisto prima di caricarlo. Non è modificabile né
-                    rimovibile: se è sbagliato, segnala l&apos;errore e il
-                    Coordinatore libererà il campo.
-                  </p>
+                  {!isAdmin && (
+                    <p className="text-xs text-slate-400">
+                      Dopo la conferma resta visibile solo al Coordinatore: lo
+                      hai già rivisto prima di caricarlo. Non è modificabile né
+                      rimovibile: se è sbagliato, segnala l&apos;errore e il
+                      Coordinatore libererà il campo.
+                    </p>
+                  )}
                   {dichiarazione && !isAdmin && pacchetto && (
                     <button
                       onClick={async () => {
@@ -559,6 +562,12 @@ export default function PacchettoVideo({
                     >
                       Segnala errore (il video va ricaricato)
                     </button>
+                  )}
+                  {isAdmin && dichiarazione && pacchetto && (
+                    <ControlliAdminDichiarazione
+                      pacchettoId={pacchetto.id}
+                      ruolo="dichiarazione_identita"
+                    />
                   )}
                 </>
               }
@@ -621,6 +630,12 @@ export default function PacchettoVideo({
                     >
                       Segnala errore (il video va ricaricato)
                     </button>
+                  )}
+                  {isAdmin && dichiarazioneIntegrazione && pacchetto && (
+                    <ControlliAdminDichiarazione
+                      pacchettoId={pacchetto.id}
+                      ruolo="dichiarazione_integrazione"
+                    />
                   )}
                 </>
               }
