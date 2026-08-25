@@ -20,6 +20,7 @@ import {
   type Formato,
   type PacchettoVideoRow,
   type RichiestaModifica,
+  type RuoloElemento,
   type Task,
 } from "@/lib/types";
 
@@ -35,7 +36,7 @@ export default async function TaskPage({
   const supabase = await supabaseServer();
 
   type ElementoRaw = {
-    ruolo: "video" | "copertina" | "liberatoria";
+    ruolo: RuoloElemento;
     deliverable_versions: {
       version_id: string;
       file_name: string;
@@ -138,6 +139,16 @@ export default async function TaskPage({
     ruolo: e.ruolo,
     ...e.deliverable_versions,
   }));
+
+  // I video di dichiarazione si caricano nel kind "video_grezzo" (stesso
+  // deliverable dello spazio di lavoro condiviso) ma sono riservati: chi li
+  // ha caricati li vede solo dentro il Video completo, mai qui, altrimenti
+  // risulterebbero scaricabili come un qualunque girato di montaggio.
+  const versioniDichiarazione = new Set(
+    (elementiRaw ?? [])
+      .filter((e) => e.ruolo === "dichiarazione_identita" || e.ruolo === "dichiarazione_integrazione")
+      .map((e) => e.deliverable_versions.version_id),
+  );
 
   // Una sola query per tutti i nomi che compaiono nella pagina: chi ha
   // caricato file e chi ha aperto o chiuso una richiesta.
@@ -271,7 +282,9 @@ export default async function TaskPage({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {KIND_LAVORAZIONE.map((kind) => {
             const d = (deliverables ?? []).find((x) => x.kind === kind);
-            const vs = (versioni ?? []).filter((v) => v.deliverable_id === d?.id);
+            const vs = (versioni ?? []).filter(
+              (v) => v.deliverable_id === d?.id && !versioniDichiarazione.has(v.id),
+            );
             const accetta = kind === "immagini_montaggio" ? "image/*" : undefined;
             const mancaNumeroVideo =
               kind === "immagini_montaggio" &&
