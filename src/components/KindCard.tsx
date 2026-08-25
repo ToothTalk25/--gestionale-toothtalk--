@@ -96,9 +96,11 @@ export default function KindCard({
             : "bg-white ring-black/5"
       }`}
     >
-      <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center">
+      <div className="flex flex-1 flex-col items-center gap-1 text-center">
         <span className="text-slate-400"><IconaKind kind={kind} /></span>
-        <h3 className="text-[11px] font-semibold text-slate-700 sm:text-[12.5px]">{label}</h3>
+        <h3 className="flex min-h-[30px] items-center text-[11px] font-semibold text-slate-700 sm:min-h-[34px] sm:text-[12.5px]">
+          {label}
+        </h3>
         <Contenuto
           ref={ref}
           isGoogleDoc={isGoogleDoc}

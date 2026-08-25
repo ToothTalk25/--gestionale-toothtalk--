@@ -213,8 +213,10 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   // elemento visivo della card vuota, e il pulsante con le note sotto: lo
   // stesso ordine "icona → azione" delle altre card vuote (Google Doc).
   return cardIntera ? (
-    <div className="flex-1 flex flex-col items-center justify-center gap-2">
-      {children}
+    <div className="flex flex-1 flex-col items-center gap-2">
+      <div className="flex min-h-[42px] flex-col items-center justify-center sm:min-h-[46px]">
+        {children}
+      </div>
       {controlli}
     </div>
   ) : (
