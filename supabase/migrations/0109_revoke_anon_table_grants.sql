@@ -1,0 +1,29 @@
+-- =====================================================================
+-- 0109_revoke_anon_table_grants.sql — anon non deve toccare le tabelle
+-- =====================================================================
+-- Audit di sicurezza (2026-08-25): il ruolo "anon" (chi non ha fatto
+-- login) aveva SELECT/INSERT/UPDATE/DELETE/TRUNCATE su quasi tutte le
+-- tabelle di public, profiles e verifiche_riconoscimento comprese.
+-- Nessuna migrazione lo aveva concesso esplicitamente: sono i privilegi
+-- di default che Supabase applica quando crea una tabella in public,
+-- mai stati revocati.
+--
+-- Non risulta sfruttabile OGGI: ogni tabella ha RLS attiva, e le policy
+-- verificate durante l'audit escludono correttamente anon dove serve.
+-- Ma l'intera protezione poggiava solo sulle policy, senza rete di
+-- sicurezza sotto: un singolo errore futuro in una policy (es. una
+-- "for select to public" scritta per sbaglio al posto di "to
+-- authenticated") sarebbe bastato a esporre la tabella a chiunque su
+-- internet, senza bisogno di login.
+--
+-- Verificato prima di revocare: gli unici flussi che devono funzionare
+-- per un visitatore senza account (liberatoria via link, verifica invito)
+-- passano tutti da funzioni security definer (verifica_invito,
+-- verifica_token_liberatoria, registra_upload_liberatoria,
+-- genera_codice_invito) o da server action con service_role — nessuna
+-- dipende dai grant diretti di anon sulle tabelle. Il logo pubblico
+-- (0023_branding) vive nel bucket storage, schema a parte, non toccato
+-- da questa revoke.
+-- =====================================================================
+
+revoke all on all tables in schema public from anon;
