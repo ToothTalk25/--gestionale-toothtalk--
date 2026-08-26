@@ -103,6 +103,8 @@ export const preparaUploadSchema = z.object({
     "finale_copertina",
     "finale_liberatoria",
   ]),
+  archivio: z.enum(["lavorazione", "finale"]),
+  fileName: z.string().min(1).max(255),
   titolo: titoloSchema.optional(),
 });
 

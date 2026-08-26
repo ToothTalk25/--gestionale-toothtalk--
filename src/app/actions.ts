@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -352,15 +353,23 @@ export async function impostaBlocco(
  * di path che le policy di storage si aspettano:
  *   {polo_id}/{task_id}/{deliverable_id}/
  */
+/** Chiavi di storage: solo caratteri sicuri, il nome vero resta nel DB. */
+function sanifica(nome: string): string {
+  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+}
+
 export async function preparaUpload(
   taskId: string,
   kind: DeliverableKind,
+  archivio: Archivio,
+  fileName: string,
   titolo?: string,
-): Promise<Esito<{ deliverableId: string; prefix: string }>> {
-  const validazione = valida(preparaUploadSchema, { taskId, kind, titolo });
+): Promise<Esito<{ deliverableId: string; bucket: string; path: string; signedUrl: string; token: string }>> {
+  const validazione = valida(preparaUploadSchema, { taskId, kind, archivio, fileName, titolo });
   if (!validazione.ok) return { ok: false, errore: validazione.errore };
-  ({ taskId, kind, titolo } = validazione.dati);
+  ({ taskId, kind, archivio, fileName, titolo } = validazione.dati);
 
+  const { isAdmin } = await requireSession();
   const supabase = await supabaseServer();
 
   const { data: task, error: eTask } = await supabase
@@ -394,12 +403,23 @@ export async function preparaUpload(
 
   if (!deliverableId) return { ok: false, errore: "Deliverable non creata." };
 
+  // L'upload vero parte dal browser dritto su Storage (i file grossi non
+  // passano dalle server action, vedi bodySizeLimit in next.config.ts), ma
+  // il cookie di sessione è HttpOnly: il client non può più autenticarsi da
+  // solo. Firmiamo qui, col nostro cookie leggibile solo dal server, un URL
+  // di upload valido una volta sola per QUESTO esatto path — le stesse
+  // policy RLS di sempre (is_member_of/is_admin/task_aperta) si applicano
+  // in questo istante, non a ogni upload.
+  const origin: VersionOrigin = isAdmin ? "admin_edit" : "originale";
+  const bucket = bucketPer(origin, archivio);
+  const path = `${task.polo_id}/${task.id}/${deliverableId}/${randomUUID()}__${sanifica(fileName)}`;
+
+  const { data: firma, error: eFirma } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
+  if (eFirma || !firma) return fallita(eFirma, "Impossibile preparare il caricamento");
+
   return {
     ok: true,
-    dati: {
-      deliverableId,
-      prefix: `${task.polo_id}/${task.id}/${deliverableId}/`,
-    },
+    dati: { deliverableId, bucket, path, signedUrl: firma.signedUrl, token: firma.token },
   };
 }
 

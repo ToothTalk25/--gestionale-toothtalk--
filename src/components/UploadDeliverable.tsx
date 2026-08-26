@@ -10,11 +10,6 @@ import type { Archivio, DeliverableKind } from "@/lib/types";
 
 type Fase = "idle" | "hash" | "upload" | "registro" | "fatto" | "errore";
 
-/** Chiavi di storage: solo caratteri sicuri, il nome vero resta nel DB. */
-function sanifica(nome: string) {
-  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
-}
-
 /** L'SDK di Supabase Storage restituisce messaggi in inglese: qui i più
  *  comuni diventano italiano, il resto è nascosto dietro un avviso generico
  *  (mai un testo tecnico grezzo mostrato a chi carica). */
@@ -71,7 +66,6 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   // scrivere un "originale", così non può fabbricare un deposito a nome
   // del gruppo né sostituire quella vera.
   const origin = isAdmin ? "admin_edit" : "originale";
-  const bucket = isAdmin ? "revisioni" : archivio === "finale" ? "finali" : "originali";
 
   const bloccato = !isAdmin && locked;
 
@@ -84,19 +78,19 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       setProgresso(0);
       const sha = await sha256File(file, setProgresso);
 
-      const prep = await preparaUpload(taskId, kind);
+      const prep = await preparaUpload(taskId, kind, archivio, file.name);
       if (!prep.ok) throw new Error(prep.errore);
 
-      const path = `${prep.dati.prefix}${crypto.randomUUID()}__${sanifica(file.name)}`;
-
+      // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
+      // da solo con Storage. L'URL firmato appena sopra vale una volta sola,
+      // solo per questo path — non serve altro per caricare.
       setFase("upload");
       const supabase = supabaseBrowser();
-      const { error } = await supabase.storage.from(bucket).upload(path, file, {
-        // upsert:false è obbligatorio: sui bucket 'originali' e 'finali' non
-        // esiste alcuna policy di UPDATE, quindi un upsert verrebbe respinto.
-        upsert: false,
-        contentType: file.type || "application/octet-stream",
-      });
+      const { error } = await supabase.storage
+        .from(prep.dati.bucket)
+        .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
       if (error) throw new Error(traduciErroreStorage(error.message));
 
       setFase("registro");
@@ -105,7 +99,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
         deliverableId: prep.dati.deliverableId,
         origin,
         archivio,
-        storagePath: path,
+        storagePath: prep.dati.path,
         fileName: file.name,
         mimeType: file.type || null,
         sizeBytes: file.size,

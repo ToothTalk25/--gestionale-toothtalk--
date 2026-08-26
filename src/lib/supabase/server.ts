@@ -4,24 +4,25 @@ import { cookies } from "next/headers";
 type CookieDaImpostare = { name: string; value: string; options: CookieOptions };
 
 /**
- * Cookie di sessione con flag di sicurezza: Secure e SameSite=Strict. Il
- * token di sessione Supabase non vive mai in localStorage (dove un XSS
- * potrebbe leggerlo), solo in questi cookie. SameSite=Strict limita l'invio
- * ai contesti first-party: previene CSRF e mitigherebbe il furto di sessione
- * via cross-site.
+ * Cookie di sessione con tutti i flag di sicurezza: Secure, SameSite=Strict
+ * e HttpOnly. Il token di sessione Supabase non vive mai in localStorage né
+ * è leggibile da JavaScript: solo il server lo tocca. SameSite=Strict limita
+ * l'invio ai contesti first-party (mitiga il CSRF); HttpOnly impedisce a un
+ * eventuale XSS di leggerlo e rubare la sessione.
  *
- * NON HttpOnly: gli upload dei file grandi vanno dal browser dritti a
- * Supabase Storage (mai attraverso il server Next, vedi
- * src/lib/supabase/client.ts), e il client Supabase lato browser
- * (createBrowserClient) legge la sessione da questi stessi cookie per
- * autenticare quelle richieste — con HttpOnly non potrebbe leggerli, la
- * richiesta partirebbe come anonima e Storage la respingerebbe con un
- * errore RLS generico (osservato davvero: ogni upload falliva così, sia
- * da collaboratore che da admin, con lo stesso identico sintomo).
+ * Gli upload dei file grandi vanno comunque dal browser dritti a Supabase
+ * Storage (mai attraverso il server Next, bodySizeLimit in next.config.ts),
+ * ma non autenticandosi più con la sessione: preparaUpload (server action,
+ * qui il cookie HttpOnly si legge benissimo) firma un URL di caricamento
+ * valido una volta sola per quel path esatto — vedi
+ * src/components/UploadDeliverable.tsx. Prima HttpOnly andava tolto perché
+ * il client Supabase del browser doveva leggersi la sessione da solo per
+ * autenticare l'upload diretto: con l'URL firmato non serve più.
  */
 const COOKIE_SICURI: CookieOptions = {
   secure: true,
   sameSite: "strict",
+  httpOnly: true,
   path: "/",
 };
 
