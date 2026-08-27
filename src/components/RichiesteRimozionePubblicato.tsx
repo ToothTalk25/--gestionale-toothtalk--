@@ -11,11 +11,13 @@ const ESITO_LABEL = {
 } as const;
 
 /**
- * Coda delle richieste di rimozione di contenuti già pubblicati (art.
- * 17(3)(a) GDPR). Aperte quando un Collaboratore revoca il consenso a
- * immagine/voce e chiede ANCHE la rimozione del pubblicato — qui il
- * Titolare registra l'esito della valutazione, non rimuove file: quella
- * resta un'azione editoriale manuale separata, coerente con l'esito scelto.
+ * Coda delle richieste di rimozione o opposizione relative a contenuti già
+ * pubblicati: il Titolare valuta caso per caso bilanciando il legittimo
+ * interesse del Progetto a mantenerli accessibili con quello dell'interessato
+ * (art. 21 GDPR), tenendo conto delle eccezioni di cui all'art. 17, par. 3,
+ * GDPR. Qui il Titolare registra l'esito della valutazione, non rimuove
+ * file: quella resta un'azione editoriale manuale separata, coerente con
+ * l'esito scelto.
  */
 export default function RichiesteRimozionePubblicato({
   richieste,
@@ -56,9 +58,11 @@ export default function RichiesteRimozionePubblicato({
       <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di rimozione contenuti pubblicati</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-500">
         Aperte quando un Collaboratore, revocando il consenso a immagine/voce,
-        chiede anche la rimozione dei contenuti già pubblicati che lo
-        ritraggono. Valuta caso per caso (art. 17, par. 3, lett. a, GDPR):
-        entro 30 giorni, prorogabili a 90 con motivazione scritta.
+        chiede anche la rimozione o vi si oppone per i contenuti già pubblicati
+        che lo ritraggono. Valuta caso per caso, bilanciando il legittimo
+        interesse del Progetto a mantenerli accessibili con quello
+        dell'interessato (art. 21 GDPR): entro 30 giorni, prorogabili a 90 con
+        motivazione scritta.
       </p>
 
       {aperte.length === 0 && risolte.length === 0 && (
@@ -110,7 +114,7 @@ export default function RichiesteRimozionePubblicato({
                         onClick={() => risolvi(r.id, "rifiutato")}
                         className="tt-btn border border-slate-300 px-3 py-1.5 text-xs disabled:opacity-50"
                       >
-                        Rifiutato (eccezione art. 17.3.a)
+                        Rifiutato (prevale l'interesse del Progetto)
                       </button>
                       <button
                         disabled={pending}
