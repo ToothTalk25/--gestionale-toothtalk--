@@ -1061,6 +1061,78 @@ export async function caricaAccordo(
   }
   }
 
+/**
+ * Registra il documento di rinnovo dell'accordo editoriale (Art. 9.1):
+ * il Collaboratore firma e carica il rinnovo con la stessa modalità del
+ * primo accordo; l'approvazione del Coordinatore (approvaRinnovoAccordo)
+ * riattiva l'accesso e sposta la scadenza di 6 mesi avanti. Niente spunta
+ * "ho letto e compreso" (non è la prima lettura) né controlli anagrafici
+ * (già fatti col primo accordo), e niente PEC: la certificazione con data
+ * certa copre l'accordo iniziale nel registro dei partecipanti. La copia
+ * di sicurezza su Drive va in "Gestione canale/rinnovi" (accanto agli
+ * accordi), così l'archivio resta ordinato.
+ */
+export async function caricaRinnovoAccordo(
+  storagePath: string,
+  _sha256Client: string,
+): Promise<Esito<{ sha256: string }>> {
+  const { profile } = await requireSession();
+
+  // Scrive col service_role: i campi rinnovo_* sono protetti dal trigger
+  // fn_protect_profile (0111) — solo admin/service_role possono scriverli.
+  const supabase = supabaseAdmin();
+
+  // Il path deve stare nello spazio di chi chiama: impedisce di far puntare
+  // il proprio profilo al file di qualcun altro (stesso pattern di caricaAccordo).
+  if (!storagePath.startsWith(`${profile.id}/rinnovo/`)) {
+    return errore("Percorso del file non valido.");
+  }
+
+  // Difesa in profondità: si rinnova SOLO un accordo già firmato e approvato.
+  if (!profile.accordo_path || !profile.accordo_approvato_admin_at) {
+    return errore("Nessun accordo approvato da rinnovare.");
+  }
+
+  const { data: blob, error: eBlob } = await supabase.storage
+    .from("profili")
+    .download(storagePath);
+  if (eBlob || !blob) {
+    return errore("File non leggibile dallo storage.");
+  }
+
+  // L'impronta è quella VERA del file appena scaricato, ricalcolata qui —
+  // mai quella dichiarata dal client (stesso motivo di caricaAccordo).
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      rinnovo_path: storagePath,
+      rinnovo_sha256: sha256,
+      rinnovo_caricato_at: new Date().toISOString(),
+    })
+    .eq("id", profile.id);
+  if (error) return errore(error.message);
+
+  // Copia di sicurezza su Drive in "Gestione canale/rinnovi/<polo>/". La
+  // data nel nome distingue un rinnovo dal successivo. Best-effort: se
+  // fallisce, il rinnovo resta comunque nel gestionale.
+  const nome = (profile.full_name ?? "rinnovo").replace(/[/\\:*?"<>|]/g, "_");
+  const nomeSuDrive = `${nome} - rinnovo ${new Date().toISOString().slice(0, 10)}.pdf`;
+  const { data: membriPoli } = await supabase
+    .from("memberships")
+    .select("poli!inner(nome)")
+    .eq("user_id", profile.id);
+  const membri = (membriPoli ?? []) as { poli: { nome: string }[] }[];
+  const poliUtente = membri.flatMap((m) => m.poli.map((p) => p.nome));
+  await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive, poliUtente, "rinnovi"));
+
+  revalidatePath("/rinnovo");
+  revalidatePath("/profilo");
+  return { ok: true, dati: { sha256 } };
+}
+
 /** Genera un URL firmato per scaricare una ricevuta di consenso (admin only). */
 /**
  * Carica il MODELLO dell'accordo editoriale (lato admin): il documento
@@ -1633,6 +1705,98 @@ export async function approvaAccordoManualmente(
       nominaErrore: esitoNomina.ok ? undefined : esitoNomina.errore,
     },
   };
+}
+
+
+/**
+ * Somma calendariale di mesi a oggi in UTC, con clamp al mese di destinazione
+ * (31 gen + 1 mese = 28/29 feb): stessa semantica di `+ interval '6 months'`
+ * in Postgres. Restituisce la data come stringa YYYY-MM-DD, coerente con
+ * accordo_scadenza (date).
+ */
+function scadenzaTraMesi(mesi: number, adesso = new Date()): string {
+  const giorno = adesso.getUTCDate();
+  const anno = adesso.getUTCFullYear();
+  const mese = adesso.getUTCMonth() + mesi;
+  const ultimoGiorno = new Date(Date.UTC(anno, mese + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(anno, mese, Math.min(giorno, ultimoGiorno))).toISOString().slice(0, 10);
+}
+
+/**
+ * Il Titolare approva il documento di rinnovo dell'accordo di un
+ * collaboratore (Art. 9.1): riattiva l'accesso spostando accordo_scadenza
+ * di 6 mesi avanti da oggi e "consolida" il rinnovo — i campi file si
+ * azzerano (rinnovo_path torna null), pronti per il ciclo successivo; la
+ * copia su Drive resta come archivio. Solo admin. Tracciato in audit_log.
+ *
+ * NON rigenera il Modulo di nomina (Documento 4): resta valido, non è
+ * legato alla scadenza dei 6 mesi.
+ */
+export async function approvaRinnovoAccordo(
+  userId: string,
+): Promise<Esito<{ approvatoAt: string; nuovaScadenza: string }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+
+  const supabase = await supabaseServer();
+
+  // Controllo di coerenza: si approva un rinnovo SOLO su un accordo già
+  // approvato, e SOLO se il documento di rinnovo esiste.
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, full_name, accordo_approvato_admin_at, accordo_scadenza, rinnovo_path, rinnovo_caricato_at")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      accordo_approvato_admin_at: string | null;
+      accordo_scadenza: string | null;
+      rinnovo_path: string | null;
+      rinnovo_caricato_at: string | null;
+    }>();
+  if (!target) return errore("Utente non trovato.");
+  if (!target.accordo_approvato_admin_at) {
+    return errore("Questo utente non ha ancora un accordo approvato da rinnovare.");
+  }
+  if (!target.rinnovo_path) return errore("Nessun documento di rinnovo caricato per questo utente.");
+
+  const ora = new Date().toISOString();
+  const nuovaScadenza = scadenzaTraMesi(6);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      rinnovo_approvato_admin_at: ora,
+      rinnovo_approvato_da: profile.id,
+      accordo_scadenza: nuovaScadenza,
+      rinnovo_path: null,
+      rinnovo_sha256: null,
+      rinnovo_caricato_at: null,
+    })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  // Traccia l'approvazione nella catena di audit.
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "approvazione_rinnovo_accordo",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: {
+        utente: target.full_name,
+        rinnovo_caricato_at: target.rinnovo_caricato_at,
+        nuova_scadenza: nuovaScadenza,
+        approvato_at: ora,
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  revalidatePath("/profilo");
+  revalidatePath("/rinnovo");
+  return { ok: true, dati: { approvatoAt: ora, nuovaScadenza } };
 }
 
 /**

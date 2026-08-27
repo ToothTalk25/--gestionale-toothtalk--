@@ -16,6 +16,7 @@ import {
 } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
+import CaricaRinnovo from "@/components/CaricaRinnovo";
 import { useConferma } from "@/components/ConfermaAzione";
 
 function sanifica(nome: string) {
@@ -544,6 +545,15 @@ export default function ProfiloPersonale({
                 {profile.accordo_approvato_admin_at ? "☑" : "☐"} Approvato dal Coordinatore
               </li>
             </ul>
+            {profile.accordo_scadenza && (
+              <p className="mt-2 text-slate-600">
+                Il tuo Accordo scade il{" "}
+                <strong>
+                  {new Date(`${profile.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")}
+                </strong>
+                .
+              </p>
+            )}
             {(!profile.accordo_path ||
               !profile.accordo_letto_confermato ||
               verificaStato.esito !== "ok" ||
@@ -593,6 +603,16 @@ export default function ProfiloPersonale({
               {nominaMessaggio && (
                 <p className="mt-2 text-red-600">{nominaMessaggio}</p>
               )}
+            </div>
+          )}
+
+          {/* ---- Rinnovo dell'Accordo (Art. 9.1): chi ha l'accordo approvato
+              può caricare il documento di rinnovo in QUALSIASI momento, anche
+              con grande anticipo sulla scadenza — senza perdere l'accesso.
+              La card è la stessa della pagina /rinnovo (CaricaRinnovo). ---- */}
+          {profile.accordo_approvato_admin_at && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <CaricaRinnovo profile={profile} />
             </div>
           )}
         </section>

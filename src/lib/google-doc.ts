@@ -172,13 +172,14 @@ export async function creaDocumentiLavorazione(
 }
 
 /**
- * Copia di sicurezza dell'accordo firmato su Google Drive, nella cartella
- * "Gestione canale/accordi" del Drive del progetto (fuori da "Archivio
- * video"), divisa per polo: dentro la sottocartella del polo dell'utente
- * con nome "Nome Cognome.pdf" (il nome del Collaboratore). Best-effort:
- * l'accordo resta comunque nel gestionale (Supabase + PEC con SHA-256) —
- * questa è solo una copia di riserva. Le cartelle vengono trovate o
- * create al volo.
+ * Copia di sicurezza dell'accordo (o di un documento di rinnovo) firmato su
+ * Google Drive, nella cartella "Gestione canale" del Drive del progetto
+ * (fuori da "Archivio video"), divisa per polo: dentro la sottocartella del
+ * polo dell'utente con nome "Nome Cognome.pdf". Il quarto parametro sceglie
+ * la cartella: "accordi" (default, primo accordo) o "rinnovi" (documenti di
+ * rinnovo Art. 9.1, accanto agli accordi). Best-effort: il documento resta
+ * comunque nel gestionale (Supabase) — questa è solo una copia di riserva.
+ * Le cartelle vengono trovate o create al volo.
  */
 const GESTIONE_CANALE_FOLDER = "1Kwo27smMsRCKfUy1rgcBwHVZpcjsYTyY";
 
@@ -186,10 +187,11 @@ export async function archiviaAccordoSuDrive(
   buffer: Buffer,
   nomeFile: string,
   poliUtente: string[],
+  sottoCartella: "accordi" | "rinnovi" = "accordi",
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
   try {
     const token = await tokenGoogle();
-    const cartellaAccordi = await trovaOCreaCartella(token, GESTIONE_CANALE_FOLDER, "accordi");
+    const cartellaAccordi = await trovaOCreaCartella(token, GESTIONE_CANALE_FOLDER, sottoCartella);
     // Un utente può appartenere a più gruppi: l'accordo va in ciascuno.
     const cartelle = poliUtente.length ? poliUtente : ["Senza gruppo"];
 

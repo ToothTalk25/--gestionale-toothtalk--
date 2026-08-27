@@ -118,6 +118,12 @@ export type Profile = {
   accordo_letto_confermato: boolean;
   accordo_approvato_admin_at: string | null;
   accordo_approvato_da: string | null;
+  accordo_scadenza: string | null;
+  rinnovo_path: string | null;
+  rinnovo_sha256: string | null;
+  rinnovo_caricato_at: string | null;
+  rinnovo_approvato_admin_at: string | null;
+  rinnovo_approvato_da: string | null;
   nomina_path: string | null;
   nomina_sha256: string | null;
   nomina_generata_at: string | null;

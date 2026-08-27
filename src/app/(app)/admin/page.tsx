@@ -18,6 +18,9 @@ import CaricaModelloAccordo, { type RigaModelloAccordo } from "@/components/Cari
 import AccordiDaApprovare, {
   type RigaAccordoDaApprovare,
 } from "@/components/AccordiDaApprovare";
+import RinnoviDaApprovare, {
+  type RigaRinnovoDaApprovare,
+} from "@/components/RinnoviDaApprovare";
 import RichiesteRegistrazione, {
   type RigaRichiestaRegistrazione,
 } from "@/components/RichiesteRegistrazione";
@@ -59,6 +62,7 @@ export default async function AdminPage() {
     { data: richieste },
     { data: modelliAccordo },
     { data: accordiDaApprovare },
+    { data: rinnoviDaApprovare },
     { data: richiesteRimozione },
     { data: notificheArt82 },
     { data: richiesteElimGrezzo },
@@ -168,6 +172,16 @@ export default async function AdminPage() {
       .neq("role", "admin")
       .order("accordo_caricato_at", { ascending: true })
       .returns<RigaAccordoDaApprovare[]>(),
+    // Documenti di rinnovo dell'accordo (Art. 9.1) caricati ma non ancora
+    // approvati: l'approvazione riattiva l'accesso ai progetti e sposta la
+    // scadenza di 6 mesi avanti.
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, rinnovo_caricato_at, accordo_scadenza")
+      .not("rinnovo_path", "is", null)
+      .neq("role", "admin")
+      .order("rinnovo_caricato_at", { ascending: true })
+      .returns<RigaRinnovoDaApprovare[]>(),
     // Richieste di rimozione di contenuti pubblicati (art. 17(3)(a) GDPR):
     // aperte quando un Collaboratore revoca il consenso a immagine/voce.
     supabase
@@ -385,6 +399,16 @@ export default async function AdminPage() {
               attenzione: "L'approvazione è irreversibile e vale come tua firma sul controllo. Se l'esito IA non è 'ok' il profilo non compare qui; se per qualsiasi motivo compare con esito diverso, controllalo con particolare attenzione prima di approvare.",
             },
             contenuto: <AccordiDaApprovare accordi={accordiDaApprovare ?? []} />,
+          },
+          {
+            id: "rinnovi-accordi",
+            etichetta: "Rinnovi accordo da approvare",
+            badge: (rinnoviDaApprovare ?? []).length,
+            promemoria: {
+              cosa: "approvi i documenti di rinnovo dell'Accordo (Art. 9.1) caricati da chi ha l'accordo scaduto: l'approvazione riattiva l'accesso ai progetti e sposta la scadenza di 6 mesi avanti.",
+              attenzione: "l'approvazione è il tuo controllo sul documento di rinnovo firmato: verificalo prima. NON rigenera il Modulo di nomina (Documento 4), che resta valido.",
+            },
+            contenuto: <RinnoviDaApprovare rinnovi={rinnoviDaApprovare ?? []} />,
           },
           {
             id: "partecipanti",

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { requireSession } from "@/lib/auth";
+import { requireSession, accordoScaduto } from "@/lib/auth";
 import MenuUtente from "@/components/MenuUtente";
 import BannerConsenso from "@/components/BannerConsenso";
 import NavLink from "@/components/NavLink";
@@ -37,6 +37,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       !!profile.accordo_approvato_admin_at);
   if (!accordoCompleto && pathname !== "/profilo") {
     redirect("/profilo");
+  }
+
+  // --- Quinto stato: accordo scaduto (Art. 9.1) ------------------------
+  // Anche con le quattro condizioni dell'accordo iniziale soddisfatte,
+  // l'accordo ha durata fissa di 6 mesi: alla scadenza l'accesso ai
+  // progetti viene sospeso finché un documento di rinnovo non è approvato
+  // dal Coordinatore (approvazione che sposta accordo_scadenza di 6 mesi).
+  // L'admin non è mai soggetto a questo blocco. Chi è bloccato può restare
+  // SOLO su /rinnovo, una pagina FUORI da questo gruppo di rotte — quindi
+  // nessun loop di redirect (il layout non gira mai per /rinnovo).
+  if (!isAdmin && accordoScaduto(profile.accordo_scadenza)) {
+    redirect("/rinnovo");
   }
 
   return (
