@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { esci } from "@/app/actions-auth";
 import CaricaRinnovo from "@/components/CaricaRinnovo";
 import type { Profile } from "@/lib/types";
 
@@ -18,8 +18,8 @@ export default function RinnovoAccordo({ profile }: { profile: Profile }) {
     ? new Date(`${profile.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")
     : "—";
 
-  async function esci() {
-    await supabaseBrowser().auth.signOut();
+  async function esciEVai() {
+    await esci();
     router.push("/login");
   }
 
@@ -30,7 +30,7 @@ export default function RinnovoAccordo({ profile }: { profile: Profile }) {
           Accordo Editoriale scaduto
         </h1>
         <button
-          onClick={esci}
+          onClick={esciEVai}
           className="tt-btn border border-slate-300 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
         >
           Esci

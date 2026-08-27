@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { esci } from "@/app/actions-auth";
 import { eliminaAccount } from "@/app/actions-profilo";
 
 /**
@@ -33,7 +33,7 @@ export default function SezioneEliminazioneAccount({ userId }: { userId: string 
       return;
     }
 
-    await supabaseBrowser().auth.signOut();
+    await esci();
     setMessaggio("Account eliminato. Tutti i tuoi dati personali sono stati rimossi.");
     setTimeout(() => router.replace("/login"), 2500);
   }

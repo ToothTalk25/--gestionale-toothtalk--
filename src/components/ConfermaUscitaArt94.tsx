@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { esci } from "@/app/actions-auth";
 import { confermaCancellazioneCopie } from "@/app/actions-profilo";
 
 /**
@@ -31,7 +31,7 @@ export default function ConfermaUscitaArt94() {
       return;
     }
     setFatto(true);
-    await supabaseBrowser().auth.signOut();
+    await esci();
     setTimeout(() => router.replace("/login"), 1800);
     router.refresh();
   }

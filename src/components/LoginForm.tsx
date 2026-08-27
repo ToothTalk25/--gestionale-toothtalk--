@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { percorsoInternoValido } from "@/lib/percorsi";
+import { accedi as accediServer } from "@/app/actions-auth";
 import CampoPassword from "@/components/CampoPassword";
 
 export default function LoginForm() {
@@ -46,11 +47,10 @@ export default function LoginForm() {
     setInCorso(true);
     setErrore(null);
 
-    const supabase = supabaseBrowser();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const esito = await accediServer(email, password);
 
-    if (error) {
-      setErrore("Credenziali non valide.");
+    if (!esito.ok) {
+      setErrore(esito.errore);
       setInCorso(false);
       return;
     }

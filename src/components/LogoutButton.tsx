@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { esci } from "@/app/actions-auth";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -10,7 +10,7 @@ export default function LogoutButton() {
     <button
       onClick={async () => {
         window.localStorage.removeItem("tt_ricordami");
-        await supabaseBrowser().auth.signOut();
+        await esci();
         router.replace("/login");
         router.refresh();
       }}

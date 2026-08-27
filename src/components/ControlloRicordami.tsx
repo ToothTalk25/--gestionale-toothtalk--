@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
  * Rende effettiva la scelta "non ricordarmi" fatta al login: quando il flag
  * `tt_ricordami` è "0", alla chiusura della scheda/browser la sessione
  * locale viene rimossa (signOut scope local), così al riavvio il dispositivo
  * non trova più l'accesso ricordato.
+ *
+ * Il cookie di sessione è HttpOnly: il client Supabase del browser non può
+ * cancellarlo (document.cookie non tocca un cookie HttpOnly). Serve un
+ * fetch al server con keepalive, l'unico modo che sopravvive alla chiusura
+ * della pagina — una Server Action normale verrebbe interrotta a metà.
  *
  * Best-effort: se il browser si chiude in modo anomalo (crash, perdita di
  * rete) il logout potrebbe non scattare — è il limite del workaround, dato
@@ -19,7 +23,7 @@ export default function ControlloRicordami() {
     if (window.localStorage.getItem("tt_ricordami") !== "0") return;
 
     const esci = () => {
-      void supabaseBrowser().auth.signOut({ scope: "local" });
+      void fetch("/api/uscita-locale", { method: "POST", keepalive: true });
     };
     window.addEventListener("pagehide", esci);
     window.addEventListener("beforeunload", esci);

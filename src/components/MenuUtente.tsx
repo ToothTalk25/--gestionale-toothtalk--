@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { esci as esciServer } from "@/app/actions-auth";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 
@@ -40,7 +40,7 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
   async function esci() {
     // Logout esplicito: la scelta "ricordami" riparte da zero al prossimo login.
     window.localStorage.removeItem("tt_ricordami");
-    await supabaseBrowser().auth.signOut();
+    await esciServer();
     router.replace("/login");
     router.refresh();
   }
