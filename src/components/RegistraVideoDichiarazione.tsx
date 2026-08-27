@@ -116,7 +116,13 @@ export default function RegistraVideoDichiarazione({
     }
     setFase("avvio");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      // facingMode "user" (non "exact"): preferisce la fotocamera frontale,
+      // così chi si registra da solo si vede — su un notebook con una sola
+      // fotocamera il vincolo "ideale" non fa fallire la richiesta.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: true,
+      });
       streamRef.current = stream;
       if (previewRef.current) {
         previewRef.current.srcObject = stream;
@@ -225,11 +231,11 @@ export default function RegistraVideoDichiarazione({
           <button
             onClick={ferma}
             disabled={fase === "avvio"}
-            className="tt-btn bg-red-600 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
+            className="tt-btn bg-red-600 px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
           >
             Ferma e rivedi
           </button>
-          <button onClick={annullaRegistrazione} className="tt-btn border border-slate-300 px-3 py-1.5 text-xs">
+          <button onClick={annullaRegistrazione} className="tt-btn border border-slate-300 px-4 py-2 text-sm">
             Annulla
           </button>
         </div>
@@ -245,10 +251,10 @@ export default function RegistraVideoDichiarazione({
           Rivedi il video: è solo su questo dispositivo, non ancora caricato.
         </p>
         <div className="mt-1.5 flex justify-center gap-2">
-          <button onClick={conferma} className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95">
+          <button onClick={conferma} className="tt-btn bg-tt-blue px-4 py-2 text-sm text-white hover:brightness-95">
             Conferma e carica
           </button>
-          <button onClick={riprova} className="tt-btn border border-slate-300 px-3 py-1.5 text-xs">
+          <button onClick={riprova} className="tt-btn border border-slate-300 px-4 py-2 text-sm">
             Riprova
           </button>
         </div>
@@ -268,7 +274,7 @@ export default function RegistraVideoDichiarazione({
     <div className="flex flex-col items-center gap-1.5">
       <button
         onClick={avvia}
-        className="tt-btn border border-tt-blue px-3 py-1.5 text-xs text-tt-blue hover:bg-tt-blue/5"
+        className="tt-btn border border-tt-blue px-4 py-2 text-sm text-tt-blue hover:bg-tt-blue/5"
       >
         Registra video in-app
       </button>
