@@ -877,6 +877,21 @@ export async function caricaAccordo(
     );
   }
 
+  // L'Art. 2.5 dell'Accordo è una dichiarazione di maggiore età sotto la
+  // responsabilità del Collaboratore: non impedisce da sola che un
+  // minorenne firmi mentendo. La data di nascita è già obbligatoria (sopra):
+  // la usiamo anche per un controllo reale.
+  const oggi = new Date();
+  const nascita = new Date(profile.data_nascita);
+  let eta = oggi.getFullYear() - nascita.getFullYear();
+  const meseGiorno = oggi.getMonth() - nascita.getMonth() || oggi.getDate() - nascita.getDate();
+  if (meseGiorno < 0) eta--;
+  if (eta < 18) {
+    return errore(
+      "La sottoscrizione dell'Accordo Editoriale è riservata a chi ha già compiuto 18 anni.",
+    );
+  }
+
   // --- PEC all'accesso globale -----------------------------------------
   let config;
   try {
