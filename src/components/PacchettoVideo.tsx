@@ -519,6 +519,15 @@ export default function PacchettoVideo({
               azione={
                 componibile && !dichiarazione ? (
                   <div className="flex flex-col items-center gap-1.5">
+                    <RegistraVideoDichiarazione
+                      onFileReady={(f) => dichiarazioneUploadRef.current?.handleFile(f)}
+                    />
+                    <p className="max-w-[220px] text-center text-[11px] text-slate-400">
+                      Usa sempre prima questa opzione: durante l&apos;intervista
+                      non serve uscire dalla pagina. Il caricamento file qui
+                      sotto è solo la riserva per quando la registrazione
+                      in-app non funziona.
+                    </p>
                     <UploadDeliverable
                       ref={dichiarazioneUploadRef}
                       taskId={taskId}
@@ -533,9 +542,6 @@ export default function PacchettoVideo({
                         <p className="text-xs text-slate-400">Nessun file.</p>
                       )}
                     </UploadDeliverable>
-                    <RegistraVideoDichiarazione
-                      onFileReady={(f) => dichiarazioneUploadRef.current?.handleFile(f)}
-                    />
                   </div>
                 ) : null
               }
@@ -589,6 +595,15 @@ export default function PacchettoVideo({
               azione={
                 componibile && !dichiarazioneIntegrazione ? (
                   <div className="flex flex-col items-center gap-1.5">
+                    <RegistraVideoDichiarazione
+                      onFileReady={(f) => dichiarazioneIntegrazioneUploadRef.current?.handleFile(f)}
+                    />
+                    <p className="max-w-[220px] text-center text-[11px] text-slate-400">
+                      Usa sempre prima questa opzione: durante l&apos;intervista
+                      non serve uscire dalla pagina. Il caricamento file qui
+                      sotto è solo la riserva per quando la registrazione
+                      in-app non funziona.
+                    </p>
                     <UploadDeliverable
                       ref={dichiarazioneIntegrazioneUploadRef}
                       taskId={taskId}
@@ -603,9 +618,6 @@ export default function PacchettoVideo({
                         <p className="text-xs text-slate-400">Nessun file.</p>
                       )}
                     </UploadDeliverable>
-                    <RegistraVideoDichiarazione
-                      onFileReady={(f) => dichiarazioneIntegrazioneUploadRef.current?.handleFile(f)}
-                    />
                   </div>
                 ) : null
               }
