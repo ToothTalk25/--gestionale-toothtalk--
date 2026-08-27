@@ -29,6 +29,9 @@ export type UploadDeliverableHandle = {
   handleFile: (file: File) => void;
 };
 
+/** Errore già tradotto in italiano, sicuro da mostrare così com'è (vedi carica()). */
+class ErroreCaricamento extends Error {}
+
 const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   taskId: string;
   kind: DeliverableKind;
@@ -79,7 +82,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       const sha = await sha256File(file, setProgresso);
 
       const prep = await preparaUpload(taskId, kind, archivio, file.name);
-      if (!prep.ok) throw new Error(prep.errore);
+      if (!prep.ok) throw new ErroreCaricamento(prep.errore);
 
       // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
       // da solo con Storage. L'URL firmato appena sopra vale una volta sola,
@@ -91,7 +94,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
         .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
           contentType: file.type || "application/octet-stream",
         });
-      if (error) throw new Error(traduciErroreStorage(error.message));
+      if (error) throw new ErroreCaricamento(traduciErroreStorage(error.message));
 
       setFase("registro");
       const esito = await registraVersione({
@@ -105,7 +108,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
         sizeBytes: file.size,
         sha256: sha,
       });
-      if (!esito.ok) throw new Error(esito.errore);
+      if (!esito.ok) throw new ErroreCaricamento(esito.errore);
 
       setFase("fatto");
 
@@ -113,11 +116,11 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
       router.refresh();
     } catch (e) {
       setFase("errore");
-      // I punti sopra lanciano già testo in italiano (server action, hash,
-      // storage); un errore JavaScript imprevisto (bug, rete interrotta a
-      // metà) non lo è: meglio un avviso generico che un testo tecnico.
-      const testoConosciuto = e instanceof Error && /[àèéìòù]|[.!?]$/.test(e.message);
-      setMessaggio(testoConosciuto ? (e as Error).message : "Caricamento non riuscito. Riprova.");
+      // I punti sopra lanciano già ErroreCaricamento con testo in italiano
+      // pronto da mostrare (server action, storage). Qualunque altra
+      // eccezione (bug, rete interrotta a metà) non lo è: meglio un avviso
+      // generico che un testo tecnico grezzo.
+      setMessaggio(e instanceof ErroreCaricamento ? e.message : "Caricamento non riuscito. Riprova.");
     } finally {
       inCorso.current = false;
       if (input.current) input.current.value = "";
