@@ -79,7 +79,17 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
     try {
       setFase("hash");
       setProgresso(0);
-      const sha = await sha256File(file, setProgresso);
+      let sha: string;
+      try {
+        sha = await sha256File(file, setProgresso);
+      } catch (e) {
+        // sha256File lancia già testo italiano pronto da mostrare (es. WASM
+        // bloccato dal browser): va marcato ErroreCaricamento come gli altri,
+        // altrimenti il catch qui sotto lo scambia per un errore imprevisto.
+        throw new ErroreCaricamento(
+          e instanceof Error ? e.message : "Impossibile calcolare l'impronta del file.",
+        );
+      }
 
       const prep = await preparaUpload(taskId, kind, archivio, file.name);
       if (!prep.ok) throw new ErroreCaricamento(prep.errore);
