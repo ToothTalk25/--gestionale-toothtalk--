@@ -40,6 +40,11 @@ export default function ProfiloPersonale({
   const [luogoNascita, setLuogoNascita] = useState(profile.luogo_nascita ?? "");
   const [codiceFiscale, setCodiceFiscale] = useState(profile.codice_fiscale ?? "");
   const [nominaMessaggio, setNominaMessaggio] = useState<string | null>(null);
+  // Esito dedicato al salvataggio anagrafica: quello condiviso (messaggio/errore)
+  // si vede solo in fondo alla pagina, dopo Foto/Consensi/Accordo — su mobile,
+  // tutto impilato in colonna, era troppo lontano dal bottone per essere notato.
+  const [messaggioAnagrafica, setMessaggioAnagrafica] = useState<string | null>(null);
+  const [erroreAnagrafica, setErroreAnagrafica] = useState<string | null>(null);
 
   const fotoInput = useRef<HTMLInputElement>(null);
   const accordoInput = useRef<HTMLInputElement>(null);
@@ -143,8 +148,8 @@ export default function ProfiloPersonale({
   }
 
   function salvaAnagrafica() {
-    setErrore(null);
-    setMessaggio(null);
+    setErroreAnagrafica(null);
+    setMessaggioAnagrafica(null);
     start(async () => {
       const esito = await aggiornaAnagrafica({
         pec: pec || null,
@@ -152,9 +157,9 @@ export default function ProfiloPersonale({
         luogo_nascita: luogoNascita || null,
         codice_fiscale: codiceFiscale || null,
       });
-      if (!esito.ok) setErrore(esito.errore);
+      if (!esito.ok) setErroreAnagrafica(esito.errore);
       else {
-        setMessaggio("Dati salvati.");
+        setMessaggioAnagrafica("Dati salvati.");
         router.refresh();
       }
     });
@@ -282,6 +287,12 @@ export default function ProfiloPersonale({
         >
           Salva dati
         </button>
+        {messaggioAnagrafica && (
+          <p className="mt-2 text-xs text-emerald-700">{messaggioAnagrafica}</p>
+        )}
+        {erroreAnagrafica && (
+          <p className="mt-2 text-xs text-red-600">{erroreAnagrafica}</p>
+        )}
       </section>
 
       <div className="space-y-6">
