@@ -43,6 +43,8 @@ export default async function TaskPage({
     size_bytes: number | null;
     uploaded_at: string;
     archiviato_esterno: boolean;
+    bucket: string | null;
+    storage_path: string | null;
   };
 
   // Tutte le query di questa pagina dipendono solo da taskId (nessuna

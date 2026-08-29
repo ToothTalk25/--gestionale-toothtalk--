@@ -8,7 +8,8 @@ import RegistraVideoDichiarazione from "@/components/RegistraVideoDichiarazione"
 import ControlliAdminDichiarazione from "@/components/ControlliAdminDichiarazione";
 import EsportazioneDrive from "@/components/EsportazioneDrive";
 import { formatBytes } from "@/lib/hash";
-import { impostaCoinvolgeTerzi } from "@/app/actions";
+import { IconaScarica, IconaSpinner } from "@/components/icone-azioni";
+import { impostaCoinvolgeTerzi, urlFirmato } from "@/app/actions";
 import { aggiornaContattoEsterno, aggiornaContattoPec, inviaRichiestaLiberatoria } from "@/app/actions-liberatoria";
 import {
   annullaPacchetto,
@@ -40,6 +41,9 @@ export type ElementoCaricato = {
   size_bytes: number | null;
   uploaded_at: string;
   archiviato_esterno: boolean;
+  /** Valorizzati solo per l'admin (pacchetto_elementi_meta): serve a costruire lo Scarica. */
+  bucket: string | null;
+  storage_path: string | null;
 };
 
 const COLORI: Record<PacchettoStato, string> = {
@@ -325,6 +329,7 @@ export default function PacchettoVideo({
           }
           taskId={taskId}
           archiviabile={archiviabile}
+          isAdmin={isAdmin}
         />
         <Slot
           id="copertina"
@@ -354,6 +359,7 @@ export default function PacchettoVideo({
           }
           taskId={taskId}
           archiviabile={archiviabile}
+          isAdmin={isAdmin}
         />
         <Testo
           id="script"
@@ -482,6 +488,7 @@ export default function PacchettoVideo({
                 }
                 taskId={taskId}
                 archiviabile={archiviabile}
+                isAdmin={isAdmin}
                 footer={
                   <p className={`text-xs ${liberatoriaOtp ? "text-emerald-700" : "text-amber-700"}`}>
                     {liberatoriaOtp
@@ -547,6 +554,7 @@ export default function PacchettoVideo({
               }
               taskId={taskId}
               archiviabile={false}
+              isAdmin={isAdmin}
               footer={
                 <>
                   {!isAdmin && (
@@ -623,6 +631,7 @@ export default function PacchettoVideo({
               }
               taskId={taskId}
               archiviabile={false}
+              isAdmin={isAdmin}
               footer={
                 <>
                   <p className="text-xs text-slate-400">
@@ -980,6 +989,7 @@ function Slot({
   archiviabile,
   confermato,
   footer,
+  isAdmin,
 }: {
   id?: string;
   titolo: string;
@@ -993,11 +1003,15 @@ function Slot({
   confermato: boolean;
   /** Nota e azioni proprie dello slot (es. "Segnala errore"): dentro la riga, non fuori. */
   footer?: React.ReactNode;
+  /** Mostra "Scarica" quando l'elemento porta bucket/storage_path (solo per l'admin, vedi pacchetto_elementi_meta). */
+  isAdmin: boolean;
 }) {
   const [conferma, setConferma] = useState(false);
   const [confermaArchivia, setConfermaArchivia] = useState(false);
   const [erroreArchivia, setErroreArchivia] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [scaricoInCorso, setScaricoInCorso] = useState(false);
+  const [erroreScarica, setErroreScarica] = useState<string | null>(null);
   const router = useRouter();
 
   async function archivia() {
@@ -1009,6 +1023,19 @@ function Slot({
       return;
     }
     router.refresh();
+  }
+
+  async function scarica() {
+    if (!elemento?.bucket || !elemento.storage_path) return;
+    setScaricoInCorso(true);
+    setErroreScarica(null);
+    const esito = await urlFirmato(elemento.bucket, elemento.storage_path);
+    setScaricoInCorso(false);
+    if (!esito.ok) {
+      setErroreScarica(esito.errore);
+      return;
+    }
+    window.location.href = esito.dati.url;
   }
 
   return (
@@ -1050,6 +1077,20 @@ function Slot({
             {formatBytes(elemento.size_bytes)} ·{" "}
             {new Date(elemento.uploaded_at).toLocaleString("it-IT")}
           </p>
+
+          {isAdmin && elemento.bucket && elemento.storage_path && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs">
+              <button
+                onClick={scarica}
+                disabled={scaricoInCorso}
+                className="flex items-center gap-1 font-medium text-tt-blue hover:underline disabled:opacity-50"
+              >
+                {scaricoInCorso ? <IconaSpinner /> : <IconaScarica />}
+                Scarica
+              </button>
+              {erroreScarica && <span className="text-red-600">{erroreScarica}</span>}
+            </p>
+          )}
 
           {onRimuovi &&
             (conferma ? (
