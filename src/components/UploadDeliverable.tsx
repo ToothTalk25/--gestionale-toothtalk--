@@ -86,9 +86,15 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
         // sha256File lancia già testo italiano pronto da mostrare (es. WASM
         // bloccato dal browser): va marcato ErroreCaricamento come gli altri,
         // altrimenti il catch qui sotto lo scambia per un errore imprevisto.
-        throw new ErroreCaricamento(
-          e instanceof Error ? e.message : "Impossibile calcolare l'impronta del file.",
-        );
+        // "could not be read... after a reference to a file was acquired" è
+        // il messaggio (in inglese) con cui Chrome fallisce la lettura di un
+        // file non scaricato del tutto in locale: capita spesso con iCloud
+        // Drive, Google Drive o Dropbox impostati per liberare spazio.
+        const grezzo = e instanceof Error ? e.message : "";
+        const messaggio = grezzo.toLowerCase().includes("could not be read")
+          ? "Il file non risulta scaricato del tutto sul dispositivo (capita spesso con iCloud Drive, Google Drive o Dropbox impostati per liberare spazio). Apri il file una volta per forzarne il download completo, poi riprova."
+          : grezzo || "Impossibile calcolare l'impronta del file.";
+        throw new ErroreCaricamento(messaggio);
       }
 
       const prep = await preparaUpload(taskId, kind, archivio, file.name);
