@@ -82,10 +82,10 @@ async function inviaEmailLink(destinatario: string, token: string, usaPec: boole
     await transporter.sendMail({
       from: process.env.PEC_MITTENTE || process.env.PEC_USER,
       to: destinatario,
-      subject: "Liberatoria — ToothTalk",
+      subject: "Liberatoria — ToothTalk™",
       text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
         `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
-        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk`,
+        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
     });
   } else {
     // Via Gmail
@@ -96,10 +96,10 @@ async function inviaEmailLink(destinatario: string, token: string, usaPec: boole
     await transporter.sendMail({
       from: process.env.MAIL_USER,
       to: destinatario,
-      subject: "Liberatoria — ToothTalk",
+      subject: "Liberatoria — ToothTalk™",
       text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
         `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
-        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk`,
+        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
     });
   }
 }
@@ -350,7 +350,7 @@ export async function firmaLiberatoriaOnline(
     `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
     `h1{font-size:1.2em;margin-bottom:.5em}img.logo{height:36px}.firma{border:1px solid #cbd5e1;border-radius:8px;padding:8px;max-width:280px}` +
     `.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
-    `<img src="https://toothtalk.it/logo-toothtalk.svg" class="logo" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
+    `<img src="${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/logo-toothtalk.svg" class="logo" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
     `<p>Con la presente il/la sottoscritto/a <strong>${nome}</strong> autorizza il progetto <strong>ToothTalk</strong> — ` +
     `progetto di divulgazione odontoiatrica — a riprendere e pubblicare la propria immagine e voce nel video per il ` +
     `quale è stato/a intervistato/a, esclusivamente per le finalità del progetto e in conformità all'informativa privacy.</p>` +
@@ -436,13 +436,13 @@ async function inviaConfermaFirma(destinatario: string, nome: string, sha256: st
   await t.sendMail({
     from: process.env.MAIL_USER,
     to: destinatario,
-    subject: "Conferma liberatoria — ToothTalk",
+    subject: "Conferma liberatoria — ToothTalk™",
     text: `Gentile ${nome},\n\n` +
       `Hai firmato la liberatoria per il progetto ToothTalk.\n` +
       `Il documento è stato registrato con impronta SHA256:\n${sha256}\n\n` +
       `Questa impronta identifica in modo univoco il contenuto che hai firmato ` +
       `e sarà certificata via PEC al momento della pubblicazione del video.\n\n` +
-      `— ToothTalk`,
+      `— ToothTalk™`,
   });
 }
 
@@ -532,7 +532,7 @@ export async function firmaConOtpLiberatoria(
     `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Liberatoria — ToothTalk</title>` +
     `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
     `h1{font-size:1.2em;margin-bottom:.5em}.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
-    `<img src="https://toothtalk.it/logo-toothtalk.svg" style="height:36px" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
+    `<img src="${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/logo-toothtalk.svg" style="height:36px" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
     `<p>Il/La sottoscritto/a <strong>${nome}</strong> autorizza il progetto <strong>ToothTalk</strong> ` +
     `a riprendere e pubblicare la propria immagine e voce nel video per il quale è stato/a intervistato/a.</p>` +
     `<p>Firmato digitalmente tramite codice OTP verificato il ${data}.</p>` +
@@ -603,9 +603,9 @@ async function inviaEmailOtp(destinatario: string, nome: string, otp: string) {
   });
   await t.sendMail({
     from: process.env.MAIL_USER, to: destinatario,
-    subject: "Codice di firma — ToothTalk",
+    subject: "Codice di firma — ToothTalk™",
     text: `Gentile ${nome},\n\nIl tuo codice per firmare la liberatoria è:\n\n  ${otp}\n\n` +
-      `Inseriscilo nella pagina che hai aperto. Valido 10 minuti.\n\n— ToothTalk`,
+      `Inseriscilo nella pagina che hai aperto. Valido 10 minuti.\n\n— ToothTalk™`,
   });
 }
 

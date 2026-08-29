@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
       if (destinatario) {
         await inviaEmailGmail({
           destinatario,
-          oggetto: "Liberatorie scadute — ToothTalk",
+          oggetto: "Liberatorie scadute — ToothTalk™",
           testo:
             `${n} richiesta/e di liberatoria è/sono scaduta/e senza essere firmata/e ` +
             `ed è stata marcata come "scaduta".\n\n` +
             `Puoi reinviare il link dal gestionale se serve.\n\n` +
-            `— ToothTalk (messaggio automatico)`,
+            `— ToothTalk™ (messaggio automatico)`,
         });
       }
     }

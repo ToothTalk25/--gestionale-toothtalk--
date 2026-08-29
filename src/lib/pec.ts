@@ -182,7 +182,7 @@ export function corpoHtml(m: ManifestoPacchetto, allegati: string[]): string {
     .join("\n");
 
   return `<div style="max-width:720px;font:14px/1.6 system-ui;color:#0d1b2a">
-<p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
+<p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
 <h1 style="font-size:20px;margin:4px 0 12px">Deposito certificato · ${esc(m.polo.nome)}</h1>
 
 <div style="background:#f0f5ff;border-radius:12px;padding:16px;margin-top:16px;font-size:13px;line-height:1.6;color:#0d1b2a">

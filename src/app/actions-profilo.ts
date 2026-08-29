@@ -463,7 +463,7 @@ export async function revocaImmagineVoce(
                 `${profile.full_name ?? profile.email} ha revocato il consenso a immagine/voce ` +
                 `e ha chiesto anche la rimozione dei contenuti già pubblicati che lo ritraggono.\n\n` +
                 `Valutala dal Registro globale, sezione "Richieste di rimozione" — entro 30 giorni, ` +
-                `prorogabili a 90 con motivazione scritta (art. 17(3)(a) GDPR).\n\n— ToothTalk`,
+                `prorogabili a 90 con motivazione scritta (art. 17(3)(a) GDPR).\n\n— ToothTalk™`,
             }),
           );
         }
@@ -531,7 +531,7 @@ export async function notificaArt82(id: string): Promise<Esito> {
           `Ti informiamo che potrebbero esistere contenuti già pubblicati, alla data della revoca, ` +
           `che ti ritraggono. Hai facoltà di chiederne la rimozione o l'oscuramento in qualsiasi ` +
           `momento, scrivendo al Coordinatore: la richiesta viene valutata caso per caso ai sensi ` +
-          `dell'art. 17, par. 3, GDPR (Art. 8.3 dell'Accordo Editoriale).\n\n— ToothTalk`,
+          `dell'art. 17, par. 3, GDPR (Art. 8.3 dell'Accordo Editoriale).\n\n— ToothTalk™`,
       }),
     );
   }
@@ -1041,7 +1041,7 @@ export async function caricaAccordo(
         "",
       ].join("\n"),
       html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
-  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
   <h1 style="font-size:20px;margin:4px 0 12px">Accordo editoriale — ${nome}</h1>
   <p style="font-size:13px;line-height:1.6">
     <strong>${nome}</strong> ha caricato il proprio accordo editoriale ToothTalk e ha
@@ -1303,13 +1303,13 @@ export async function approvaRegistrazione(
         "Se hai domande o dubbi, scrivici pure: siamo qui per questo.",
         "",
         "A presto,",
-        "il team ToothTalk",
+        "il team ToothTalk™",
         "",
         "Messaggio generato automaticamente dal gestionale ToothTalk.",
         "",
       ].join("\n"),
       html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
-  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk</p>
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
   <h1 style="font-size:20px;margin:4px 0 12px">Benvenuto/a in ToothTalk 🦷</h1>
   <p style="font-size:13px;line-height:1.6">
     Ciao <strong>${nome}</strong>, la tua registrazione è stata approvata: da oggi
@@ -1327,7 +1327,7 @@ export async function approvaRegistrazione(
   </p>
   <p style="font-size:13px;line-height:1.6;margin-top:16px">
     Se hai domande o dubbi, scrivici pure: siamo qui per questo.<br>
-    A presto,<br>il team ToothTalk
+    A presto,<br>il team ToothTalk™
   </p>
 </div>`,
       allegati: [
@@ -1610,7 +1610,7 @@ della generazione, ne garantisce l'immodificabilità.</p>
         `contestualmente generato il tuo Modulo di nomina a persona autorizzata al ` +
         `trattamento dei dati (Documento 4): lo trovi nel tuo profilo sul gestionale, ` +
         `sezione "Accordo editoriale".\n\nNon devi fare nulla: è un documento a tua ` +
-        `disposizione per conoscenza e conservazione.\n\n— ToothTalk`,
+        `disposizione per conoscenza e conservazione.\n\n— ToothTalk™`,
     }),
   );
 

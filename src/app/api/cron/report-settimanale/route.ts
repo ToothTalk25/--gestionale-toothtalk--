@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     // 4. Compone il testo del briefing
     const righe: string[] = [];
-    righe.push("Riepilogo settimanale ToothTalk");
+    righe.push("Riepilogo settimanale ToothTalk™");
     righe.push("===============================");
     righe.push("");
 
@@ -150,11 +150,11 @@ export async function GET(request: NextRequest) {
     righe.push(`Totale: ${inRevisione ?? 0} in revisione · ${sigillati ?? 0} sigillati · ${pecErrore ?? 0} PEC in errore · ${richiesteAperteCount ?? 0} richieste aperte`);
     righe.push(`Apri il gestionale: ${process.env.NEXT_PUBLIC_SITE_URL ?? ""}`);
     righe.push("");
-    righe.push("— ToothTalk (messaggio automatico)");
+    righe.push("— ToothTalk™ (messaggio automatico)");
 
     await inviaEmailGmail({
       destinatario,
-      oggetto: "Riepilogo settimanale — ToothTalk",
+      oggetto: "Riepilogo settimanale — ToothTalk™",
       testo: righe.join("\n"),
     });
 
