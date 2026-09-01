@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { IconaOcchio, IconaOcchioBarrato } from "@/components/icone-azioni";
 
 /**
  * Campo password con occhietto per mostrare/nascondere il testo mentre si
@@ -41,9 +42,9 @@ export default function CampoPassword({
         onClick={() => setVisibile((v) => !v)}
         aria-label={visibile ? "Nascondi password" : "Mostra password"}
         title={visibile ? "Nascondi password" : "Mostra password"}
-        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-base text-slate-400 hover:text-slate-600"
+        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-slate-400 hover:text-slate-600"
       >
-        {visibile ? "🙈" : "👁"}
+        {visibile ? <IconaOcchioBarrato size={18} /> : <IconaOcchio size={18} />}
       </button>
     </div>
   );

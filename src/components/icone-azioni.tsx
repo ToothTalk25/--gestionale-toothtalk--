@@ -68,6 +68,25 @@ export function IconaAnnulla({ size = 16, className }: Props) {
   );
 }
 
+export function IconaOcchio({ size = 16, className }: Props) {
+  return (
+    <svg {...comuni(size)} className={className}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconaOcchioBarrato({ size = 16, className }: Props) {
+  return (
+    <svg {...comuni(size)} className={className}>
+      <path d="M9.9 4.6A10.4 10.4 0 0 1 12 4.4c6.4 0 10 7.6 10 7.6a17.9 17.9 0 0 1-3.15 4.32M6.6 6.6C3.4 8.7 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 4.15-.9" />
+      <path d="M9.5 9.5a3 3 0 0 0 4.24 4.24" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
+
 export function IconaSpinner({ size = 16, className = "" }: Props) {
   return (
     <svg {...comuni(size)} className={`animate-spin ${className}`}>
