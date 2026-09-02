@@ -1452,8 +1452,10 @@ export async function impostaOnScreen(
   if (error) return errore(error.message);
 
   // Traccia il cambio (chi, quando, nuovo valore) nella catena di audit.
+  // L'audit si scrive col service_role: la policy di insert è stata rimossa
+  // (0115) — il registro probatorio lo scrive solo il server.
   await ignora(
-    supabase.from("audit_log").insert({
+    supabaseAdmin().from("audit_log").insert({
       actor: profile.id,
       actor_role: profile.role,
       action: "cambio_on_screen",
@@ -1678,9 +1680,9 @@ export async function approvaAccordoManualmente(
     }),
   );
 
-  // Traccia l'approvazione nella catena di audit.
+  // Traccia l'approvazione nella catena di audit (service_role, 0115).
   await ignora(
-    supabase.from("audit_log").insert({
+    supabaseAdmin().from("audit_log").insert({
       actor: profile.id,
       actor_role: profile.role,
       action: "approvazione_accordo_admin",
@@ -1699,7 +1701,7 @@ export async function approvaAccordoManualmente(
   const esitoNomina = await generaModuloNomina(userId, ora);
   if (!esitoNomina.ok) {
     await ignora(
-      supabase.from("audit_log").insert({
+      supabaseAdmin().from("audit_log").insert({
         actor: profile.id,
         actor_role: profile.role,
         action: "generazione_nomina_fallita",

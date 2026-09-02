@@ -304,7 +304,7 @@ export async function cambiaStato(
     .eq("id", taskId)
     .single();
 
-  await supabase.from("audit_log").insert({
+  await supabaseAdmin().from("audit_log").insert({
     actor: profile.id,
     actor_role: profile.role,
     action: "cambio_stato",
@@ -334,7 +334,7 @@ export async function impostaBlocco(
   const { error } = await supabase.from("tasks").update({ locked }).eq("id", taskId);
   if (error) return fallita(error, "Operazione non consentita");
 
-  await supabase.from("audit_log").insert({
+  await supabaseAdmin().from("audit_log").insert({
     actor: profile.id,
     actor_role: profile.role,
     action: locked ? "blocco_progetto" : "sblocco_progetto",
@@ -606,16 +606,17 @@ export async function urlFirmato(
   // segmento del path storage è il polo a cui appartiene il file
   // ({polo_id}/{task_id}/{deliverable_id}/...); verifichiamo esplicitamente
   // che l'utente sia membro di quel polo (o admin) PRIMA di firmare.
-  // I bucket "profili" non seguono questa convenzione: contengono
-  // {user_id}/foto|accordo/... e sono coperti dalle loro policy dedicate,
-  // quindi restano validi solo i bucket delle consegne.
-  let poloId: string | null = null;
-  if (bucket === "originali" || bucket === "finali" || bucket === "revisioni") {
-    poloId = path.split("/")[0] ?? "";
-    const accessibile = profile.role === "admin" || poli.some((p) => p.id === poloId);
-    if (!accessibile || !poloId) {
-      return fallita({ message: "Accesso negato" }, "Download non autorizzato");
-    }
+  // Sono ammessi SOLO i bucket dei materiali di consegna: i download dal
+  // bucket "profili" (accordo, modulo di nomina, ricevute) passano SOLO
+  // dalle action dedicate (scaricaAccordo, scaricaDocumentoNomina,
+  // scaricaRicevutaConsenso), mai da un path arbitrario scelto dal client.
+  if (bucket !== "originali" && bucket !== "finali" && bucket !== "revisioni") {
+    return fallita({ message: "Accesso negato" }, "Download non autorizzato");
+  }
+  const poloId = path.split("/")[0] ?? "";
+  const accessibile = profile.role === "admin" || poli.some((p) => p.id === poloId);
+  if (!accessibile || !poloId) {
+    return fallita({ message: "Accesso negato" }, "Download non autorizzato");
   }
 
   const supabase = await supabaseServer();
@@ -638,7 +639,7 @@ export async function urlFirmato(
         .eq("storage_path", path)
         .limit(1)
         .maybeSingle<{ sha256: string }>();
-      await supabase.from("audit_log").insert({
+      await supabaseAdmin().from("audit_log").insert({
         actor: profile.id,
         actor_role: profile.role,
         action: "download_file",

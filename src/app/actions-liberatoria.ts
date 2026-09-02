@@ -517,9 +517,13 @@ export async function firmaConOtpLiberatoria(
     return errore("Troppi tentativi con questo codice. Richiedi un nuovo codice.");
   }
 
-  const { createHash } = await import("node:crypto");
-  const otpHash = createHash("sha256").update(otp).digest("hex");
-  if (otpHash !== richiesta.otp_hash) {
+  const { createHash, timingSafeEqual } = await import("node:crypto");
+  // Confronto timing-safe: la lunghezza è nota (64 byte esadecimali) e i due
+  // digest vengono confrontati in tempo costante, senza cortocircuitare.
+  const candidato = createHash("sha256").update(otp).digest();
+  const atteso = Buffer.from(richiesta.otp_hash ?? "", "hex");
+  const valido = atteso.length === candidato.length && timingSafeEqual(atteso, candidato);
+  if (!valido) {
     await admin.from("richieste_liberatoria")
       .update({ otp_tentativi: richiesta.otp_tentativi + 1 })
       .eq("token", token);
@@ -575,7 +579,18 @@ export async function firmaConOtpLiberatoria(
   const { error: eReg } = await admin.rpc("registra_upload_liberatoria", {
     p_token: token, p_version: versione.id, p_metodo: "otp",
   });
-  if (eReg) return errore("Token non valido o gia usato.");
+  if (eReg) {
+    // Persa la corsa (token già usato da una richiesta concorrente, o stato
+    // non più "inviata"): il documento appena creato non deve restare
+    // orfano — lo si rimuove (riga di registro e file) prima di rispondere.
+    try {
+      await admin.from("deliverable_versions").delete().eq("id", versione.id);
+    } catch {
+      // best-effort: la pulizia non deve mai cambiare l'esito della firma
+    }
+    await admin.storage.from("finali").remove([storagePath]).catch(() => {});
+    return errore("Token non valido o gia usato.");
+  }
 
   // Registro granulare consents_and_releases (GDPR).
   await registraNelRegistroConsensi({
