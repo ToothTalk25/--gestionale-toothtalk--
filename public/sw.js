@@ -11,5 +11,11 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Le richieste con corpo (POST delle Server Action, incluso "Invia link
+  // per la liberatoria") vanno lasciate al browser: rifare qui il fetch di
+  // una Request con body, senza { duplex: "half" }, fallisce con "Failed to
+  // fetch" nei Chrome recenti. Non chiamando respondWith() per queste, il
+  // browser le gestisce come se il service worker non ci fosse.
+  if (event.request.method !== "GET") return;
   event.respondWith(fetch(event.request));
 });
