@@ -285,14 +285,20 @@ export default function PacchettoVideo({
                     setMessaggio(null);
                     const esito = await inviaRichiestaLiberatoria(
                       taskId,
-                      (contattoPec.trim() || contattoEmail.trim()),
+                      contattoEmail.trim() || null,
+                      contattoPec.trim() || null,
                     );
                     if (!esito.ok) setErrore(esito.errore);
-                    else setMessaggio(
-                      "Link inviato" +
-                        (contattoPec.trim() ? " via PEC" : "") +
-                        " a " + (contattoPec.trim() || contattoEmail.trim()),
-                    );
+                    else {
+                      const via = esito.inviatoVia === "pec" ? " via PEC" : " via email";
+                      setMessaggio(
+                        "Link inviato" +
+                          via +
+                          " a " +
+                          esito.destinatario +
+                          (esito.avviso ? ` — ${esito.avviso}` : ""),
+                      );
+                    }
                   })
                 }
                 className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"

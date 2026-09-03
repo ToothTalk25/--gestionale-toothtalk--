@@ -60,55 +60,73 @@ async function registraNelRegistroConsensi(params: {
 
 // ------------------------------------------------------------------ email
 
-async function inviaEmailLink(destinatario: string, token: string, usaPec: boolean): Promise<void> {
-  // Il destinatario arriva da un campo di modulo (contatto liberatoria):
-  // niente CR/LF (header injection) e solo indirizzi in forma di email.
-  destinatario = nettizzaDestinatario(destinatario);
-  if (!validaEmail(destinatario)) {
-    console.warn("Destinatario non valido, invio link saltato:", destinatario);
-    return;
+type EsitoInvioLink =
+  | { ok: true; via: "pec" | "email"; destinatario: string }
+  | { ok: false; via: "pec" | "email"; destinatario: string; errore: string };
+
+/**
+ * Invia il link di firma su un canale preciso. Non inghiotte MAI un
+ * fallimento: credenziali assenti, SMTP che rifiuta (es. 535 EAUTH), rete
+ * giù — tutto torna come { ok:false, errore } (e viene loggato), così il
+ * chiamante può mostrarlo all'admin e ripiegare sul canale alternativo.
+ */
+async function inviaLink(
+  destinatario: string,
+  token: string,
+  via: "pec" | "email",
+): Promise<EsitoInvioLink> {
+  const to = nettizzaDestinatario(destinatario);
+  if (!validaEmail(to)) {
+    return { ok: false, via, destinatario: to, errore: "Destinatario non valido." };
   }
   const link = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/carica-liberatoria?token=${token}`;
 
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    console.log("Email non configurata. Link da inviare manualmente a " + destinatario + ": " + link);
-    return;
-  }
+  try {
+    const nodemailer = await import("nodemailer");
 
-  const nodemailer = await import("nodemailer");
+    if (via === "pec") {
+      // Via PEC: mittente toothtalk@pec.it, SMTP Aruba
+      if (!process.env.PEC_USER || !process.env.PEC_PASSWORD) {
+        return { ok: false, via, destinatario: to, errore: "PEC non configurata sul server (PEC_USER/PEC_PASSWORD)." };
+      }
+      const transporter = nodemailer.createTransport({
+        host: process.env.PEC_HOST || "smtps.pec.aruba.it",
+        port: Number(process.env.PEC_PORT || 465),
+        secure: true,
+        auth: { user: process.env.PEC_USER, pass: process.env.PEC_PASSWORD },
+      });
+      await transporter.sendMail({
+        from: `"ToothTalk™" <${process.env.PEC_MITTENTE || process.env.PEC_USER}>`,
+        to,
+        subject: "Liberatoria — ToothTalk™",
+        text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
+          `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
+          `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
+      });
+      return { ok: true, via, destinatario: to };
+    }
 
-  if (usaPec) {
-    // Via PEC: mittente toothtalk@pec.it, SMTP Aruba
-    const pecConf = process.env.PEC_USER && process.env.PEC_PASSWORD;
-    if (!pecConf) { console.log("PEC non configurata, link: " + link); return; }
-    const transporter = nodemailer.createTransport({
-      host: process.env.PEC_HOST || "smtps.pec.aruba.it",
-      port: Number(process.env.PEC_PORT || 465),
-      secure: true,
-      auth: { user: process.env.PEC_USER, pass: process.env.PEC_PASSWORD },
-    });
-    await transporter.sendMail({
-      from: `"ToothTalk™" <${process.env.PEC_MITTENTE || process.env.PEC_USER}>`,
-      to: destinatario,
-      subject: "Liberatoria — ToothTalk™",
-      text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
-        `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
-        `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
-    });
-  } else {
     // Via Gmail
+    if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
+      return { ok: false, via, destinatario: to, errore: "Email non configurata sul server (MAIL_USER/MAIL_PASS)." };
+    }
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com", port: 587, secure: false,
       auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
     });
     await transporter.sendMail({
       from: `"ToothTalk™" <${process.env.MAIL_USER}>`,
-      to: destinatario,
+      to,
       subject: "Liberatoria — ToothTalk™",
       text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
         `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
         `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
     });
+    return { ok: true, via, destinatario: to };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`Invio link liberatoria via ${via} fallito:`, msg);
+    return { ok: false, via, destinatario: to, errore: msg };
   }
 }
 
@@ -119,26 +137,52 @@ async function inviaEmailLink(destinatario: string, token: string, usaPec: boole
  * una, altrimenti via email). Nessun controllo di ruolo qui dentro: chi può
  * chiamarla è deciso dalle funzioni pubbliche più sotto.
  */
+type EsitoRichiestaLiberatoria =
+  | {
+      ok: true;
+      token: string;
+      inviatoVia: "pec" | "email";
+      destinatario: string;
+      avviso?: string;
+    }
+  | { ok: false; errore: string };
+
+/**
+ * Crea la richiesta di liberatoria e invia il link di firma.
+ *
+ * La scelta del canale (PEC se il contatto ne ha una, altrimenti email) e i
+ * recapiti arrivano dai PARAMETRI, mai riletti dal database: un onBlur in
+ * corsa o un valore non ancora salvato non possono far partire l'invio con
+ * una PEC vecchia. Se l'invio via PEC fallisce (credenziali, SMTP, rete) si
+ * ripiega automaticamente sull'email del contatto quando esiste — e se
+ * anche lei fallisce, l'errore torna al chiamante invece di sparire.
+ * Nessun controllo di ruolo qui dentro: chi può chiamarla è deciso dalle
+ * funzioni pubbliche più sotto.
+ */
 async function creaEInviaRichiesta(
   taskId: string,
-  contatto_email: string,
-): Promise<{ ok: true; token: string } | { ok: false; errore: string }> {
-  // Validazione server-side: l'indirizzo arriva da un modulo e finisce
-  // dentro un'email (header SMTP) e nel DB. Niente CR/LF, solo forma email.
-  contatto_email = nettizzaDestinatario(contatto_email);
-  if (!validaEmail(contatto_email)) return errore("Indirizzo email non valido.");
+  contatto_email: string | null,
+  contatto_pec: string | null,
+): Promise<EsitoRichiestaLiberatoria> {
+  const email = contatto_email ? nettizzaDestinatario(contatto_email) : "";
+  const pec = contatto_pec ? nettizzaDestinatario(contatto_pec) : "";
+
+  if (email && !validaEmail(email)) return errore("Indirizzo email non valido.");
+  if (pec && !validaEmail(pec)) return errore("Indirizzo PEC non valido.");
+  if (!email && !pec) return errore("Indica almeno un indirizzo email o PEC del contatto.");
 
   // L'insert avviene col service_role: la RLS richieste_admin_insert (0075)
   // accetta INSERT solo da admin, ma il chiamante reale è un Collaboratore
   // non-admin che compila il contatto al momento dell'intervista (Protocollo
   // Art. 4.2: la liberatoria parte da sola). Il controllo di chi può farlo
   // resta sulle RLS di tasks (is_member_of), non su questa insert.
+  // contatto_email è NOT NULL: per un contatto solo-PEC conserva la PEC.
   const supabase = supabaseAdmin();
   const { data, error } = await supabase
     .from("richieste_liberatoria")
     .insert({
       task_id: taskId,
-      contatto_email,
+      contatto_email: email || pec,
       scade_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     })
     .select("token")
@@ -146,17 +190,36 @@ async function creaEInviaRichiesta(
 
   if (error) return errore(error.message);
 
-  // Se il contatto ha una PEC, la usiamo come destinatario e instradiamo via PEC.
-  const { data: task } = await supabase.from("tasks")
-    .select("contatto_esterno_pec").eq("id", taskId).single<{ contatto_esterno_pec: string | null }>();
-  const pec = task?.contatto_esterno_pec?.trim();
-  const usaPec = !!pec;
-  const destinatario = pec || contatto_email;
+  if (pec) {
+    const esitoPec = await inviaLink(pec, data.token, "pec");
+    if (esitoPec.ok) {
+      return { ok: true, token: data.token, inviatoVia: "pec", destinatario: pec };
+    }
 
-  await inviaEmailLink(destinatario, data.token, usaPec);
+    // Fallback sull'email del contatto, se è un recapito distinto e valido.
+    if (email && email !== pec) {
+      const esitoEmail = await inviaLink(email, data.token, "email");
+      if (esitoEmail.ok) {
+        return {
+          ok: true,
+          token: data.token,
+          inviatoVia: "email",
+          destinatario: email,
+          avviso: `Invio via PEC non riuscito (${esitoPec.errore}): il link è stato inviato via email a ${email}.`,
+        };
+      }
+      return errore(
+        `Invio via PEC non riuscito (${esitoPec.errore}). Anche il fallback via email è fallito (${esitoEmail.errore}).`,
+      );
+    }
+    return errore(
+      `Invio via PEC non riuscito: ${esitoPec.errore}. Nessun altro recapito email disponibile per il fallback.`,
+    );
+  }
 
-  revalidatePath(`/task/${taskId}`);
-  return { ok: true, token: data.token };
+  const esitoEmail = await inviaLink(email, data.token, "email");
+  if (!esitoEmail.ok) return errore(`Invio email non riuscito: ${esitoEmail.errore}.`);
+  return { ok: true, token: data.token, inviatoVia: "email", destinatario: email };
 }
 
 /**
@@ -187,7 +250,15 @@ async function inviaAutomaticamenteSeNecessario(taskId: string): Promise<void> {
       .eq("task_id", taskId);
     if (count && count > 0) return; // già inviata una volta: un reinvio è una scelta esplicita (bottone admin)
 
-    await creaEInviaRichiesta(taskId, task.contatto_esterno_email?.trim() || contatto);
+    const esito = await creaEInviaRichiesta(
+      taskId,
+      task.contatto_esterno_email?.trim() || null,
+      task.contatto_esterno_pec?.trim() || null,
+    );
+    // Best-effort verso il contatto, ma il fallimento non deve sparire nel
+    // vuoto: resta nei log per essere recuperato (i cron e il reinvio admin
+    // ne tengono traccia).
+    if (!esito.ok) console.error("Invio automatico liberatoria fallito:", esito.errore);
   } catch (e) {
     console.error("Invio automatico liberatoria fallito (ignorato):", e);
   }
@@ -240,11 +311,34 @@ export async function aggiornaContattoPec(
  */
 export async function inviaRichiestaLiberatoria(
   taskId: string,
-  contatto_email: string,
-): Promise<{ ok: true; token: string } | { ok: false; errore: string }> {
+  contatto_email: string | null,
+  contatto_pec: string | null,
+): Promise<EsitoRichiestaLiberatoria> {
   const { isAdmin } = await requireSession();
   if (!isAdmin) return errore("Solo chi ha accesso globale può reinviare manualmente la richiesta.");
-  return creaEInviaRichiesta(taskId, contatto_email);
+
+  const email = contatto_email ? nettizzaDestinatario(contatto_email) : "";
+  const pec = contatto_pec ? nettizzaDestinatario(contatto_pec) : "";
+  if (email && !validaEmail(email)) return errore("Indirizzo email non valido.");
+  if (pec && !validaEmail(pec)) return errore("Indirizzo PEC non valido.");
+  if (!email && !pec) return errore("Indica almeno un indirizzo email o PEC del contatto.");
+
+  // Persiste SUBITO i recapiti passati dal form: l'invio che segue usa
+  // esattamente questi valori, mai una PEC vecchia rimasta nel database
+  // perché l'onBlur non era ancora arrivato o era fallito in silenzio.
+  const supabase = await supabaseServer();
+  const { error: eUp } = await supabase
+    .from("tasks")
+    .update({
+      contatto_esterno_email: email || null,
+      contatto_esterno_pec: pec || null,
+    })
+    .eq("id", taskId);
+  if (eUp) return errore(eUp.message);
+
+  const esito = await creaEInviaRichiesta(taskId, email || null, pec || null);
+  revalidatePath(`/task/${taskId}`);
+  return esito;
 }
 
 /** Carica la liberatoria da una richiesta pubblica (via token + FormData). */
