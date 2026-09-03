@@ -97,6 +97,13 @@ export default function PacchettoVideo({
   const [contattoEmail, setContattoEmail] = useState(contattoEsternoEmail ?? "");
   const [contattoPec, setContattoPec] = useState(contattoEsternoPec ?? "");
   const [testiConfermati, setTestiConfermati] = useState(false);
+  // Stato tutto suo, non condiviso con "start"/pending: quel bottone smetteva
+  // di rispondere ai click senza errori né richieste di rete, isolarlo lo
+  // toglie da qualunque cosa stesse bloccando la transizione condivisa.
+  const [inviandoLiberatoria, setInviandoLiberatoria] = useState(false);
+  const [esitoLiberatoria, setEsitoLiberatoria] = useState<
+    { tipo: "ok" | "errore"; testo: string } | null
+  >(null);
   const videoUploadRef = useRef<UploadDeliverableHandle>(null);
   const copertinaUploadRef = useRef<UploadDeliverableHandle>(null);
   const liberatoriaUploadRef = useRef<UploadDeliverableHandle>(null);
@@ -278,33 +285,44 @@ export default function PacchettoVideo({
           {isAdmin && (contattoEmail.trim() || contattoPec.trim()) && (
             <div className="flex items-center gap-2">
               <button
-                disabled={pending}
-                onClick={() =>
-                  start(async () => {
-                    setErrore(null);
-                    setMessaggio(null);
-                    const esito = await inviaRichiestaLiberatoria(
-                      taskId,
-                      contattoEmail.trim() || null,
-                      contattoPec.trim() || null,
-                    );
-                    if (!esito.ok) setErrore(esito.errore);
-                    else {
-                      const via = esito.inviatoVia === "pec" ? " via PEC" : " via email";
-                      setMessaggio(
+                disabled={inviandoLiberatoria}
+                onClick={async () => {
+                  setInviandoLiberatoria(true);
+                  setEsitoLiberatoria(null);
+                  const esito = await inviaRichiestaLiberatoria(
+                    taskId,
+                    contattoEmail.trim() || null,
+                    contattoPec.trim() || null,
+                  );
+                  setInviandoLiberatoria(false);
+                  if (!esito.ok) {
+                    setEsitoLiberatoria({ tipo: "errore", testo: esito.errore });
+                  } else {
+                    const via = esito.inviatoVia === "pec" ? " via PEC" : " via email";
+                    setEsitoLiberatoria({
+                      tipo: "ok",
+                      testo:
                         "Link inviato" +
-                          via +
-                          " a " +
-                          esito.destinatario +
-                          (esito.avviso ? ` — ${esito.avviso}` : ""),
-                      );
-                    }
-                  })
-                }
+                        via +
+                        " a " +
+                        esito.destinatario +
+                        (esito.avviso ? ` — ${esito.avviso}` : ""),
+                    });
+                  }
+                }}
                 className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
               >
-                Invia link per la liberatoria
+                {inviandoLiberatoria ? "Invio…" : "Invia link per la liberatoria"}
               </button>
+              {esitoLiberatoria && (
+                <span
+                  className={`text-xs ${
+                    esitoLiberatoria.tipo === "ok" ? "text-emerald-700" : "text-red-600"
+                  }`}
+                >
+                  {esitoLiberatoria.testo}
+                </span>
+              )}
             </div>
           )}
         </div>
