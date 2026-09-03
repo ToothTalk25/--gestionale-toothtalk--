@@ -108,6 +108,9 @@ export default function PacchettoVideo({
   // Il pacchetto lo compone il gruppo, non chi ha accesso globale: è il loro deposito, e
   // la RLS rifiuterebbe comunque una consegna "originale" fatta dall'Admin.
   const componibile = inBozza && !locked && !isAdmin;
+  // Il contatto per la liberatoria non è un file "originale" soggetto a RLS:
+  // può correggerlo anche l'Admin (es. refuso nell'email), non solo il gruppo.
+  const contattoModificabile = inBozza && !locked;
   const archiviabile = isAdmin && (stato === "sigillato" || stato === "pec_inviata" || stato === "pec_confermata");
 
   const video = elementi.find((e) => e.ruolo === "video");
@@ -226,7 +229,7 @@ export default function PacchettoVideo({
             <input
               type="email"
               value={contattoEmail}
-              disabled={!componibile}
+              disabled={!contattoModificabile}
               onChange={(e) => setContattoEmail(e.target.value)}
               onBlur={() => {
                 if (contattoEmail.trim() !== (contattoEsternoEmail ?? "")) {
@@ -253,7 +256,7 @@ export default function PacchettoVideo({
             <input
               type="email"
               value={contattoPec}
-              disabled={!componibile}
+              disabled={!contattoModificabile}
               onChange={(e) => setContattoPec(e.target.value)}
               onBlur={() => {
                 if (contattoPec.trim() !== (contattoEsternoPec ?? "")) {
