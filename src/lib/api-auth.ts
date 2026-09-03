@@ -1,4 +1,18 @@
+import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
+
+/**
+ * Confronto di segreti in tempo costante: la lunghezza è verificata prima
+ * (timingSafeEqual su buffer di lunghezza diversa lancerebbe) e il confronto
+ * non si ferma al primo byte diverso, quindi la risposta non rivela quanto
+ * del segreto atteso coincide con quello inviato.
+ */
+export function segretoValido(inserito: string | null, atteso: string): boolean {
+  if (!inserito) return false;
+  const a = Buffer.from(inserito);
+  const b = Buffer.from(atteso);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 /**
  * Verifica che una richiesta a un endpoint "interno" (cron, briefing) sia
@@ -21,5 +35,7 @@ export function richiestaAutorizzataCron(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
   const auth = request.headers.get("authorization") ?? "";
-  return auth === `Bearer ${secret}`;
+  const valore = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+  return segretoValido(valore, secret);
 }
+

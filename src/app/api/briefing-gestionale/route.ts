@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { segretoValido } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,20 +9,20 @@ export const dynamic = "force-dynamic";
  * task esterno (es. il briefing giornaliero su Notion) che non ha accesso
  * diretto al database — stessa logica di /api/cron/report-settimanale, ma
  * risposta strutturata invece di un'email. Protetto da una chiave
- * condivisa (query string ?key=...), non dalla sessione utente: chi
- * chiama questo endpoint non è mai loggato nel gestionale.
+ * condivisa, non dalla sessione utente: chi chiama questo endpoint non è
+ * mai loggato nel gestionale.
+ *
+ * La chiave va SOLO nell'header `Authorization: Bearer <BRIEFING_API_KEY>`:
+ * in query string finirebbe nei log dei proxy e nella history — un segreto
+ * in un URL è un segreto esposto. (In passato era accettato anche ?key=…,
+ * rimosso per questo motivo: se il chiamante esterno usa ancora l'URL,
+ * va aggiornato all'header.)
  */
 export async function GET(request: NextRequest) {
-  // Chiave condivisa: ora in header Authorization: Bearer <BRIEFING_API_KEY>.
-  // La vecchia ?key=... resta accettata solo se la chiave è presente (a
-  // scopo di compatibilità), ma l'header è il metodo raccomandato: le query
-  // string finiscono nei log dei proxy, gli header no.
+  const chiave = process.env.BRIEFING_API_KEY;
   const auth = request.headers.get("authorization") ?? "";
-  const daHeader = auth === `Bearer ${process.env.BRIEFING_API_KEY}`;
-  const daQuery = request.nextUrl.searchParams.get("key");
-  const autorizzato =
-    (process.env.BRIEFING_API_KEY ? daHeader : false) ||
-    (!!process.env.BRIEFING_API_KEY && daQuery === process.env.BRIEFING_API_KEY);
+  const valore = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+  const autorizzato = !!chiave && segretoValido(valore, chiave);
 
   if (!autorizzato) {
     return NextResponse.json({ ok: false, errore: "non autorizzato" }, { status: 401 });

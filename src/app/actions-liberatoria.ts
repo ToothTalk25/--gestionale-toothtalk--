@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
+import { nettizzaDestinatario, validaEmail } from "@/lib/mail";
 
 function errore(msg: string): { ok: false; errore: string } {
   return { ok: false, errore: msg };
@@ -60,6 +61,13 @@ async function registraNelRegistroConsensi(params: {
 // ------------------------------------------------------------------ email
 
 async function inviaEmailLink(destinatario: string, token: string, usaPec: boolean): Promise<void> {
+  // Il destinatario arriva da un campo di modulo (contatto liberatoria):
+  // niente CR/LF (header injection) e solo indirizzi in forma di email.
+  destinatario = nettizzaDestinatario(destinatario);
+  if (!validaEmail(destinatario)) {
+    console.warn("Destinatario non valido, invio link saltato:", destinatario);
+    return;
+  }
   const link = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/carica-liberatoria?token=${token}`;
 
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
@@ -115,6 +123,11 @@ async function creaEInviaRichiesta(
   taskId: string,
   contatto_email: string,
 ): Promise<{ ok: true; token: string } | { ok: false; errore: string }> {
+  // Validazione server-side: l'indirizzo arriva da un modulo e finisce
+  // dentro un'email (header SMTP) e nel DB. Niente CR/LF, solo forma email.
+  contatto_email = nettizzaDestinatario(contatto_email);
+  if (!validaEmail(contatto_email)) return errore("Indirizzo email non valido.");
+
   // L'insert avviene col service_role: la RLS richieste_admin_insert (0075)
   // accetta INSERT solo da admin, ma il chiamante reale è un Collaboratore
   // non-admin che compila il contatto al momento dell'intervista (Protocollo
@@ -185,6 +198,9 @@ export async function aggiornaContattoEsterno(
   taskId: string,
   contatto_esterno_email: string | null,
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
+  if (contatto_esterno_email && contatto_esterno_email.trim() && !validaEmail(contatto_esterno_email)) {
+    return errore("Indirizzo email non valido.");
+  }
   const supabase = await supabaseServer();
   const { error } = await supabase
     .from("tasks")
@@ -201,6 +217,9 @@ export async function aggiornaContattoPec(
   taskId: string,
   contatto_esterno_pec: string | null,
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
+  if (contatto_esterno_pec && contatto_esterno_pec.trim() && !validaEmail(contatto_esterno_pec)) {
+    return errore("Indirizzo PEC non valido.");
+  }
   const supabase = await supabaseServer();
   const { error } = await supabase
     .from("tasks")
@@ -428,6 +447,8 @@ export async function firmaLiberatoriaOnline(
 
 async function inviaConfermaFirma(destinatario: string, nome: string, sha256: string) {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
+  destinatario = nettizzaDestinatario(destinatario);
+  if (!validaEmail(destinatario)) return;
   const nodemailer = await import("nodemailer");
   const t = nodemailer.createTransport({
     host: "smtp.gmail.com", port: 587, secure: false,
@@ -611,6 +632,8 @@ export async function firmaConOtpLiberatoria(
 
 async function inviaEmailOtp(destinatario: string, nome: string, otp: string) {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
+  destinatario = nettizzaDestinatario(destinatario);
+  if (!validaEmail(destinatario)) return;
   const nodemailer = await import("nodemailer");
   const t = nodemailer.createTransport({
     host: "smtp.gmail.com", port: 587, secure: false,

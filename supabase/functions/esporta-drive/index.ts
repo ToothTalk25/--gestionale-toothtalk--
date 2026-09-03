@@ -213,13 +213,26 @@ async function caricaResumable(
   if (!put.ok) throw new Error(`Upload: HTTP ${put.status} ${await put.text()}`);
 }
 
+/** Confronto in tempo costante: non si ferma al primo byte diverso, quindi
+ * la risposta non rivela quanto della chiave attesa coincide con l'inviata. */
+function chiaveOk(inserita: string | null, attesa: string): boolean {
+  if (!inserita || inserita.length !== attesa.length) return false;
+  let diff = 0;
+  for (let i = 0; i < inserita.length; i++) {
+    diff |= inserita.charCodeAt(i) ^ attesa.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 // ------------------------------------------------------------------ handler
 
 Deno.serve(async (req) => {
   // Solo la chiamata dal trigger del database è autorizzata: la chiave
   // condivisa vive sia in vault sia nei secret della Edge Function.
   const chiave = Deno.env.get("EDGE_FUNCTION_DRIVE_KEY");
-  if (!chiave || req.headers.get("authorization") !== `Bearer ${chiave}`) {
+  const auth = req.headers.get("authorization") ?? "";
+  const valore = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (!chiave || !chiaveOk(valore, chiave)) {
     return new Response(JSON.stringify({ errore: "Non autorizzato" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
