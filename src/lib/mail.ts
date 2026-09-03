@@ -48,7 +48,7 @@ export async function inviaEmailGmail(opts: {
       auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
     });
     await t.sendMail({
-      from: process.env.MAIL_USER,
+      from: `"ToothTalk™" <${process.env.MAIL_USER}>`,
       to: destinatario,
       subject: oggetto,
       text: opts.testo,

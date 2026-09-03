@@ -88,7 +88,7 @@ async function inviaEmailLink(destinatario: string, token: string, usaPec: boole
       auth: { user: process.env.PEC_USER, pass: process.env.PEC_PASSWORD },
     });
     await transporter.sendMail({
-      from: process.env.PEC_MITTENTE || process.env.PEC_USER,
+      from: `"ToothTalk™" <${process.env.PEC_MITTENTE || process.env.PEC_USER}>`,
       to: destinatario,
       subject: "Liberatoria — ToothTalk™",
       text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
@@ -102,7 +102,7 @@ async function inviaEmailLink(destinatario: string, token: string, usaPec: boole
       auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
     });
     await transporter.sendMail({
-      from: process.env.MAIL_USER,
+      from: `"ToothTalk™" <${process.env.MAIL_USER}>`,
       to: destinatario,
       subject: "Liberatoria — ToothTalk™",
       text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
@@ -455,7 +455,7 @@ async function inviaConfermaFirma(destinatario: string, nome: string, sha256: st
     auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
   });
   await t.sendMail({
-    from: process.env.MAIL_USER,
+    from: `"ToothTalk™" <${process.env.MAIL_USER}>`,
     to: destinatario,
     subject: "Conferma liberatoria — ToothTalk™",
     text: `Gentile ${nome},\n\n` +
@@ -640,7 +640,7 @@ async function inviaEmailOtp(destinatario: string, nome: string, otp: string) {
     auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
   });
   await t.sendMail({
-    from: process.env.MAIL_USER, to: destinatario,
+    from: `"ToothTalk™" <${process.env.MAIL_USER}>`, to: destinatario,
     subject: "Codice di firma — ToothTalk™",
     text: `Gentile ${nome},\n\nIl tuo codice per firmare la liberatoria è:\n\n  ${otp}\n\n` +
       `Inseriscilo nella pagina che hai aperto. Valido 10 minuti.\n\n— ToothTalk™`,
