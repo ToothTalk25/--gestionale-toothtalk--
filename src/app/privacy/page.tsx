@@ -27,10 +27,11 @@ function raggruppaPerSezione(blocchi: Blocco[]): Blocco[][] {
 export default async function PrivacyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; token?: string }>;
 }) {
-  const { from } = await searchParams;
+  const { from, token } = await searchParams;
   const dallGestionale = from === "app";
+  const dallaLiberatoria = from === "liberatoria" && !!token;
   const sezioni = raggruppaPerSezione(INFORMATIVA_PRIVACY);
 
   return (
@@ -68,6 +69,10 @@ export default async function PrivacyPage({
           {dallGestionale ? (
             <Link href="/dashboard" className="underline">
               Torna al gestionale
+            </Link>
+          ) : dallaLiberatoria ? (
+            <Link href={`/carica-liberatoria?token=${encodeURIComponent(token!)}`} className="underline">
+              Torna alla liberatoria
             </Link>
           ) : (
             <Link href="/login" className="underline">

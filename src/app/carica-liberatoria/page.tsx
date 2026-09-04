@@ -115,7 +115,7 @@ function CaricaLiberatoriaForm() {
             <span className="text-xs text-slate-500 leading-relaxed">
               Acconsento al trattamento dei miei dati personali e alla pubblicazione della mia immagine/voce
               per le finalita&apos; del progetto ToothTalk, come da{" "}
-              <a href="/privacy" target="_blank" className="text-tt-blue underline">informativa privacy</a>.
+              <a href={`/privacy?from=liberatoria&token=${encodeURIComponent(token)}`} target="_blank" className="text-tt-blue underline">informativa privacy</a>.
             </span>
           </label>
           <button

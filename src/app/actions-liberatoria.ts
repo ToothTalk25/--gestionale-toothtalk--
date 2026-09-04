@@ -80,6 +80,16 @@ async function inviaLink(
     return { ok: false, via, destinatario: to, errore: "Destinatario non valido." };
   }
   const link = `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/carica-liberatoria?token=${token}`;
+  // Il testo semplice resta come fallback per i client che non mostrano
+  // HTML; il bottone evita di esporre il link grezzo (con il token) a vista.
+  const html =
+    `<div style="max-width:480px;margin:0 auto;font-family:system-ui,sans-serif;padding:20px;color:#1e293b">` +
+    `<p style="font-size:1.2em;font-weight:700;color:#2563eb;margin:0 0 24px">ToothTalk<sup style="font-size:.5em">™</sup></p>` +
+    `<p>Salve,</p>` +
+    `<p>Lei compare in un video del progetto ToothTalk. Può compilare e firmare la liberatoria cliccando qui sotto:</p>` +
+    `<a href="${link}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Firma la liberatoria</a>` +
+    `<p style="color:#64748b;font-size:.85em;margin-top:32px">Il link è valido 7 giorni.<br>— ToothTalk™</p>` +
+    `</div>`;
 
   try {
     const nodemailer = await import("nodemailer");
@@ -102,6 +112,7 @@ async function inviaLink(
         text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
           `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
           `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
+        html,
       });
       return { ok: true, via, destinatario: to };
     }
@@ -121,6 +132,7 @@ async function inviaLink(
       text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
         `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
         `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
+      html,
     });
     return { ok: true, via, destinatario: to };
   } catch (e) {
