@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/report-settimanale", "schedule": "0 8 * * 1" },
     { "path": "/api/cron/liberatorie-scadute", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/retry-drive", "schedule": "0 10 * * *" }
+    { "path": "/api/cron/retry-drive", "schedule": "0 10 * * *" },
+    { "path": "/api/cron/push-notion-briefing", "schedule": "10 4 * * *" }
   ]
 }
