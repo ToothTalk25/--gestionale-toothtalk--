@@ -569,6 +569,13 @@ async function inviaConfermaFirma(destinatario: string, nome: string, sha256: st
       `Questa impronta identifica in modo univoco il contenuto che hai firmato ` +
       `e sarà certificata via PEC al momento della pubblicazione del video.\n\n` +
       `— ToothTalk™`,
+    html:
+      `<div style="max-width:480px;margin:0 auto;font-family:system-ui,sans-serif;padding:20px;color:#1e293b">` +
+      `<p>Gentile ${nome},</p>` +
+      `<p>Hai firmato la liberatoria per il progetto ToothTalk. Sarà certificata via PEC al momento della pubblicazione del video.</p>` +
+      `<p style="color:#94a3b8;font-size:.75em;margin-top:32px;word-break:break-all">Impronta del documento firmato (identifica in modo univoco il contenuto): <span style="font-family:monospace">${sha256}</span></p>` +
+      `<p style="color:#64748b;font-size:.85em;margin-top:16px">— ToothTalk™</p>` +
+      `</div>`,
   });
 }
 
