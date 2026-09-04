@@ -84,7 +84,6 @@ async function inviaLink(
   // HTML; il bottone evita di esporre il link grezzo (con il token) a vista.
   const html =
     `<div style="max-width:480px;margin:0 auto;font-family:system-ui,sans-serif;padding:20px;color:#1e293b">` +
-    `<p style="font-size:1.2em;font-weight:700;color:#2563eb;margin:0 0 24px">ToothTalk<sup style="font-size:.5em">™</sup></p>` +
     `<p>Salve,</p>` +
     `<p>Lei compare in un video del progetto ToothTalk. Può compilare e firmare la liberatoria cliccando qui sotto:</p>` +
     `<a href="${link}" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Firma la liberatoria</a>` +
