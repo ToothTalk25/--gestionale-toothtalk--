@@ -91,6 +91,15 @@ export default function PacchettoVideo({
   const [titoloYoutube, setTitoloYoutube] = useState(
     pacchetto?.titolo_youtube ?? "",
   );
+  // Ultimo valore salvato: distingue "scritto/importato ma non ancora
+  // salvato" (giallo) da "salvato" (azzurro, come le altre card con
+  // contenuto) — indipendente dalla checkbox "Confermo…", che serve solo a
+  // sbloccare "Segnala completato", non a dire se il testo è persistito.
+  const [descrizioneSalvata, setDescrizioneSalvata] = useState(pacchetto?.descrizione ?? "");
+  const [scriptSalvato, setScriptSalvato] = useState(pacchetto?.script ?? "");
+  const [titoloYoutubeSalvato, setTitoloYoutubeSalvato] = useState(
+    pacchetto?.titolo_youtube ?? "",
+  );
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -395,7 +404,7 @@ export default function PacchettoVideo({
           valore={script}
           onChange={setScript}
           modificabile={componibile}
-          confermato={testiConfermati || !inBozza}
+          salvato={script === scriptSalvato || !inBozza}
           righe={8}
           placeholder={scriptPlaceholder}
           onImporta={
@@ -416,7 +425,7 @@ export default function PacchettoVideo({
           valore={descrizione}
           onChange={setDescrizione}
           modificabile={componibile}
-          confermato={testiConfermati || !inBozza}
+          salvato={descrizione === descrizioneSalvata || !inBozza}
           righe={8}
           placeholder="La caption esatta che accompagnerà il video…"
           onImporta={
@@ -438,7 +447,7 @@ export default function PacchettoVideo({
           valore={titoloYoutube}
           onChange={setTitoloYoutube}
           modificabile={componibile}
-          confermato={testiConfermati || !inBozza}
+          salvato={titoloYoutube === titoloYoutubeSalvato || !inBozza}
           righe={3}
           placeholder="Il titolo che comparirà sullo Short di YouTube…"
           onImporta={
@@ -474,6 +483,9 @@ export default function PacchettoVideo({
                         ? esito.dati.avvisi.join(" · ")
                         : "Testi salvati.",
                     );
+                    setDescrizioneSalvata(descrizione);
+                    setScriptSalvato(script);
+                    setTitoloYoutubeSalvato(titoloYoutube);
                     router.refresh();
                   }
                 })
@@ -491,6 +503,7 @@ export default function PacchettoVideo({
               <Slot
                 titolo="6 · Liberatoria privacy/immagine"
                 elemento={liberatoria}
+                evidenziato={liberatoriaOtp}
                 confermato={testiConfermati || !inBozza}
                 onRimuovi={
                   componibile && liberatoria ? () => rimuovi("liberatoria") : undefined
@@ -1017,6 +1030,7 @@ function Slot({
   confermato,
   footer,
   isAdmin,
+  evidenziato,
 }: {
   id?: string;
   titolo: string;
@@ -1030,6 +1044,8 @@ function Slot({
   confermato: boolean;
   /** Nota e azioni proprie dello slot (es. "Segnala errore"): dentro la riga, non fuori. */
   footer?: React.ReactNode;
+  /** Evidenzia lo slot in azzurro anche senza un file (es. liberatoria firmata via OTP, che non produce un file). */
+  evidenziato?: boolean;
   /** Mostra "Scarica" quando l'elemento porta bucket/storage_path (solo per l'admin, vedi pacchetto_elementi_meta). */
   isAdmin: boolean;
 }) {
@@ -1088,7 +1104,7 @@ function Slot({
           : undefined
       }
       className={`px-5 py-4 transition-colors ${
-        dragOver ? "bg-tt-blue/5 ring-2 ring-inset ring-tt-blue" : elemento ? "bg-tt-blue-50/60" : ""
+        dragOver ? "bg-tt-blue/5 ring-2 ring-inset ring-tt-blue" : elemento || evidenziato ? "bg-tt-blue-50/60" : ""
       }`}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -1198,7 +1214,7 @@ function Testo({
   righe,
   placeholder,
   onImporta,
-  confermato,
+  salvato,
 }: {
   id?: string;
   titolo: string;
@@ -1209,8 +1225,8 @@ function Testo({
   righe: number;
   placeholder?: string;
   onImporta?: () => void;
-  /** true quando il pacchetto non è più in bozza: il gruppo ha già confermato che questo testo è la versione definitiva, non una bozza. */
-  confermato: boolean;
+  /** true quando il valore in casella è già stato persistito (o il pacchetto non è più in bozza): giallo finché non è salvato, azzurro dopo. */
+  salvato: boolean;
 }) {
   const [importando, setImportando] = useState(false);
 
@@ -1225,7 +1241,7 @@ function Testo({
     <div
       id={id}
       className={`px-5 py-4 ${
-        !valore.trim() ? "" : confermato ? "bg-tt-blue-50/60" : "bg-amber-50"
+        !valore.trim() ? "" : salvato ? "bg-tt-blue-50/60" : "bg-amber-50"
       }`}
     >
       <div className="flex items-center gap-2">
