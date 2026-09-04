@@ -56,7 +56,7 @@ function CaricaLiberatoriaForm() {
       if ("errore" in res) {
         setMessaggio({ tipo: "errore", testo: res.errore });
       } else {
-        setMessaggio({ tipo: "ok", testo: "Liberatoria firmata! ✅" });
+        setMessaggio({ tipo: "ok", testo: "Liberatoria firmata!" });
       }
     });
   }
@@ -67,7 +67,6 @@ function CaricaLiberatoriaForm() {
       <div className="mx-auto max-w-sm px-4 py-20">
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="mx-auto h-8 w-auto" />
         <div className="mt-6 tt-card border border-emerald-200 p-8 text-center">
-          <div className="text-5xl mb-4">✅</div>
           <h2 className="text-xl font-semibold text-emerald-800">Fatto!</h2>
           <p className="mt-2 text-sm text-emerald-700">{messaggio!.testo}</p>
         </div>
@@ -147,7 +146,7 @@ function CaricaLiberatoriaForm() {
               disabled={isPending || otp.length !== 6}
               className="tt-btn w-full bg-emerald-600 px-4 py-2.5 text-sm text-white hover:brightness-95 disabled:opacity-50"
             >
-              {isPending ? "Verifica…" : "Firma ✍️"}
+              {isPending ? "Verifica…" : "Firma"}
             </button>
             <button
               type="button"
