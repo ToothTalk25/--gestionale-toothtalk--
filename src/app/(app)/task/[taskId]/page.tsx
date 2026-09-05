@@ -11,6 +11,7 @@ import SegnalaPolo from "@/components/SegnalaPolo";
 import PacchettoVideo, { type ElementoCaricato } from "@/components/PacchettoVideo";
 import RichiesteModifica from "@/components/RichiesteModifica";
 import AzioniProgetto from "@/components/AzioniProgetto";
+import TornaIndietro from "@/components/TornaIndietro";
 import {
   KIND_LABEL,
   KIND_LAVORAZIONE,
@@ -166,6 +167,7 @@ export default async function TaskPage({
 
   return (
     <div className="space-y-8">
+      <TornaIndietro href={`/polo/${task.polo_id}`} etichetta={polo?.nome ?? "Polo"} />
       {avviso && (
         <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
           {avviso}

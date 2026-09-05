@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
+import TornaIndietro from "@/components/TornaIndietro";
 import { KIND_LABEL, type DeliverableVersion, type DeliverableKind } from "@/lib/types";
 
 /**
@@ -67,7 +68,8 @@ export default async function CertificatoPage({
 
   return (
     <article className="mx-auto max-w-3xl rounded-2xl bg-white p-8 ring-1 ring-black/5">
-      <header className="border-b border-slate-200 pb-4">
+      <TornaIndietro href={`/task/${taskId}`} etichetta={task?.titolo ?? "Progetto"} />
+      <header className="mt-4 border-b border-slate-200 pb-4">
         <p className="text-xs uppercase tracking-widest text-slate-400">ToothTalk</p>
         <h1 className="mt-1 text-xl font-semibold">Attestazione di deposito</h1>
         <p className="mt-1 text-sm text-slate-500">

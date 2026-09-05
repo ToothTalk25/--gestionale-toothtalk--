@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import StatusBadge from "@/components/StatusBadge";
 import NewTaskForm from "@/components/NewTaskForm";
 import AzioniProgettoRiga from "@/components/AzioniProgettoRiga";
+import TornaIndietro from "@/components/TornaIndietro";
 import type { Formato, Polo, TaskStatus } from "@/lib/types";
 
 export default async function PoloPage({
@@ -88,6 +89,7 @@ export default async function PoloPage({
 
   return (
     <div className="space-y-8">
+      <TornaIndietro href="/dashboard" etichetta="Dashboard" />
       <header>
         <h1 className="text-[26px] font-semibold tracking-[-0.015em]">{polo.nome}</h1>
         <p className="mt-1 text-sm text-slate-500">

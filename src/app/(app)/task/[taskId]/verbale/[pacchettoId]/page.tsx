@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
+import TornaIndietro from "@/components/TornaIndietro";
 import {
   PACCHETTO_LABEL,
   type ManifestoPacchetto,
@@ -23,7 +24,7 @@ export default async function VerbalePage({
 }: {
   params: Promise<{ taskId: string; pacchettoId: string }>;
 }) {
-  const { pacchettoId } = await params;
+  const { taskId, pacchettoId } = await params;
   await requireSession();
   const supabase = await supabaseServer();
 
@@ -44,7 +45,8 @@ export default async function VerbalePage({
 
   return (
     <article className="mx-auto max-w-3xl rounded-2xl bg-white p-8 ring-1 ring-black/5">
-      <header className="border-b border-slate-200 pb-4">
+      <TornaIndietro href={`/task/${taskId}`} etichetta="Progetto" />
+      <header className="mt-4 border-b border-slate-200 pb-4">
         <p className="text-xs uppercase tracking-widest text-slate-400">ToothTalk</p>
         <h1 className="mt-1 text-xl font-semibold">
           Verbale di deposito — pacchetto video pubblicabile
