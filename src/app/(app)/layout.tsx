@@ -102,8 +102,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           spazio utile allo schermo). Da sm in su torna fisso come prima —
           niente scroll per vederlo, sullo schermo grande c'è spazio a
           sufficienza perché non dia fastidio.
+
+          Il padding inferiore NON include qui la safe-area: essendo nel
+          flusso della pagina (non più fixed), quello spazio lo riserva già
+          il <body> globale (padding-bottom: env(safe-area-inset-bottom) in
+          globals.css), applicato DOPO questo footer. Aggiungerlo anche qui
+          significa riservarlo due volte: una striscia vuota fra il footer e
+          il bordo vero dello schermo, che lo fa sembrare un rettangolo
+          staccato invece di toccare il fondo. Da sm in su invece il footer
+          torna fixed (ignora il padding del <body>), quindi lì l'unico posto
+          dove riservare lo spazio resta lui stesso — ma sugli schermi grandi
+          la safe-area del notch non è un problema pratico, quindi resta un
+          padding fisso semplice come prima.
         */}
-        <footer className="static border-t border-slate-100 bg-white pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:fixed sm:inset-x-0 sm:bottom-0 sm:z-30 sm:pt-4 sm:pb-4">
+        <footer className="static border-t border-slate-100 bg-white pt-3 pb-3 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:fixed sm:inset-x-0 sm:bottom-0 sm:z-30 sm:pt-4 sm:pb-4">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between md:px-12">
             <span>
               ToothTalk<sup className="ml-0.5 align-super text-[8px]">™</sup> —
