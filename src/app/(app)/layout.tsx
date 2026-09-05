@@ -103,19 +103,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           niente scroll per vederlo, sullo schermo grande c'è spazio a
           sufficienza perché non dia fastidio.
 
-          Il padding inferiore NON include qui la safe-area: essendo nel
-          flusso della pagina (non più fixed), quello spazio lo riserva già
-          il <body> globale (padding-bottom: env(safe-area-inset-bottom) in
-          globals.css), applicato DOPO questo footer. Aggiungerlo anche qui
-          significa riservarlo due volte: una striscia vuota fra il footer e
-          il bordo vero dello schermo, che lo fa sembrare un rettangolo
-          staccato invece di toccare il fondo. Da sm in su invece il footer
-          torna fixed (ignora il padding del <body>), quindi lì l'unico posto
-          dove riservare lo spazio resta lui stesso — ma sugli schermi grandi
-          la safe-area del notch non è un problema pratico, quindi resta un
-          padding fisso semplice come prima.
+          Il <body> globale riserva sempre la safe-area in fondo (padding-
+          bottom: env(safe-area-inset-bottom) in globals.css), per proteggere
+          i contenuti dalla barra home su iPhone. Quando il footer era SEMPRE
+          fixed non si notava: un elemento fixed ignora il padding del body e
+          sta comunque incollato al bordo reale, sopra quello spazio. Ora che
+          su mobile è nel flusso normale, finisce PRIMA di quel padding e
+          lascia scoperto lo sfondo grigio del body sotto di sé — l'effetto
+          "rettangolo staccato dal fondo". Margine negativo pari alla
+          safe-area: lo sfondo bianco del footer risale a coprire quello
+          spazio; il padding interno via via lo ridà al testo, che quindi non
+          finisce comunque sotto la barra home. Da sm in su il footer torna
+          fixed (il margine negativo lì non serve, resettato a 0).
         */}
-        <footer className="static border-t border-slate-100 bg-white pt-3 pb-3 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:fixed sm:inset-x-0 sm:bottom-0 sm:z-30 sm:pt-4 sm:pb-4">
+        <footer className="static -mb-[env(safe-area-inset-bottom)] border-t border-slate-100 bg-white pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:mb-0 sm:fixed sm:inset-x-0 sm:bottom-0 sm:z-30 sm:pt-4 sm:pb-4">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between md:px-12">
             <span>
               ToothTalk<sup className="ml-0.5 align-super text-[8px]">™</sup> —
