@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { nettizzaDestinatario, validaEmail } from "@/lib/mail";
+import { renderDocumentoHTML } from "@/lib/liberatoria-documento2";
 
 function errore(msg: string): { ok: false; errore: string } {
   return { ok: false, errore: msg };
@@ -448,108 +449,6 @@ export async function caricaLiberatoriaPubblica(
   return { ok: true };
 }
 
-/** Firma la liberatoria online: il contatto inserisce nome e firma, il sistema genera il documento e lo archivia. */
-export async function firmaLiberatoriaOnline(
-  token: string,
-  nome: string,
-  firmaImg: string,
-): Promise<{ ok: true } | { ok: false; errore: string }> {
-  const admin = supabaseAdmin();
-
-  const { data: richiesta, error: eTok } = await admin
-    .rpc("verifica_token_liberatoria", { p_token: token });
-  if (eTok || !richiesta?.length) return errore("Token non valido o scaduto.");
-  const { task_id } = richiesta[0] as { task_id: string };
-
-  // Legge se il contatto ha PEC: se sì riceverà la PEC di sigillo,
-  // altrimenti gli mandiamo subito una conferma via email ordinaria.
-  const { data: td } = await admin.from("tasks")
-    .select("contatto_esterno_email, contatto_esterno_pec")
-    .eq("id", task_id).single<{ contatto_esterno_email: string | null; contatto_esterno_pec: string | null }>();
-  const haPec = !!td?.contatto_esterno_pec?.trim();
-
-  const data = new Date().toISOString().slice(0, 10);
-  const html =
-    `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Liberatoria — ToothTalk</title>` +
-    `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
-    `h1{font-size:1.2em;margin-bottom:.5em}img.logo{height:36px}.firma{border:1px solid #cbd5e1;border-radius:8px;padding:8px;max-width:280px}` +
-    `.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
-    `<img src="${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/logo-toothtalk.svg" class="logo" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
-    `<p>Con la presente il/la sottoscritto/a <strong>${nome}</strong> autorizza il progetto <strong>ToothTalk</strong> — ` +
-    `progetto di divulgazione odontoiatrica — a riprendere e pubblicare la propria immagine e voce nel video per il ` +
-    `quale è stato/a intervistato/a, esclusivamente per le finalità del progetto e in conformità all'informativa privacy.</p>` +
-    `<p>Firma:</p><p class="firma"><img src="${firmaImg}" alt="Firma di ${nome}" style="max-width:100%"></p>` +
-    `<p class="data">Documento firmato digitalmente il ${data}. Progetto ToothTalk.</p></body></html>`;
-
-  const { randomUUID } = await import("node:crypto");
-  const buffer = Buffer.from(html, "utf8");
-  const sha256 = (await import("node:crypto")).createHash("sha256").update(buffer).digest("hex");
-  const fileName = `liberatoria_${nome.replace(/\s+/g, "_").slice(0, 40)}.html`;
-  const storagePath = `${task_id}/finale_liberatoria/${randomUUID()}__${fileName}`;
-
-  const { data: del } = await admin.from("deliverables").select("id")
-    .eq("task_id", task_id).eq("kind", "finale_liberatoria").single<{ id: string }>();
-  let deliverableId: string;
-  if (!del) {
-    const { data: nuovo, error: eDel } = await admin.from("deliverables")
-      .insert({ task_id, kind: "finale_liberatoria", created_by: null })
-      .select("id").single<{ id: string }>();
-    if (eDel || !nuovo) return errore("Impossibile creare lo slot di upload.");
-    deliverableId = nuovo.id;
-  } else { deliverableId = del.id; }
-
-  const { data: profilo } = await admin.from("profiles").select("id")
-    .eq("role", "admin").eq("attivo", true).limit(1).single<{ id: string }>();
-  if (!profilo) return errore("Nessun admin trovato.");
-
-  const { error: eUpload } = await admin.storage.from("finali").upload(storagePath, buffer, {
-    contentType: "text/html; charset=utf-8", upsert: false,
-  });
-  if (eUpload) return errore("Upload fallito: " + eUpload.message);
-
-  const { data: versione, error: eVers } = await admin.from("deliverable_versions").insert({
-    deliverable_id: deliverableId, origin: "originale", bucket: "finali",
-    storage_path: storagePath, file_name: fileName, mime_type: "text/html; charset=utf-8",
-    size_bytes: buffer.byteLength, sha256, uploaded_by: profilo.id,
-  }).select("id").single<{ id: string }>();
-  if (eVers) {
-    await admin.storage.from("finali").remove([storagePath]).catch(() => {});
-    return errore("Registrazione fallita: " + eVers.message);
-  }
-
-  const { error: eReg } = await admin.rpc("registra_upload_liberatoria", {
-    p_token: token, p_version: versione.id, p_metodo: "canvas",
-  });
-  if (eReg) return errore("Token non valido o gia usato: " + eReg.message);
-
-  // Registro granulare consents_and_releases (GDPR).
-  const { data: richiestaRow } = await admin
-    .from("richieste_liberatoria")
-    .select("id, contatto_email")
-    .eq("task_id", task_id)
-    .eq("stato", "caricata")
-    .order("caricato_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<{ id: string; contatto_email: string }>();
-  await registraNelRegistroConsensi({
-    admin, taskId: task_id, richiestaId: richiestaRow?.id ?? undefined,
-    tipoSoggetto: "maggiorenne", nome,
-    email: richiestaRow?.contatto_email ?? td?.contatto_esterno_email,
-    storagePath, sha256, metodo: "canvas",
-  });
-
-  // Conferma al firmatario: se ha PEC, riceverà la PEC di sigillo.
-  // Se ha solo email, gli mandiamo subito una ricevuta con l'impronta.
-  if (!haPec) {
-    // Il contatto non ha PEC: inviamo conferma via email ordinaria
-    try {
-      await inviaConfermaFirma(td?.contatto_esterno_email || "", nome, sha256);
-    } catch { /* best-effort */ }
-  }
-
-  return { ok: true };
-}
-
 async function inviaConfermaFirma(destinatario: string, nome: string, sha256: string) {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
   destinatario = nettizzaDestinatario(destinatario);
@@ -585,7 +484,13 @@ async function inviaConfermaFirma(destinatario: string, nome: string, sha256: st
 export async function richiediOtpLiberatoria(
   token: string,
   nome: string,
+  dichiaraMaggiorenne: boolean,
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
+  // Le server action sono chiamabili direttamente, senza passare dal form: la
+  // dichiarazione di maggiore età va verificata QUI, non solo col checkbox.
+  if (!dichiaraMaggiorenne) {
+    return errore("Devi dichiarare di essere maggiorenne per procedere con questo modulo.");
+  }
   const admin = supabaseAdmin();
 
   const { data: richiesta, error: eTok } = await admin
@@ -626,7 +531,14 @@ export async function firmaConOtpLiberatoria(
   token: string,
   nome: string,
   otp: string,
+  dichiaraMaggiorenne: boolean,
 ): Promise<{ ok: true } | { ok: false; errore: string }> {
+  // Validazione server-side PRIMA di qualunque generazione di documento: la
+  // dichiarazione di maggiore età non può essere saltata chiamando l'action
+  // direttamente (niente fiducia nel solo checkbox del client).
+  if (!dichiaraMaggiorenne) {
+    return errore("Devi dichiarare di essere maggiorenne per procedere con questo modulo.");
+  }
   const admin = supabaseAdmin();
 
   const { data: richiesta, error: eTok } = await admin
@@ -664,16 +576,12 @@ export async function firmaConOtpLiberatoria(
   }
 
   const taskId = richiesta.task_id;
-  const data = new Date().toISOString().slice(0, 10);
-  const html =
-    `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Liberatoria — ToothTalk</title>` +
-    `<style>body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#1e293b}` +
-    `h1{font-size:1.2em;margin-bottom:.5em}.data{color:#64748b;font-size:.85em;margin-top:2em}</style></head><body>` +
-    `<img src="${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/logo-toothtalk.svg" style="height:36px" alt="ToothTalk"><h1>Liberatoria privacy / immagine</h1>` +
-    `<p>Il/La sottoscritto/a <strong>${nome}</strong> autorizza il progetto <strong>ToothTalk</strong> ` +
-    `a riprendere e pubblicare la propria immagine e voce nel video per il quale è stato/a intervistato/a.</p>` +
-    `<p>Firmato digitalmente tramite codice OTP verificato il ${data}.</p>` +
-    `<p class="data">Documento certificato. Progetto ToothTalk.</p></body></html>`;
+  // Recapito e data reali del firmatario. Il documento archiviato è il
+  // Documento 2 INTEGRALE (Sezione 1 + Sezione 2) approvato dal Titolare,
+  // non un riassunto di poche righe.
+  const recapito = richiesta.contatto_email ?? "";
+  const data = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
+  const html = renderDocumentoHTML({ nome, recapito, data });
 
 
   const { randomUUID } = await import("node:crypto");

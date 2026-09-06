@@ -3,6 +3,22 @@
 import { useState, useTransition, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { richiediOtpLiberatoria, firmaConOtpLiberatoria } from "@/app/actions-liberatoria";
+import { TITOLO_SEZIONE_1, TITOLO_SEZIONE_2, compilaParagrafi } from "@/lib/liberatoria-documento2";
+
+/** Rende un paragrafo del Documento 2 interpretando i marker **grassetto**. */
+function Grassetto({ testo }: { testo: string }) {
+  return (
+    <>
+      {testo.split(/(\*\*[^*]+\*\*)/g).map((parte, i) =>
+        parte.startsWith("**") && parte.endsWith("**") && parte.length > 4 ? (
+          <strong key={i}>{parte.slice(2, -2)}</strong>
+        ) : (
+          <span key={i}>{parte}</span>
+        ),
+      )}
+    </>
+  );
+}
 
 export default function CaricaLiberatoriaPage() {
   return (
@@ -17,6 +33,7 @@ function CaricaLiberatoriaForm() {
   const token = searchParams.get("token") ?? "";
   const [nome, setNome] = useState("");
   const [consenso, setConsenso] = useState(false);
+  const [maggiorenne, setMaggiorenne] = useState(false);
   const [step, setStep] = useState<"nome" | "otp">("nome");
   const [otp, setOtp] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -38,8 +55,9 @@ function CaricaLiberatoriaForm() {
   function richiediOtp() {
     if (!nome.trim()) return setMessaggio({ tipo: "errore", testo: "Inserisci il nome." });
     if (!consenso) return setMessaggio({ tipo: "errore", testo: "Devi accettare il consenso." });
+    if (!maggiorenne) return setMessaggio({ tipo: "errore", testo: "Devi dichiarare di essere maggiorenne per procedere con questo modulo." });
     startTransition(async () => {
-      const res = await richiediOtpLiberatoria(token, nome.trim());
+      const res = await richiediOtpLiberatoria(token, nome.trim(), maggiorenne);
       if ("errore" in res) {
         setMessaggio({ tipo: "errore", testo: res.errore });
       } else {
@@ -52,7 +70,7 @@ function CaricaLiberatoriaForm() {
   function firma() {
     if (!otp.trim()) return setMessaggio({ tipo: "errore", testo: "Inserisci il codice." });
     startTransition(async () => {
-      const res = await firmaConOtpLiberatoria(token, nome.trim(), otp.trim());
+      const res = await firmaConOtpLiberatoria(token, nome.trim(), otp.trim(), maggiorenne);
       if ("errore" in res) {
         setMessaggio({ tipo: "errore", testo: res.errore });
       } else {
@@ -62,6 +80,13 @@ function CaricaLiberatoriaForm() {
   }
 
   const fatto = messaggio?.tipo === "ok" && messaggio.testo.includes("firmata");
+  // Anteprima del Documento 2 compilata con i dati che l'interessato ha già
+  // inserito: quello che legge a schermo è lo stesso testo che verrà archiviato.
+  const anteprima = compilaParagrafi({
+    nome: nome.trim() || "…",
+    recapito: "l'indirizzo email o PEC indicato",
+    data: new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" }),
+  });
   if (fatto) {
     return (
       <div className="mx-auto max-w-sm px-4 py-20">
@@ -82,6 +107,22 @@ function CaricaLiberatoriaForm() {
         <p className="mt-2 text-sm text-slate-500">
           Firma digitale tramite codice monouso. Riceverai un codice di 6 cifre alla tua email.
         </p>
+
+        {/* Documento 2 integrale (Informativa + Liberatoria) mostrato prima di firmare */}
+        <div className="mt-4 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-700">
+          <h2 className="text-sm font-semibold text-tt-ink">{TITOLO_SEZIONE_1}</h2>
+          {anteprima.sezione1.map((p, i) => (
+            <p key={`s1-${i}`} className="mt-2">
+              <Grassetto testo={p} />
+            </p>
+          ))}
+          <h2 className="mt-5 text-sm font-semibold text-tt-ink">{TITOLO_SEZIONE_2}</h2>
+          {anteprima.sezione2.map((p, i) => (
+            <p key={`s2-${i}`} className="mt-2">
+              <Grassetto testo={p} />
+            </p>
+          ))}
+        </div>
 
         {messaggio && (
           <div className={`mt-4 rounded-lg border p-3 text-sm ${
@@ -112,15 +153,26 @@ function CaricaLiberatoriaForm() {
               disabled={isPending || step === "otp"}
             />
             <span className="text-xs text-slate-500 leading-relaxed">
-              Acconsento al trattamento dei miei dati personali e alla pubblicazione della mia immagine/voce
-              per le finalita&apos; del progetto ToothTalk, come da{" "}
-              <a href={`/privacy?from=liberatoria&token=${encodeURIComponent(token)}`} target="_blank" className="text-tt-blue underline">informativa privacy</a>.
+              Ho letto l&apos;informativa e la liberatoria riportate sopra e acconsento al trattamento dei miei
+              dati personali e alla pubblicazione della mia immagine/voce per le finalità del progetto ToothTalk.
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-tt-blue focus:ring-tt-blue"
+              checked={maggiorenne}
+              onChange={e => setMaggiorenne(e.target.checked)}
+              disabled={isPending || step === "otp"}
+            />
+            <span className="text-xs text-slate-500 leading-relaxed">
+              Dichiaro di essere maggiorenne e pienamente capace di intendere e volere.
             </span>
           </label>
           <button
             type="button"
             onClick={richiediOtp}
-            disabled={isPending || step === "otp"}
+            disabled={isPending || step === "otp" || !nome.trim() || !consenso || !maggiorenne}
             className="tt-btn w-full bg-tt-blue px-4 py-2.5 text-sm text-white hover:brightness-95 disabled:opacity-50"
           >
             {isPending ? "Invio codice…" : "Invia codice di verifica"}
@@ -159,6 +211,13 @@ function CaricaLiberatoriaForm() {
           </div>
         )}
       </form>
+      <p className="mt-4 text-center text-xs text-slate-400">
+        Se sei minorenne, non procedere qui: scrivi a{" "}
+        <a href="mailto:enricoguarino25@gmail.com" className="text-tt-blue underline">
+          enricoguarino25@gmail.com
+        </a>{" "}
+        per la liberatoria con il consenso di un genitore/tutore.
+      </p>
     </div>
   );
 }
