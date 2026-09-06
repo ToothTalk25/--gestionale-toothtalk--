@@ -105,7 +105,7 @@ export default function TerminiPage() {
         </div>
 
         <p className="pt-4 text-xs text-slate-400">
-          Contatto: enricoguarino25@gmail.com (PEC: enricomariaguarino@postecertifica.it). ·{" "}
+          Contatto: tooth.talk25@gmail.com (PEC: enricomariaguarino@postecertifica.it). ·{" "}
           <Link href="/privacy" className="text-tt-blue underline">
             Privacy Policy
           </Link>{" "}

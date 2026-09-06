@@ -213,8 +213,8 @@ function CaricaLiberatoriaForm() {
       </form>
       <p className="mt-4 text-center text-xs text-slate-400">
         Se sei minorenne, non procedere qui: scrivi a{" "}
-        <a href="mailto:enricoguarino25@gmail.com" className="text-tt-blue underline">
-          enricoguarino25@gmail.com
+        <a href="mailto:tooth.talk25@gmail.com" className="text-tt-blue underline">
+          tooth.talk25@gmail.com
         </a>{" "}
         per la liberatoria con il consenso di un genitore/tutore.
       </p>
