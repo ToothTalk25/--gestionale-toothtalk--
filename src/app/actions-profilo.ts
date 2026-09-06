@@ -80,9 +80,17 @@ export async function eliminaAccount(
   // 1. Foto del profilo (l'accordo resta: è il titolo della cessione di proprietà)
   const { data: profilo } = await admin
     .from("profiles")
-    .select("id, foto_path, accordo_path, role")
+    .select("id, foto_path, accordo_path, role, approvato_at, full_name, email")
     .eq("id", userId)
-    .single<{ id: string; foto_path: string | null; accordo_path: string | null; role: string }>();
+    .single<{
+      id: string;
+      foto_path: string | null;
+      accordo_path: string | null;
+      role: string;
+      approvato_at: string | null;
+      full_name: string | null;
+      email: string;
+    }>();
   if (!profilo) return errore("Profilo non trovato.");
   // Un account con ruolo Titolare non si elimina da qui: servirebbe un cambio
   // di ruolo esplicito prima, altrimenti si perderebbe l'accesso globale.
@@ -91,6 +99,48 @@ export async function eliminaAccount(
       "Non è possibile eliminare un account con ruolo Coordinatore da qui — serve un cambio di ruolo esplicito prima.",
     );
   }
+
+  // Richiesta di registrazione mai approvata: non esiste ancora nessun
+  // accordo, materiale o certificazione da tutelare (nulla da "conservare"),
+  // quindi l'account va eliminato per davvero invece di essere anonimizzato.
+  // profiles.id referenzia auth.users(id) on delete cascade (0001_schema.sql):
+  // cancellare l'utente Auth cancella automaticamente anche la riga profiles.
+  if (profilo.approvato_at === null) {
+    // admin.auth.admin.deleteUser NON lancia mai un'eccezione per un errore
+    // Auth/Postgres (restituisce sempre { data, error }, verificato in
+    // GoTrueAdminApi.js): un try/catch qui non intercetterebbe mai il
+    // vincolo di chiave esterna. In più GoTrue incapsula l'errore Postgres
+    // originale in un messaggio generico ("Database error deleting user",
+    // verificato empiricamente) senza il nome della tabella coinvolta: non
+    // c'è quindi un messaggio specifico da tradurre con traduciErroreDb qui,
+    // solo un indizio plausibile da dare all'admin. La causa reale resta nei
+    // log del server per chi deve indagare.
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) {
+      console.error("eliminaAccount: deleteUser fallita per richiesta mai approvata:", error.message);
+      return errore(
+        "Non è stato possibile eliminare questa richiesta: probabilmente ci sono richieste aperte (GDPR o ricarica dichiarazione) collegate a questo profilo. Risolvile dalle rispettive code, poi riprova.",
+      );
+    }
+
+    // entity_id non ha una FK verso profiles (deve sopravvivere anche quando
+    // l'entità sparisce): senza nome/email nel meta, dopo la delete quell'id
+    // da solo non porterebbe a nessuna informazione recuperabile.
+    await ignora(
+      admin.from("audit_log").insert({
+        actor: profile.id,
+        actor_role: profile.role,
+        action: "rifiuto_registrazione",
+        entity_type: "profile",
+        entity_id: userId,
+        meta: { nome: profilo.full_name, email: profilo.email },
+      }),
+    );
+
+    revalidatePath("/admin");
+    return { ok: true, dati: { account: "eliminato" } };
+  }
+
   if (profilo.foto_path) {
     await admin.storage.from("profili").remove([profilo.foto_path]).catch(() => {});
   }

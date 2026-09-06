@@ -18,7 +18,11 @@ export type RigaRichiestaRegistrazione = {
  * ancora approvati (attivo=false). L'admin conferma/corregge il flag
  * "appare in video" (serve per la correttezza della revoca GDPR, non per
  * scegliere un accordo — l'accordo è unico per tutti) e approva. Chi non
- * viene approvato si elimina con il componente esistente EliminaAccountAdmin.
+ * viene approvato si respinge con EliminaAccountAdmin in contesto
+ * "registrazione": stesso componente delle altre code, ma con testo di
+ * conferma dedicato (nessun accordo/materiale esiste ancora a questo stadio)
+ * ed eliminazione vera, non anonimizzazione — lo decide il server in base
+ * allo stato reale del profilo.
  */
 export default function RichiesteRegistrazione({
   richieste,
@@ -127,7 +131,7 @@ export default function RichiesteRegistrazione({
                   {inCorso === r.id ? "Approvo…" : "Approva"}
                 </button>
 
-                <EliminaAccountAdmin userId={r.id} />
+                <EliminaAccountAdmin userId={r.id} contesto="registrazione" />
               </div>
             </div>
           </div>
