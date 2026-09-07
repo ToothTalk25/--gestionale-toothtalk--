@@ -46,6 +46,12 @@ export default function ProfiloPersonale({
   const [controfirmaConfermata, setControfirmaConfermata] = useState(
     !!profile.accordo_controfirma_confermata_at,
   );
+  // Franchigia per chi era già approvato PRIMA che la controfirma (0118)
+  // esistesse: per loro non è mai stata caricata nessuna controfirma
+  // (accordo_controfirmato_path è null) — non fabbrichiamo una conferma mai
+  // data, ma non li teniamo nemmeno bloccati per un requisito nato dopo la
+  // loro approvazione (stessa logica del gate in layout.tsx).
+  const controfirmaNonRichiesta = !!profile.accordo_approvato_admin_at && !profile.accordo_controfirmato_path;
   // Esito dedicato al salvataggio anagrafica: quello condiviso (messaggio/errore)
   // si vede solo in fondo alla pagina, dopo Foto/Consensi/Accordo — su mobile,
   // tutto impilato in colonna, era troppo lontano dal bottone per essere notato.
@@ -598,10 +604,14 @@ export default function ProfiloPersonale({
                 )}
               </li>
               <li className={profile.accordo_approvato_admin_at ? "text-emerald-700" : "text-slate-400"}>
-                {profile.accordo_approvato_admin_at ? "☑" : "☐"} Controfirma del Titolare caricata
+                {profile.accordo_approvato_admin_at ? "☑" : "☐"}{" "}
+                {controfirmaNonRichiesta ? "Approvato dal Titolare" : "Controfirma del Titolare caricata"}
               </li>
-              <li className={controfirmaConfermata ? "text-emerald-700" : "text-slate-400"}>
-                {controfirmaConfermata ? "☑" : "☐"} Controfirma confermata da te
+              <li className={controfirmaConfermata || controfirmaNonRichiesta ? "text-emerald-700" : "text-slate-400"}>
+                {controfirmaConfermata || controfirmaNonRichiesta ? "☑" : "☐"} Controfirma confermata da te
+                {controfirmaNonRichiesta && !controfirmaConfermata && (
+                  <span className="text-slate-400"> (non richiesta: approvato prima di questo requisito)</span>
+                )}
               </li>
             </ul>
             {profile.accordo_scadenza && (
@@ -617,7 +627,7 @@ export default function ProfiloPersonale({
               !profile.accordo_letto_confermato ||
               verificaStato.esito !== "ok" ||
               !profile.accordo_approvato_admin_at ||
-              !controfirmaConfermata) && (
+              !(controfirmaConfermata || controfirmaNonRichiesta)) && (
               <p className="mt-2 text-slate-500">
                 Il tuo accesso ai progetti resta bloccato finché l&apos;accordo non è
                 completo su tutti questi punti.

@@ -29,6 +29,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // restare SOLO su /profilo (dove carica/gestisce l'accordo): tutto il
   // resto viene rimandato lì. Il redirect esclude esplicitamente /profilo
   // per evitare un loop infinito (il layout gira anche per /profilo).
+  //
+  // Franchigia per chi era già approvato PRIMA che la controfirma (0118)
+  // esistesse: quella quinta condizione non può mai diventare vera per loro
+  // (nessuna controfirma è mai stata caricata: accordo_controfirmato_path è
+  // null), e non le fabbrichiamo — dichiarare confermato un documento
+  // firmato che fisicamente non esiste sarebbe scorretto. Restano quindi
+  // sbloccati com'erano prima di questa migrazione, finché il Titolare non
+  // decide di avviare per loro il percorso reale caricando una controfirma:
+  // da quel momento tornano bloccati come chiunque altro, in attesa della
+  // loro conferma.
+  const controfirmaNonRichiestaPerApprovazionePregressa =
+    !!profile.accordo_approvato_admin_at && !profile.accordo_controfirmato_path;
   const pathname = (await headers()).get("x-pathname") ?? "";
   const accordoCompleto =
     isAdmin ||
@@ -36,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       profile.accordo_letto_confermato &&
       profile.accordo_verificato === "ok" &&
       !!profile.accordo_approvato_admin_at &&
-      !!profile.accordo_controfirma_confermata_at);
+      (!!profile.accordo_controfirma_confermata_at || controfirmaNonRichiestaPerApprovazionePregressa));
   if (!accordoCompleto && pathname !== "/profilo") {
     redirect("/profilo");
   }
