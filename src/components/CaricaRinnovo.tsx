@@ -3,12 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { caricaRinnovoAccordo } from "@/app/actions-profilo";
+import { caricaRinnovoAccordo, preparaUploadRinnovo } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
-
-function sanifica(nome: string) {
-  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-}
 
 /**
  * Card di caricamento del documento di rinnovo dell'Accordo (Art. 9.1),
@@ -39,18 +35,21 @@ export default function CaricaRinnovo({ profile }: { profile: Profile }) {
     setMessaggio(null);
     setInCorso(true);
     try {
-      const { data: auth } = await supabaseBrowser().auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) throw new Error("Sessione non valida.");
+      // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
+      // da solo con Storage. L'URL firmato dal server vale una volta sola,
+      // solo per questo path — non serve altro per caricare.
+      const prep = await preparaUploadRinnovo(file.name);
+      if (!prep.ok) throw new Error(prep.errore);
 
-      const path = `${uid}/rinnovo/${crypto.randomUUID()}__${sanifica(file.name)}`;
       const { error: eUpload } = await supabaseBrowser()
-        .storage.from("profili")
-        .upload(path, file, { upsert: false });
+        .storage.from(prep.dati.bucket)
+        .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
       if (eUpload) throw new Error(eUpload.message);
 
       // L'impronta viene ricalcolata lato server: qui non serve calcolarla.
-      const esito = await caricaRinnovoAccordo(path, "");
+      const esito = await caricaRinnovoAccordo(prep.dati.path, "");
       if (!esito.ok) {
         setErrore(esito.errore);
         return;

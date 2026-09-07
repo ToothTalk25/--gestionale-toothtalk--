@@ -13,15 +13,15 @@ import {
   revocaImmagineVoce,
   esportaDatiPersonali,
   scaricaDocumentoNomina,
+  scaricaControfirmaAccordo,
+  confermaControfirmaAccordo,
+  preparaUploadFoto,
+  preparaUploadAccordo,
 } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
 import CaricaRinnovo from "@/components/CaricaRinnovo";
 import { useConferma } from "@/components/ConfermaAzione";
-
-function sanifica(nome: string) {
-  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-}
 
 export default function ProfiloPersonale({
   profile,
@@ -40,6 +40,12 @@ export default function ProfiloPersonale({
   const [luogoNascita, setLuogoNascita] = useState(profile.luogo_nascita ?? "");
   const [codiceFiscale, setCodiceFiscale] = useState(profile.codice_fiscale ?? "");
   const [nominaMessaggio, setNominaMessaggio] = useState<string | null>(null);
+  const [controfirmaMessaggio, setControfirmaMessaggio] = useState<string | null>(null);
+  const [controfirmaErrore, setControfirmaErrore] = useState<string | null>(null);
+  const [controfirmaInCorso, setControfirmaInCorso] = useState(false);
+  const [controfirmaConfermata, setControfirmaConfermata] = useState(
+    !!profile.accordo_controfirma_confermata_at,
+  );
   // Esito dedicato al salvataggio anagrafica: quello condiviso (messaggio/errore)
   // si vede solo in fondo alla pagina, dopo Foto/Consensi/Accordo — su mobile,
   // tutto impilato in colonna, era troppo lontano dal bottone per essere notato.
@@ -184,15 +190,20 @@ export default function ProfiloPersonale({
     setMessaggio(null);
     try {
       const sha = await sha256File(file);
-      const { data: auth } = await supabaseBrowser().auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) throw new Error("Sessione non valida.");
 
-      const path = `${uid}/${tipo}/${crypto.randomUUID()}__${sanifica(file.name)}`;
+      // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
+      // da solo con Storage. L'URL firmato dal server vale una volta sola,
+      // solo per questo path — non serve altro per caricare.
+      const prep = tipo === "foto" ? await preparaUploadFoto(file.name) : await preparaUploadAccordo(file.name);
+      if (!prep.ok) throw new Error(prep.errore);
+
       const { error } = await supabaseBrowser()
-        .storage.from("profili")
-        .upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
+        .storage.from(prep.dati.bucket)
+        .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
       if (error) throw new Error(error.message);
+      const path = prep.dati.path;
 
       if (tipo === "foto") {
         const esito = await caricaFoto(path);
@@ -219,6 +230,40 @@ export default function ProfiloPersonale({
     }
   }
 
+  async function scaricaControfirma() {
+    // Apre subito una scheda vuota, prima dell'await: se si aspetta la
+    // risposta del server e si chiama window.open() solo dopo, il browser
+    // non la considera più legata al click dell'utente e la blocca come popup.
+    const finestra = window.open("", "_blank");
+    setControfirmaErrore(null);
+    const esito = await scaricaControfirmaAccordo();
+    if (!esito.ok) {
+      finestra?.close();
+      setControfirmaErrore(esito.errore);
+      return;
+    }
+    if (finestra) finestra.location.href = esito.dati;
+    else window.open(esito.dati, "_blank");
+  }
+
+  async function confermaControfirma() {
+    setControfirmaInCorso(true);
+    setControfirmaErrore(null);
+    setControfirmaMessaggio(null);
+    const esito = await confermaControfirmaAccordo();
+    setControfirmaInCorso(false);
+    if (!esito.ok) {
+      setControfirmaErrore(esito.errore);
+      return;
+    }
+    setControfirmaConfermata(true);
+    setControfirmaMessaggio(
+      esito.dati.nomina === "ok"
+        ? "Confermato: il tuo accesso ai progetti è sbloccato e il Modulo di nomina (Documento 4) è stato generato."
+        : `Confermato: l'accesso ai progetti è sbloccato. Attenzione — il Modulo di nomina NON è stato generato (${esito.dati.nominaErrore ?? "errore sconosciuto"}): segnalalo al Titolare.`,
+    );
+    router.refresh();
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -533,7 +578,7 @@ export default function ProfiloPersonale({
             </div>
           )}
 
-          {/* ---- Checklist: le 4 condizioni per sbloccare i progetti ---- */}
+          {/* ---- Checklist: le 5 condizioni per sbloccare i progetti ---- */}
           <div className="mt-4 rounded-lg border border-slate-200 p-3 text-xs">
             <p className="font-medium text-slate-700">Accesso ai progetti — stato</p>
             <ul className="mt-2 space-y-1 text-slate-600">
@@ -553,7 +598,10 @@ export default function ProfiloPersonale({
                 )}
               </li>
               <li className={profile.accordo_approvato_admin_at ? "text-emerald-700" : "text-slate-400"}>
-                {profile.accordo_approvato_admin_at ? "☑" : "☐"} Approvato dal Coordinatore
+                {profile.accordo_approvato_admin_at ? "☑" : "☐"} Controfirma del Titolare caricata
+              </li>
+              <li className={controfirmaConfermata ? "text-emerald-700" : "text-slate-400"}>
+                {controfirmaConfermata ? "☑" : "☐"} Controfirma confermata da te
               </li>
             </ul>
             {profile.accordo_scadenza && (
@@ -568,13 +616,52 @@ export default function ProfiloPersonale({
             {(!profile.accordo_path ||
               !profile.accordo_letto_confermato ||
               verificaStato.esito !== "ok" ||
-              !profile.accordo_approvato_admin_at) && (
+              !profile.accordo_approvato_admin_at ||
+              !controfirmaConfermata) && (
               <p className="mt-2 text-slate-500">
                 Il tuo accesso ai progetti resta bloccato finché l&apos;accordo non è
                 completo su tutti questi punti.
               </p>
             )}
           </div>
+
+          {/* ---- Controfirma del Titolare: caricata ma non ancora confermata
+              dal Collaboratore. Solo questa conferma genera il Modulo di
+              nomina e sblocca l'accesso — il caricamento da solo non basta. ---- */}
+          {profile.accordo_controfirmato_path && !controfirmaConfermata && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
+              <p className="font-medium text-amber-900">Controfirma del Titolare da confermare</p>
+              <p className="mt-1 text-amber-800">
+                Il Titolare ha caricato, il{" "}
+                {profile.accordo_controfirmato_caricato_at
+                  ? new Date(profile.accordo_controfirmato_caricato_at).toLocaleString("it-IT")
+                  : "—"}
+                , la scansione della copia controfirmata a mano (entrambe le firme).
+                Scaricala e verifica che sia lo stesso documento che hai firmato tu
+                prima di confermare: la conferma genera il Modulo di nomina e
+                sblocca il tuo accesso ai progetti.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={scaricaControfirma}
+                  className="tt-btn border border-amber-300 px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
+                >
+                  Scarica il documento controfirmato
+                </button>
+                <button
+                  onClick={confermaControfirma}
+                  disabled={controfirmaInCorso}
+                  className="tt-btn bg-amber-700 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
+                >
+                  {controfirmaInCorso ? "Confermo…" : "Confermo che è lo stesso documento che ho firmato"}
+                </button>
+              </div>
+              {controfirmaMessaggio && (
+                <p className="mt-2 text-emerald-700">{controfirmaMessaggio}</p>
+              )}
+              {controfirmaErrore && <p className="mt-2 text-red-700">{controfirmaErrore}</p>}
+            </div>
+          )}
 
           {/* ---- Modulo di nomina (Documento 4) — generato dal sistema alla
               approvazione dell'accordo, nessuna azione richiesta qui se non

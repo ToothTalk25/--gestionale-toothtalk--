@@ -19,11 +19,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   // --- Blocco accesso progetti finché l'accordo non è completo ---------
-  // Quattro condizioni, TUTTE necessarie per i Collaboratori:
+  // Cinque condizioni, TUTTE necessarie per i Collaboratori:
   //   1. accordo caricato (accordo_path)
   //   2. spunta "ho letto e compreso" (accordo_letto_confermato)
   //   3. verifica IA = 'ok' (accordo_verificato)
-  //   4. approvazione manuale del Titolare (accordo_approvato_admin_at)
+  //   4. controfirma del Titolare caricata e approvata (accordo_approvato_admin_at)
+  //   5. conferma del Collaboratore sulla controfirma (accordo_controfirma_confermata_at, 0118)
   // L'admin (isAdmin) non è mai soggetto al blocco. Chi è bloccato può
   // restare SOLO su /profilo (dove carica/gestisce l'accordo): tutto il
   // resto viene rimandato lì. Il redirect esclude esplicitamente /profilo
@@ -34,7 +35,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     (!!profile.accordo_path &&
       profile.accordo_letto_confermato &&
       profile.accordo_verificato === "ok" &&
-      !!profile.accordo_approvato_admin_at);
+      !!profile.accordo_approvato_admin_at &&
+      !!profile.accordo_controfirma_confermata_at);
   if (!accordoCompleto && pathname !== "/profilo") {
     redirect("/profilo");
   }

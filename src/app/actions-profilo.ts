@@ -1,6 +1,6 @@
 "use server";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { revalidatePath } from "next/cache";
@@ -764,10 +764,29 @@ export async function eseguiEliminazioneGrezzo(
 }
 
 export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito> {
-  const { profile } = await requireSession();
+  const { profile, isAdmin } = await requireSession();
   // Scrive col service_role: i campi anagrafici sono protetti dal trigger
   // fn_protect_profile (0103) — solo admin/service_role possono aggiornarli.
   const supabase = supabaseAdmin();
+
+  // Dopo la conferma reciproca della controfirma (0118), codice fiscale,
+  // data e luogo di nascita sono gli stessi che compaiono nel Modulo di
+  // Nomina già generato: cambiarli in autonomia li renderebbe disallineati
+  // dal documento firmato. Da qui in poi serve una correzione via admin.
+  // Il form del profilo invia sempre tutti i campi insieme (anche la PEC,
+  // non bloccata): si rifiuta solo un valore diverso da quello già salvato,
+  // non la semplice presenza della chiave nel payload.
+  if (profile.accordo_controfirma_confermata_at && !isAdmin) {
+    const tentaCambio =
+      (campi.codice_fiscale !== undefined && campi.codice_fiscale !== profile.codice_fiscale) ||
+      (campi.data_nascita !== undefined && campi.data_nascita !== profile.data_nascita) ||
+      (campi.luogo_nascita !== undefined && campi.luogo_nascita !== profile.luogo_nascita);
+    if (tentaCambio) {
+      return errore(
+        "Questi dati sono bloccati dopo la conferma reciproca dell'accordo controfirmato; contatta il Titolare per una correzione.",
+      );
+    }
+  }
 
   // Il campo "Email o PEC" è facoltativo e accetta qualunque indirizzo
   // valido (anche una normale email). Una PEC vera dà in più la
@@ -795,6 +814,84 @@ export async function aggiornaAnagrafica(campi: CampiAnagrafica): Promise<Esito>
 
   revalidatePath("/profilo");
   return { ok: true, dati: undefined };
+}
+
+/** Chiavi di storage: solo caratteri sicuri, il nome vero resta nel client. */
+function sanifica(nome: string): string {
+  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+}
+
+type EsitoUpload = Esito<{ bucket: string; path: string; signedUrl: string; token: string }>;
+
+/**
+ * Firma un URL di upload one-shot su cui il chiamante può caricare un file
+ * dritto su Storage. Il cookie di sessione è HttpOnly (0071/0117/0118): il
+ * client non può più autenticarsi da solo per un upload diretto — si firma
+ * qui, dove il cookie si legge benissimo, un URL valido una volta sola per
+ * QUESTO path esatto (stesso schema di preparaUpload in actions.ts). Il
+ * client poi lo consuma con uploadToSignedUrl: il token è la sua
+ * autorizzazione, non serve più leggere una sessione lato browser.
+ */
+/**
+ * `comeServizio`: la policy INSERT su "finali" (finali_insert) è scritta
+ * solo per il dominio task/deliverable — richiede un path a 3 segmenti
+ * tutti UUID (storage_path_valido) e verifica is_member_of/task_aperta su
+ * quei segmenti. Un path come "modello-accordo/..." o "controfirma/<uid>/…"
+ * non ha quella forma: la sessione dell'utente, anche admin, non l'ha mai
+ * potuta scrivere lì (nessun bypass is_admin() in quella policy — verificato
+ * a mano sulle policy reali). Per questi due casi si firma con service_role,
+ * che salta l'RLS: l'autorizzazione la fa comunque il controllo
+ * `role === "admin"` nella action chiamante, prima di arrivare qui.
+ */
+async function firmaUpload(bucket: string, path: string, comeServizio = false): Promise<EsitoUpload> {
+  const supabase = comeServizio ? supabaseAdmin() : await supabaseServer();
+  const { data: firma, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
+  if (error || !firma) return errore("Impossibile preparare il caricamento.");
+  return { ok: true, dati: { bucket, path, signedUrl: firma.signedUrl, token: firma.token } };
+}
+
+/** Prepara l'upload della propria foto profilo (collaboratore o admin). */
+export async function preparaUploadFoto(fileName: string): Promise<EsitoUpload> {
+  const { profile } = await requireSession();
+  return firmaUpload("profili", `${profile.id}/foto/${randomUUID()}__${sanifica(fileName)}`);
+}
+
+/**
+ * Prepara l'upload del proprio accordo firmato. Stesso blocco di
+ * caricaAccordo dopo la conferma reciproca della controfirma (0118): niente
+ * ricaricamenti silenziosi a documento ormai chiuso.
+ */
+export async function preparaUploadAccordo(fileName: string): Promise<EsitoUpload> {
+  const { profile } = await requireSession();
+  if (profile.accordo_controfirma_confermata_at) {
+    return errore(
+      "Questi dati sono bloccati dopo la conferma reciproca dell'accordo controfirmato; contatta il Titolare per una correzione.",
+    );
+  }
+  return firmaUpload("profili", `${profile.id}/accordo/${randomUUID()}__${sanifica(fileName)}`);
+}
+
+/** Prepara l'upload del proprio documento di rinnovo (Art. 9.1). */
+export async function preparaUploadRinnovo(fileName: string): Promise<EsitoUpload> {
+  const { profile } = await requireSession();
+  if (!profile.accordo_path || !profile.accordo_approvato_admin_at) {
+    return errore("Nessun accordo approvato da rinnovare.");
+  }
+  return firmaUpload("profili", `${profile.id}/rinnovo/${randomUUID()}__${sanifica(fileName)}`);
+}
+
+/** Prepara l'upload del modello dell'accordo editoriale (admin only). */
+export async function preparaUploadModelloAccordo(fileName: string): Promise<EsitoUpload> {
+  const { profile } = await requireSession();
+  if (profile.role !== "admin") return errore("Solo il Coordinatore può caricare il modello.");
+  return firmaUpload("finali", `modello-accordo/${randomUUID()}__${sanifica(fileName)}`, true);
+}
+
+/** Prepara l'upload della scansione controfirmata di un collaboratore (admin only). */
+export async function preparaUploadControfirma(userId: string, fileName: string): Promise<EsitoUpload> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  return firmaUpload("finali", `controfirma/${userId}/${randomUUID()}__${sanifica(fileName)}`, true);
 }
 
 /** Registra la foto del profilo appena caricata. */
@@ -902,6 +999,17 @@ export async function caricaAccordo(
   // fn_protect_profile (0103) — solo admin/service_role possono scriverli.
   const supabase = supabaseAdmin();
 
+  // Dopo la conferma reciproca della controfirma (0118), l'accordo è
+  // "chiuso": un nuovo caricamento richiederebbe di rifare da capo anche la
+  // controfirma del Titolare e la conferma del Collaboratore. Se serve
+  // davvero correggere qualcosa a questo punto, serve un intervento admin
+  // diretto, non un ricaricamento silenzioso dal profilo.
+  if (profile.accordo_controfirma_confermata_at) {
+    return errore(
+      "Questi dati sono bloccati dopo la conferma reciproca dell'accordo controfirmato; contatta il Titolare per una correzione.",
+    );
+  }
+
   // Il path deve stare nello spazio di chi chiama: impedisce di far puntare
   // il proprio profilo al file di qualcun altro (che comunque l'RLS dello
   // storage bloccherebbe in lettura, ma qui evitiamo pure di provarci).
@@ -982,19 +1090,11 @@ export async function caricaAccordo(
     .eq("id", profile.id);
   if (error) return errore(error.message);
 
-  // Copia di sicurezza su Drive in "Gestione canale/accordi/<polo>/Nome Cognome.pdf".
-  // Best-effort: se fallisce, l'accordo resta comunque nel gestionale con la
-  // PEC certificata — non blocca mai il caricamento. Il nome del file è quello
-  // del Collaboratore (lo stesso che compare nell'accordo), ripulito dai
-  // caratteri non validi per i nomi di file di Drive.
-  const nomeSuDrive = `${(profile.full_name ?? "accordo").replace(/[/\\:*?"<>|]/g, "_")}.pdf`;
-  const { data: membriPoli } = await supabase
-    .from("memberships")
-    .select("poli!inner(nome)")
-    .eq("user_id", profile.id);
-  const membri = (membriPoli ?? []) as { poli: { nome: string }[] }[];
-  const poliUtente = membri.flatMap((m) => m.poli.map((p) => p.nome));
-  await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive, poliUtente));
+  // Niente copia su Drive qui: l'accordo caricato ha una sola firma (quella
+  // del Collaboratore). La copia d'archivio in "Gestione canale/accordi/"
+  // si fa solo dalla scansione controfirmata dal Titolare (entrambe le
+  // firme), in caricaControfirmaAccordo — questa PEC resta comunque la
+  // certificazione con data certa della firma del Collaboratore.
 
   // Registro granulare consents_and_releases (GDPR): accordo collaboratore.
   // L'accordo è UNO SOLO per tutti i collaboratori (on-screen o backstage):
@@ -1189,8 +1289,13 @@ export async function caricaRinnovoAccordo(
     .from("memberships")
     .select("poli!inner(nome)")
     .eq("user_id", profile.id);
-  const membri = (membriPoli ?? []) as { poli: { nome: string }[] }[];
-  const poliUtente = membri.flatMap((m) => m.poli.map((p) => p.nome));
+  // "poli!inner(nome)" incorpora un OGGETTO singolo per riga (ogni membership
+  // appartiene a un solo polo), non un array: un .flatMap(m.poli.map(...))
+  // qui lanciava "m.poli.map is not a function" alla prima esecuzione reale
+  // (verificato empiricamente) — mai scattato prima perché non si era mai
+  // arrivati fin qui con dati veri.
+  const membri = (membriPoli ?? []) as unknown as { poli: { nome: string } }[];
+  const poliUtente = membri.map((m) => m.poli.nome);
   await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive, poliUtente, "rinnovi"));
 
   revalidatePath("/rinnovo");
@@ -1670,31 +1775,37 @@ della generazione, ne garantisce l'immodificabilità.</p>
 }
 
 /**
- * Il Titolare approva MANUALMENTE l'accordo di un collaboratore: è la
- * quarta condizione (oltre a caricato + letto/confermato + verifica IA ok)
- * che sblocca l'accesso ai progetti. L'approvazione è tracciata in
- * audit_log. Solo admin.
+ * Il Titolare carica la scansione della copia cartacea dell'Accordo firmata
+ * da ENTRAMBE le parti (controfirma a mano): sostituisce il vecchio click
+ * "Approva accordo" con un upload tracciato, non più un'azione senza
+ * documento. Stesse precondizioni di prima (accordo del collaboratore già
+ * caricato e non ancora approvato). Solo admin.
  *
- * Nello stesso passaggio genera automaticamente il Modulo di nomina
- * (Documento 4, Art. 6.5 dell'Accordo): è il click di approvazione stesso
- * a perfezionare la nomina, non serve una firma separata.
+ * NON genera ancora il Modulo di nomina (Documento 4): quella è la QUINTA
+ * condizione, legata solo alla conferma del Collaboratore
+ * (confermaControfirmaAccordo, 0118) — non a questo caricamento.
  */
-export async function approvaAccordoManualmente(
+export async function caricaControfirmaAccordo(
   userId: string,
-): Promise<Esito<{ approvatoAt: string; nomina: "ok" | "errore"; nominaErrore?: string }>> {
+  storagePath: string,
+  _sha256Client: string,
+): Promise<Esito<{ approvatoAt: string }>> {
   const { isAdmin, profile } = await requireSession();
   if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
 
   const supabase = await supabaseServer();
 
-  // Controllo di coerenza: si approva solo un accordo che esiste.
+  // Controllo di coerenza: si controfirma solo un accordo che esiste e non
+  // è già stato approvato (stesse precondizioni di prima).
   const { data: target } = await supabase
     .from("profiles")
-    .select("id, full_name, accordo_path, accordo_letto_confermato, accordo_verificato, accordo_approvato_admin_at")
+    .select("id, full_name, email, pec, accordo_path, accordo_letto_confermato, accordo_verificato, accordo_approvato_admin_at")
     .eq("id", userId)
     .single<{
       id: string;
       full_name: string | null;
+      email: string;
+      pec: string | null;
       accordo_path: string | null;
       accordo_letto_confermato: boolean;
       accordo_verificato: string | null;
@@ -1704,15 +1815,64 @@ export async function approvaAccordoManualmente(
   if (!target.accordo_path) return errore("Nessun accordo caricato per questo utente.");
   if (target.accordo_approvato_admin_at) return errore("Accordo già approvato.");
 
+  // Il path deve stare nello spazio del collaboratore di cui si carica la
+  // controfirma (stesso principio di caricaAccordo).
+  if (!storagePath.startsWith(`controfirma/${userId}/`)) {
+    return errore("Percorso del file non valido.");
+  }
+
+  // Fail fast: se la PEC non è configurata, meglio saperlo prima di
+  // scrivere qualunque cosa, non dopo aver già aggiornato il profilo.
+  let config;
+  try {
+    config = leggiConfigPec();
+  } catch (e) {
+    return errore(e instanceof Error ? `La PEC non è configurata: ${e.message}` : "La PEC non è configurata.");
+  }
+
+  const { data: blob, error: eBlob } = await supabase.storage.from("finali").download(storagePath);
+  if (eBlob || !blob) return errore("File non leggibile dallo storage.");
+
+  const nomeFile = storagePath.split("/").pop() ?? "accordo-controfirmato.pdf";
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const nome = target.full_name ?? target.email;
+
+  // L'impronta certificata via PEC è quella VERA del file appena scaricato,
+  // ricalcolata qui — mai quella dichiarata dal client (stesso principio di
+  // caricaAccordo).
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+
   const ora = new Date().toISOString();
   const { error } = await supabase
     .from("profiles")
     .update({
       accordo_approvato_admin_at: ora,
       accordo_approvato_da: profile.id,
+      accordo_controfirmato_path: storagePath,
+      accordo_controfirmato_sha256: sha256,
+      accordo_controfirmato_caricato_at: ora,
     })
     .eq("id", userId);
   if (error) return errore(error.message);
+
+  // Copia di sicurezza su Drive in "Gestione canale/accordi/<polo>/Nome
+  // Cognome.pdf" — ora dalla scansione CONTROFIRMATA (entrambe le firme):
+  // è quella, non il solo caricamento del Collaboratore, il documento che
+  // deve finire nell'archivio. Best-effort: se fallisce, il documento resta
+  // comunque nel gestionale con la PEC certificata sotto.
+  const nomeSuDrive = `${(target.full_name ?? "accordo").replace(/[/\\:*?"<>|]/g, "_")}.pdf`;
+  const { data: membriPoli } = await supabase
+    .from("memberships")
+    .select("poli!inner(nome)")
+    .eq("user_id", userId);
+  // "poli!inner(nome)" incorpora un OGGETTO singolo per riga (ogni membership
+  // appartiene a un solo polo), non un array: un .flatMap(m.poli.map(...))
+  // qui lanciava "m.poli.map is not a function" alla prima esecuzione reale
+  // (verificato empiricamente) — mai scattato prima perché non si era mai
+  // arrivati fin qui con dati veri.
+  const membri = (membriPoli ?? []) as unknown as { poli: { nome: string } }[];
+  const poliUtente = membri.map((m) => m.poli.nome);
+  await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive, poliUtente));
 
   // La firma dell'Accordo vale quale concessione del consenso a immagine/
   // voce (Art. 7.1): si registra la riga nel registro consensi (0096), così
@@ -1730,36 +1890,171 @@ export async function approvaAccordoManualmente(
     }),
   );
 
-  // Traccia l'approvazione nella catena di audit (service_role, 0115).
+  // Traccia il caricamento della controfirma nella catena di audit.
   await ignora(
     supabaseAdmin().from("audit_log").insert({
       actor: profile.id,
       actor_role: profile.role,
-      action: "approvazione_accordo_admin",
+      action: "controfirma_accordo_caricata",
       entity_type: "profile",
       entity_id: userId,
       meta: {
         utente: target.full_name,
         accordo_verificato: target.accordo_verificato,
-        approvato_at: ora,
+        caricato_at: ora,
       },
     }),
   );
 
-  // Generazione del Documento 4 — best-effort: un suo fallimento non deve
-  // far sembrare fallita l'approvazione dell'accordo, già avvenuta sopra.
-  const esitoNomina = await generaModuloNomina(userId, ora);
+  // PEC al Collaboratore con il documento controfirmato allegato, copia
+  // all'accesso globale — stesso schema di caricaAccordo, mittente e
+  // destinatario invertiti.
+  try {
+    await spedisciPec({
+      config,
+      oggetto: `[ToothTalk] Accordo editoriale controfirmato — ${nome}`,
+      testo: [
+        "",
+        `Ciao ${nome}!`,
+        "",
+        "In allegato trovi la scansione dell'Accordo Editoriale controfirmato",
+        "dal Titolare: da ora porta entrambe le firme.",
+        "",
+        "Un ultimo passo prima di partire: accedi al gestionale e conferma, dal",
+        "tuo profilo, che è lo stesso documento che hai firmato tu. Solo a",
+        "quella conferma verrà generato il Modulo di nomina e si sbloccherà il",
+        "tuo accesso ai progetti.",
+        "",
+        "Impronta SHA-256 del file:",
+        `  ${sha256}`,
+        "",
+        "Messaggio generato automaticamente dal gestionale ToothTalk.",
+        "",
+      ].join("\n"),
+      html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
+  <h1 style="font-size:20px;margin:4px 0 12px">Accordo editoriale controfirmato</h1>
+  <p style="font-size:13px;line-height:1.6">
+    Ciao <strong>${nome}</strong>! In allegato trovi la scansione dell'Accordo Editoriale
+    controfirmato dal Titolare: da ora porta entrambe le firme.
+  </p>
+  <p style="font-size:13px;line-height:1.6">
+    Un ultimo passo prima di partire: accedi al gestionale e conferma, dal tuo
+    profilo, che è lo stesso documento che hai firmato tu. Solo a quella conferma
+    verrà generato il Modulo di nomina e si sbloccherà il tuo accesso ai progetti.
+  </p>
+  <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
+  <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
+</div>`,
+      allegati: [{ filename: nomeFile, content: buffer, contentType: blob.type || "application/pdf" }],
+      // "to": il collaboratore — PEC se presente, altrimenti la sua email di
+      // accesso. "cc": l'accesso globale, come in caricaAccordo al contrario.
+      destinatari: [target.pec ?? target.email],
+      copiaConoscenza: config.destinatari,
+    });
+  } catch (e) {
+    return errore(
+      `Controfirma salvata ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+    );
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/profilo");
+  return { ok: true, dati: { approvatoAt: ora } };
+}
+
+/**
+ * Il Collaboratore conferma che la scansione controfirmata caricata dal
+ * Titolare è lo stesso documento che ha firmato: è la QUINTA e ultima
+ * condizione che sblocca l'accesso ai progetti (0118, vedi layout.tsx).
+ *
+ * SOLO a questa conferma — non al caricamento della controfirma — si genera
+ * il Modulo di nomina (Documento 4, Art. 6.5 dell'Accordo): è la conferma
+ * reciproca (entrambe le firme, entrambe le parti d'accordo che il
+ * documento è quello giusto) a perfezionare la nomina.
+ */
+export async function confermaControfirmaAccordo(): Promise<
+  Esito<{ confermatoAt: string; nomina: "ok" | "errore"; nominaErrore?: string }>
+> {
+  const { profile } = await requireSession();
+
+  if (!profile.accordo_controfirmato_path) {
+    return errore("Nessuna controfirma caricata dal Titolare da confermare.");
+  }
+  if (profile.accordo_controfirma_confermata_at) {
+    return errore("Hai già confermato la controfirma.");
+  }
+
+  const admin = supabaseAdmin();
+  const ora = new Date().toISOString();
+  const { error } = await admin
+    .from("profiles")
+    .update({ accordo_controfirma_confermata_at: ora })
+    .eq("id", profile.id);
+  if (error) return errore(error.message);
+
+  // Generazione del Documento 4 — SOLO ora: best-effort, un suo fallimento
+  // non deve far sembrare fallita la conferma, già avvenuta sopra.
+  const esitoNomina = await generaModuloNomina(profile.id, ora);
   if (!esitoNomina.ok) {
     await ignora(
-      supabaseAdmin().from("audit_log").insert({
+      admin.from("audit_log").insert({
         actor: profile.id,
         actor_role: profile.role,
         action: "generazione_nomina_fallita",
         entity_type: "profile",
-        entity_id: userId,
+        entity_id: profile.id,
         meta: { errore: esitoNomina.errore },
       }),
     );
+  }
+
+  await ignora(
+    admin.from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "controfirma_accordo_confermata",
+      entity_type: "profile",
+      entity_id: profile.id,
+      meta: { utente: profile.full_name, confermato_at: ora },
+    }),
+  );
+
+  // Comunicazione al Titolare: un vero messaggio in arrivo via PEC
+  // all'accesso globale (destinatari omesso: spedisciPec usa config.destinatari
+  // di default), non solo una riga in una lista admin. Best-effort: la
+  // conferma resta comunque valida e tracciata in audit_log sopra.
+  try {
+    const config = leggiConfigPec();
+    const nomeConfermato = profile.full_name ?? profile.email;
+    const oraIt = new Date(ora).toLocaleString("it-IT");
+    await spedisciPec({
+      config,
+      oggetto: `[ToothTalk] Controfirma confermata — ${nomeConfermato}`,
+      testo: [
+        "",
+        `${nomeConfermato} ha confermato, in data ${oraIt}, che la scansione`,
+        "dell'Accordo controfirmato caricata è lo stesso documento che ha",
+        "firmato. Il Modulo di nomina è stato generato e l'accesso ai progetti",
+        "si è sbloccato.",
+        "",
+        "Messaggio generato automaticamente dal gestionale ToothTalk.",
+        "",
+      ].join("\n"),
+      html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
+  <h1 style="font-size:20px;margin:4px 0 12px">Controfirma confermata</h1>
+  <p style="font-size:13px;line-height:1.6">
+    <strong>${nomeConfermato}</strong> ha confermato, in data ${oraIt}, che la scansione
+    dell'Accordo controfirmato caricata è lo stesso documento che ha firmato.
+    Il Modulo di nomina è stato generato e l'accesso ai progetti si è sbloccato.
+  </p>
+  <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
+</div>`,
+      allegati: [],
+    }).catch(() => {});
+  } catch {
+    // PEC non configurata: la conferma resta comunque valida e tracciata.
   }
 
   revalidatePath("/admin");
@@ -1767,7 +2062,7 @@ export async function approvaAccordoManualmente(
   return {
     ok: true,
     dati: {
-      approvatoAt: ora,
+      confermatoAt: ora,
       nomina: esitoNomina.ok ? "ok" : "errore",
       nominaErrore: esitoNomina.ok ? undefined : esitoNomina.errore,
     },
@@ -1887,6 +2182,32 @@ export async function scaricaDocumentoNomina(userId?: string): Promise<Esito<str
   if (!c?.nomina_path) return errore("Modulo di nomina non ancora generato.");
 
   const { data } = await admin.storage.from("finali").createSignedUrl(c.nomina_path, 300);
+  if (!data?.signedUrl) return errore("Impossibile generare il link.");
+  return { ok: true, dati: data.signedUrl };
+}
+
+/**
+ * Link firmato e temporaneo alla scansione dell'Accordo controfirmato dal
+ * Titolare — del chiamante, o di un userId a scelta se admin. Stesso schema
+ * di scaricaDocumentoNomina: il download passa sempre dal server, il bucket
+ * "finali" non è mai accessibile direttamente dal client.
+ */
+export async function scaricaControfirmaAccordo(userId?: string): Promise<Esito<string>> {
+  const { profile, isAdmin } = await requireSession();
+  const target = userId && isAdmin ? userId : profile.id;
+  if (userId && userId !== profile.id && !isAdmin) {
+    return errore("Puoi scaricare solo la tua controfirma.");
+  }
+
+  const admin = supabaseAdmin();
+  const { data: c } = await admin
+    .from("profiles")
+    .select("accordo_controfirmato_path")
+    .eq("id", target)
+    .single<{ accordo_controfirmato_path: string | null }>();
+  if (!c?.accordo_controfirmato_path) return errore("Controfirma non ancora caricata.");
+
+  const { data } = await admin.storage.from("finali").createSignedUrl(c.accordo_controfirmato_path, 300);
   if (!data?.signedUrl) return errore("Impossibile generare il link.");
   return { ok: true, dati: data.signedUrl };
 }

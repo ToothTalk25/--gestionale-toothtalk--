@@ -3,13 +3,9 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { aggiornaAnagrafica, caricaFoto } from "@/app/actions-profilo";
+import { aggiornaAnagrafica, caricaFoto, preparaUploadFoto } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
 import FotoProfilo from "@/components/FotoProfilo";
-
-function sanifica(nome: string) {
-  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-}
 
 /**
  * Profilo dell'Admin (Coordinatore). L'admin non compila un accordo —
@@ -34,15 +30,19 @@ export default function ProfiloAdmin({ profile }: { profile: Profile }) {
     setErrore(null);
     setMessaggio(null);
     try {
-      const { data: auth } = await supabaseBrowser().auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) throw new Error("Sessione non valida.");
+      // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
+      // da solo con Storage. L'URL firmato dal server vale una volta sola,
+      // solo per questo path — non serve altro per caricare.
+      const prep = await preparaUploadFoto(file.name);
+      if (!prep.ok) throw new Error(prep.errore);
 
-      const path = `${uid}/foto/${crypto.randomUUID()}__${sanifica(file.name)}`;
       const { error } = await supabaseBrowser()
-        .storage.from("profili")
-        .upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
+        .storage.from(prep.dati.bucket)
+        .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
       if (error) throw new Error(error.message);
+      const path = prep.dati.path;
 
       const esito = await caricaFoto(path);
       if (!esito.ok) throw new Error(esito.errore);

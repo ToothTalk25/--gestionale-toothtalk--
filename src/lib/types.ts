@@ -119,6 +119,10 @@ export type Profile = {
   accordo_approvato_admin_at: string | null;
   accordo_approvato_da: string | null;
   accordo_scadenza: string | null;
+  accordo_controfirmato_path: string | null;
+  accordo_controfirmato_sha256: string | null;
+  accordo_controfirmato_caricato_at: string | null;
+  accordo_controfirma_confermata_at: string | null;
   rinnovo_path: string | null;
   rinnovo_sha256: string | null;
   rinnovo_caricato_at: string | null;

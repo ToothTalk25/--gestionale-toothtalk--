@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { caricaModelloAccordo } from "@/app/actions-profilo";
+import { caricaModelloAccordo, preparaUploadModelloAccordo } from "@/app/actions-profilo";
 
 export type RigaModelloAccordo = {
   id: string;
@@ -13,10 +13,6 @@ export type RigaModelloAccordo = {
   caricato_da: string | null;
   caricato_da_nome: string | null;
 };
-
-function sanifica(nome: string): string {
-  return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-}
 
 /**
  * Sezione admin "Modello accordo": carica il PDF del modello dell'accordo
@@ -38,17 +34,20 @@ export default function CaricaModelloAccordo({ modelli }: { modelli: RigaModello
     setMessaggio(null);
     setInCorso(true);
     try {
-      const { data: auth } = await supabaseBrowser().auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) throw new Error("Sessione non valida.");
+      // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
+      // da solo con Storage. L'URL firmato dal server vale una volta sola,
+      // solo per questo path — non serve altro per caricare.
+      const prep = await preparaUploadModelloAccordo(file.name);
+      if (!prep.ok) throw new Error(prep.errore);
 
-      const path = `modello-accordo/${crypto.randomUUID()}__${sanifica(file.name)}`;
       const { error: eUp } = await supabaseBrowser()
-        .storage.from("finali")
-        .upload(path, file, { upsert: false, contentType: file.type || "application/pdf" });
+        .storage.from(prep.dati.bucket)
+        .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
+          contentType: file.type || "application/pdf",
+        });
       if (eUp) throw new Error(eUp.message);
 
-      const esito = await caricaModelloAccordo(path);
+      const esito = await caricaModelloAccordo(prep.dati.path);
       if (!esito.ok) throw new Error(esito.errore);
 
       setMessaggio("Modello dell'accordo caricato. È ora il modello attivo.");

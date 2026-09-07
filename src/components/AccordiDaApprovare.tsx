@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { approvaAccordoManualmente } from "@/app/actions-profilo";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { sha256File } from "@/lib/hash";
+import { caricaControfirmaAccordo, preparaUploadControfirma } from "@/app/actions-profilo";
 
 export type RigaAccordoDaApprovare = {
   id: string;
@@ -15,9 +17,12 @@ export type RigaAccordoDaApprovare = {
 
 /**
  * Sezione admin "Accordi da approvare": coda dei collaboratori che hanno
- * caricato l'accordo, confermato la lettura e superato la verifica IA,
- * ma che attendono l'approvazione MANUALE del Titolare (quarta condizione
- * per sbloccare l'accesso ai progetti).
+ * caricato l'accordo, confermato la lettura e superato la verifica IA, e
+ * attendono che il Titolare carichi la scansione della copia controfirmata
+ * a mano (entrambe le firme) — quarta condizione per sbloccare l'accesso
+ * ai progetti. Non basta ancora: manca la quinta, la conferma del
+ * Collaboratore che è lo stesso documento che ha firmato (sezione dedicata
+ * in ProfiloPersonale.tsx), che sola genera il Modulo di nomina.
  *
  * Attenzione: se l'esito IA è 'attenzione'/'errato' il profilo non appare
  * qui (la coda filtra solo esito='ok') — ma per sicurezza mostriamo la
@@ -25,24 +30,43 @@ export type RigaAccordoDaApprovare = {
  */
 export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDaApprovare[] }) {
   const router = useRouter();
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [inCorso, setInCorso] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
 
-  async function approva(userId: string) {
+  async function caricaControfirma(userId: string, file: File) {
     setInCorso(userId);
     setMessaggio(null);
-    const esito = await approvaAccordoManualmente(userId);
-    setInCorso(null);
-    if (!esito.ok) {
-      setMessaggio(`Errore: ${esito.errore}`);
-      return;
+    try {
+      const sha = await sha256File(file);
+
+      // Il cookie di sessione è HttpOnly: il browser non può più autenticarsi
+      // da solo con Storage. L'URL firmato dal server vale una volta sola,
+      // solo per questo path — non serve altro per caricare.
+      const prep = await preparaUploadControfirma(userId, file.name);
+      if (!prep.ok) throw new Error(prep.errore);
+
+      const { error: eUpload } = await supabaseBrowser()
+        .storage.from(prep.dati.bucket)
+        .uploadToSignedUrl(prep.dati.path, prep.dati.token, file, {
+          contentType: file.type || "application/pdf",
+        });
+      if (eUpload) throw new Error(eUpload.message);
+
+      const esito = await caricaControfirmaAccordo(userId, prep.dati.path, sha);
+      if (!esito.ok) throw new Error(esito.errore);
+
+      setMessaggio(
+        "Controfirma caricata e inviata via PEC al collaboratore: l'accesso ai progetti resta bloccato finché non conferma, dal proprio profilo, che è lo stesso documento che ha firmato.",
+      );
+      router.refresh();
+    } catch (e) {
+      setMessaggio(`Errore: ${e instanceof Error ? e.message : "upload fallito"}`);
+    } finally {
+      setInCorso(null);
+      const input = inputRefs.current[userId];
+      if (input) input.value = "";
     }
-    setMessaggio(
-      esito.dati.nomina === "ok"
-        ? "Accordo approvato: l'accesso ai progetti è sbloccato e il Modulo di nomina (Documento 4) è stato generato."
-        : `Accordo approvato: l'accesso ai progetti è sbloccato. Attenzione — il Modulo di nomina NON è stato generato (${esito.dati.nominaErrore ?? "errore sconosciuto"}): rigeneralo o segnalalo.`,
-    );
-    router.refresh();
   }
 
   if (accordi.length === 0) {
@@ -63,8 +87,9 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
           <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Accordi da approvare</h2>
           <p className="mt-1 text-xs text-slate-400">
             Collaboratori che hanno caricato l&apos;accordo, confermato la lettura e
-            superato la verifica IA: manca solo la tua approvazione manuale per
-            sbloccare l&apos;accesso ai progetti.
+            superato la verifica IA: carica qui la scansione della copia cartacea
+            controfirmata a mano (entrambe le firme). Manca comunque la conferma
+            del collaboratore prima che l&apos;accesso si sblocchi davvero.
           </p>
         </div>
         <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
@@ -102,17 +127,31 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
                 {a.accordo_verificato !== "ok" && (
                   <p className="mt-1 text-xs text-red-600">
                     ⚠️ Esito IA non &quot;ok&quot;: controlla con particolare attenzione
-                    prima di approvare.
+                    prima di caricare la controfirma.
                   </p>
                 )}
               </div>
-              <button
-                onClick={() => approva(a.id)}
-                disabled={inCorso === a.id}
-                className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {inCorso === a.id ? "Approvo…" : "Approva accordo"}
-              </button>
+              <div>
+                <input
+                  ref={(el) => {
+                    inputRefs.current[a.id] = el;
+                  }}
+                  type="file"
+                  accept="application/pdf,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void caricaControfirma(a.id, file);
+                  }}
+                />
+                <button
+                  onClick={() => inputRefs.current[a.id]?.click()}
+                  disabled={inCorso === a.id}
+                  className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {inCorso === a.id ? "Carico…" : "Carica controfirma"}
+                </button>
+              </div>
             </div>
           </div>
         ))}
