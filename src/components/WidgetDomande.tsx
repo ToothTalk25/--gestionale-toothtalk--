@@ -171,7 +171,7 @@ export default function WidgetDomande() {
 
       {aperto && (
         <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-[0_20px_60px_-12px_rgba(23,40,55,.35)]">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:pt-3">
             <div>
               <p className="text-sm font-semibold">Domande</p>
               <p className="text-xs text-slate-400">Processo editoriale o problemi tecnici</p>
@@ -198,7 +198,10 @@ export default function WidgetDomande() {
             ))}
           </div>
 
-          <form onSubmit={invia} className="flex items-end gap-2 border-t border-slate-100 p-3">
+          <form
+            onSubmit={invia}
+            className="flex items-end gap-2 border-t border-slate-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3"
+          >
             <textarea
               value={testo}
               onChange={(e) => setTesto(e.target.value)}

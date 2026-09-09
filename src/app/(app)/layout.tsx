@@ -150,7 +150,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <BannerConsenso />
         <ControlloRicordami />
-        <WidgetDomande />
+        {/* Solo per i collaboratori: l'admin ha già "Domande dei collaboratori" nel Registro. */}
+        {!isAdmin && <WidgetDomande />}
       </div>
     </PoloAttivoProvider>
   );
