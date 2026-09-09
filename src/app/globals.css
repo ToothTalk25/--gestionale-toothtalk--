@@ -85,10 +85,16 @@ label:has(input[type="checkbox"], input[type="radio"]):active {
   filter: brightness(0.92);
 }
 
-/* L'header sticky in standalone deve stare sotto la notch, non dentro. */
+/* L'header sticky in standalone deve stare sotto la notch, non dentro.
+   Stesso discorso in fondo: il footer ha già un proprio meccanismo per la
+   safe-area (margine negativo + padding interno, vedi il commento nel
+   layout) — se anche il body riserva la sua fetta in fondo, in standalone
+   le due si sommano in modo imperfetto e il testo del footer finisce
+   leggermente sotto la barra home. Tolta dal body, resta solo al footer. */
 @media (display-mode: standalone) {
   body {
     padding-top: 0;
+    padding-bottom: 0;
   }
   header.sticky {
     padding-top: env(safe-area-inset-top);
