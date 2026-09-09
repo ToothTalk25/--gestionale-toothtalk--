@@ -20,6 +20,10 @@ const PUBBLICHE = [
   // token via email. Senza questa riga il proxy lo rimandava al login,
   // rendendo l'intero flusso di firma digitale irraggiungibile.
   "/carica-liberatoria",
+  // Pagina di benvenuto raggiunta dal link di onboarding inviato via email
+  // (sezione admin "Invia link di accesso"): chi la apre non ha ancora un
+  // account, quindi non può avere una sessione.
+  "/benvenuto",
   // File di verifica proprietà dominio (Google Search Console): statico,
   // nessun dato sensibile, deve restare raggiungibile senza sessione.
   "/google97604b8436f2db92.html",
