@@ -1,24 +1,44 @@
 import "server-only";
+import { createSign } from "node:crypto";
 
 /**
- * Legge il contenuto testuale di un Google Doc pubblico/condiviso
- * usando l'OAuth refresh token dell'account ToothTalk.
+ * Legge/scrive su Drive usando un service account Google dedicato (nessuna
+ * identità umana coinvolta): il token non scade mai e non richiede consenso
+ * OAuth periodico. Le cartelle/documenti toccati devono essere condivisi
+ * manualmente (una tantum) con l'email del service account.
  */
 
+let cache: { token: string; scadenza: number } | null = null;
+
 async function tokenGoogle(): Promise<string> {
-  const id = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const secret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-  const refresh = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
-  if (!id || !secret || !refresh) throw new Error("Credenziali OAuth Google assenti.");
+  if (cache && cache.scadenza > Date.now()) return cache.token;
+
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!raw) throw new Error("Credenziali service account Google assenti.");
+  const key = JSON.parse(raw) as { client_email: string; private_key: string };
+
+  const ora = Math.floor(Date.now() / 1000);
+  const b64url = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+  const unsigned = `${b64url({ alg: "RS256", typ: "JWT" })}.${b64url({
+    iss: key.client_email,
+    scope: "https://www.googleapis.com/auth/drive",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: ora,
+    exp: ora + 3600,
+  })}`;
+  const firma = createSign("RSA-SHA256").update(unsigned).sign(key.private_key, "base64url");
+  const jwt = `${unsigned}.${firma}`;
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: id, client_secret: secret, refresh_token: refresh, grant_type: "refresh_token" }),
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
   });
-  if (!res.ok) throw new Error(`Token OAuth: HTTP ${res.status}`);
-  const d = (await res.json()) as { access_token?: string };
-  if (!d.access_token) throw new Error("Token OAuth: access_token mancante");
+  if (!res.ok) throw new Error(`Token service account: HTTP ${res.status}`);
+  const d = (await res.json()) as { access_token?: string; expires_in?: number };
+  if (!d.access_token) throw new Error("Token service account: access_token mancante");
+
+  cache = { token: d.access_token, scadenza: Date.now() + (d.expires_in ?? 3600) * 1000 - 60_000 };
   return d.access_token;
 }
 

@@ -11,43 +11,11 @@
 // Segreti (Edge Function secrets, non nel codice):
 //   - SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  → auto-iniettati da Supabase
 //   - EDGE_FUNCTION_DRIVE_KEY                  → la stessa chiave del vault
-//   - GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET,
-//     GOOGLE_OAUTH_REFRESH_TOKEN               → OAuth del Gmail ToothTalk
+//   - GOOGLE_SERVICE_ACCOUNT_KEY                → chiave JSON del service account
 //   - GOOGLE_DRIVE_ROOT_FOLDER                 → id della cartella condivisa
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-
-// ------------------------------------------------------------------ utils
-
-/** Token Google via OAuth refresh token: i file contano sulla quota del Gmail vero di ToothTalk. */
-async function tokenGoogle(): Promise<string> {
-  const clientId = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID");
-  const clientSecret = Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
-  const refreshToken = Deno.env.get("GOOGLE_OAUTH_REFRESH_TOKEN");
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Credenziali OAuth Google assenti");
-  }
-
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Token Google: HTTP ${res.status} ${await res.text()}`);
-  }
-  const dati = await res.json();
-  if (!dati.access_token) {
-    throw new Error("Token Google: risposta senza access_token");
-  }
-  return dati.access_token;
-}
-
+import { tokenGoogle } from "../_shared/google-service-account.ts";
 
 // ---------------------------------------------------------------- Drive API
 

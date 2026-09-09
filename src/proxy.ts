@@ -113,6 +113,6 @@ export const config = {
   // il browser chiede manifest/sw per la PWA, e le immagini non vanno
   // intercettate dal redirect di autenticazione.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
