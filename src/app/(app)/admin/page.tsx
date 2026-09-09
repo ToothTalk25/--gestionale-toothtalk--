@@ -5,6 +5,9 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
 import InviaLinkOnboarding from "@/components/InviaLinkOnboarding";
+import AttivaNotifichePush from "@/components/AttivaNotifichePush";
+import DomandeSupportoAdmin from "@/components/DomandeSupportoAdmin";
+import type { RigaDomandaSupporto } from "@/app/actions-supporto";
 import FotoProfilo from "@/components/FotoProfilo";
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
 import TerminaCollaborazione from "@/components/TerminaCollaborazione";
@@ -69,6 +72,7 @@ export default async function AdminPage() {
     { data: richiesteElimGrezzo },
     { data: candidatiGrezzo },
     { data: richiesteRicarDich },
+    { data: domande },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -228,6 +232,15 @@ export default async function AdminPage() {
       .select("id, user_id, pacchetto_id, ruolo, motivo, stato, creato_at, risolta_da, risolta_at")
       .order("creato_at", { ascending: false })
       .returns<RigaRicaricamentoDichiarazione[]>(),
+    // Domande dei collaboratori (sezione "Domande" lato utente): processo
+    // editoriale o malfunzionamenti, con eventuale bozza IA per le tecniche.
+    supabase
+      .from("domande_supporto")
+      .select(
+        "id, user_id, domanda, creato_at, categoria_ia, bozza_risposta_ia, risposta, risposto_da, risposto_at",
+      )
+      .order("creato_at", { ascending: false })
+      .returns<RigaDomandaSupporto[]>(),
   ]);
 
   const nomi = Object.fromEntries(
@@ -273,6 +286,7 @@ export default async function AdminPage() {
   const richiesteRegistrazioneAperte = (richieste ?? []).length;
   const richiesteRimozioneAperte = (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length;
   const notificheArt82Pendenti = (notificheArt82 ?? []).filter((n) => !n.notificata_at).length;
+  const domandePendenti = (domande ?? []).filter((d) => !d.risposta).length;
 
   return (
     <div className="space-y-8">
@@ -284,6 +298,8 @@ export default async function AdminPage() {
           pagina.
         </p>
       </header>
+
+      <AttivaNotifichePush />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatAdmin etichetta="Collaboratori attivi" valore={collaboratoriAttivi} icona="collaboratori" />
@@ -305,6 +321,12 @@ export default async function AdminPage() {
           icona="notifiche"
           allerta={notificheArt82Pendenti > 0}
         />
+        <StatAdmin
+          etichetta="Domande in attesa"
+          valore={domandePendenti}
+          icona="notifiche"
+          allerta={domandePendenti > 0}
+        />
       </section>
 
       <NavigazioneAdmin
@@ -325,6 +347,15 @@ export default async function AdminPage() {
               cosa: "mandi a un indirizzo email il link del gestionale, con le istruzioni per installarlo come app su iPhone, Android, Mac e Windows.",
             },
             contenuto: <InviaLinkOnboarding />,
+          },
+          {
+            id: "domande",
+            etichetta: "Domande dei collaboratori",
+            promemoria: {
+              cosa: "rispondi alle domande sul processo editoriale o su malfunzionamenti. Per le domande tecniche l'IA prepara una bozza — rivedila sempre prima di inviarla, non è mai inviata da sola.",
+            },
+            badge: domandePendenti || undefined,
+            contenuto: <DomandeSupportoAdmin domande={domande ?? []} nomi={nomi} />,
           },
           {
             id: "confronto",

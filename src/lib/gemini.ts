@@ -130,3 +130,69 @@ export async function verificaAccordoFirmato(opts: {
     };
   }
 }
+
+export type EsitoDomandaSupporto = {
+  categoria: "tecnica" | "altro";
+  /** Bozza di risposta, solo se categoria === "tecnica" — MAI inviata da sola, il Coordinatore la rivede sempre prima. */
+  bozza: string | null;
+};
+
+const CONTESTO_GESTIONALE = [
+  "Il Gestionale ToothTalk è lo strumento interno del progetto di divulgazione",
+  "odontoiatrica ToothTalk (canale YouTube), usato dai collaboratori nei vari",
+  "poli universitari per lavorare ai video. Funzioni principali:",
+  "- Registrazione con codice di invito del polo, poi attesa di approvazione del Coordinatore.",
+  "- Firma dell'Accordo Editoriale (cessione diritti) come condizione per accedere ai progetti.",
+  "- Ogni progetto/task ha materiali da caricare: script, copertina, video, eventuale liberatoria",
+  "  per persone esterne che compaiono nel video.",
+  "- Il pacchetto va 'sigillato' quando completo: dopo il sigillo diventa immutabile.",
+  "- Se richiesta una liberatoria, la persona esterna firma con un codice OTP ricevuto via email.",
+  "- L'app è installabile come PWA (icona sulla schermata Home) su iPhone/Android/Mac/Windows.",
+  "- Requisiti tecnici comuni: serve una connessione internet stabile per l'upload dei video",
+  "  (file grandi); il caricamento avviene dal browser, Safari su iPhone o Chrome altrove.",
+].join("\n");
+
+/**
+ * Classifica una domanda di un collaboratore (sezione "Domande") e, se è di
+ * tipo tecnico (uso dell'app, malfunzionamento, come si fa X), prepara una
+ * bozza di risposta. Per tutto il resto (processo editoriale, decisioni,
+ * casi personali) restituisce categoria "altro" e nessuna bozza: risponde
+ * sempre il Coordinatore. Mai bloccante: in caso di errore o risposta non
+ * interpretabile, ricade su "altro" — meglio lasciare che risponda una
+ * persona piuttosto che rischiare una bozza IA sbagliata o fuorviante.
+ */
+export async function classificaDomandaSupporto(domanda: string): Promise<EsitoDomandaSupporto> {
+  const prompt = [
+    "Sei l'assistente di supporto del Gestionale ToothTalk. Contesto:",
+    CONTESTO_GESTIONALE,
+    "",
+    "Un collaboratore ha scritto questa domanda:",
+    `"""${domanda}"""`,
+    "",
+    "Classificala:",
+    '- "tecnica": riguarda l\'uso del gestionale, un malfunzionamento, un errore, o "come si fa X" —',
+    "  qualcosa che puoi spiegare con certezza dal contesto sopra, senza inventare dettagli che non conosci.",
+    '- "altro": riguarda il processo editoriale, decisioni, valutazioni, casi personali, o qualsiasi',
+    "  cosa richieda un giudizio umano o informazioni che non hai (es. lo stato specifico del suo account,",
+    "  scadenze, valutazioni sul suo lavoro).",
+    "Nel dubbio, classifica come \"altro\": è sempre meglio far rispondere una persona che rischiare",
+    "una bozza sbagliata o inventata.",
+    "",
+    "Rispondi SOLO con un JSON senza testo intorno, con questa forma:",
+    '{"categoria":"tecnica|altro","bozza":"risposta breve e utile in italiano, o null se categoria è altro"}',
+  ].join("\n");
+
+  try {
+    const risposta = await genera(prompt, []);
+    const jsonMatch = risposta.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { categoria: "altro", bozza: null };
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<EsitoDomandaSupporto>;
+    if (parsed.categoria !== "tecnica") return { categoria: "altro", bozza: null };
+    return {
+      categoria: "tecnica",
+      bozza: typeof parsed.bozza === "string" && parsed.bozza.trim() ? parsed.bozza.trim() : null,
+    };
+  } catch {
+    return { categoria: "altro", bozza: null };
+  }
+}
