@@ -133,7 +133,14 @@ export async function verificaAccordoFirmato(opts: {
 
 export type EsitoDomandaSupporto = {
   categoria: "tecnica" | "altro";
-  /** Bozza di risposta, solo se categoria === "tecnica" — MAI inviata da sola, il Coordinatore la rivede sempre prima. */
+  /**
+   * Risposta automatica, solo se categoria === "tecnica" — viene mostrata SUBITO
+   * al collaboratore nel widget chat, senza revisione del Coordinatore prima
+   * dell'invio (decisione esplicita: la classificazione stessa è il controllo).
+   * Per questo il prompt sotto è deliberatamente restrittivo su cosa conta
+   * "tecnica": solo meccanica generica dell'app, mai nulla che riguardi lo
+   * stato specifico di una persona.
+   */
   bozza: string | null;
 };
 
@@ -153,30 +160,46 @@ const CONTESTO_GESTIONALE = [
 ].join("\n");
 
 /**
- * Classifica una domanda di un collaboratore (sezione "Domande") e, se è di
- * tipo tecnico (uso dell'app, malfunzionamento, come si fa X), prepara una
- * bozza di risposta. Per tutto il resto (processo editoriale, decisioni,
- * casi personali) restituisce categoria "altro" e nessuna bozza: risponde
- * sempre il Coordinatore. Mai bloccante: in caso di errore o risposta non
- * interpretabile, ricade su "altro" — meglio lasciare che risponda una
- * persona piuttosto che rischiare una bozza IA sbagliata o fuorviante.
+ * Classifica una domanda di un collaboratore (widget chat) e, se è di tipo
+ * tecnico in senso stretto, prepara una risposta che viene mandata SUBITO
+ * al collaboratore, senza revisione umana — per questo la definizione di
+ * "tecnica" nel prompt è volutamente stretta: solo meccanica generica
+ * dell'app (come si fa X, dov'è Y), mai nulla che presupponga di sapere
+ * qualcosa sullo stato specifico di questa persona (il Coordinatore vede
+ * comunque tutte le domande, incluse quelle risposte in automatico, e il
+ * collaboratore ha sempre un tasto per chiedere lui/lei direttamente).
+ * Mai bloccante: in caso di errore o risposta non interpretabile, ricade
+ * su "altro" — meglio lasciare che risponda una persona piuttosto che
+ * rischiare una risposta sbagliata o inventata mandata da sola.
  */
 export async function classificaDomandaSupporto(domanda: string): Promise<EsitoDomandaSupporto> {
   const prompt = [
-    "Sei l'assistente di supporto del Gestionale ToothTalk. Contesto:",
+    "Sei l'assistente automatico del Gestionale ToothTalk, dentro un widget chat.",
+    "Se classifichi una domanda come tecnica, la tua risposta viene mandata SUBITO",
+    "al collaboratore, senza che nessuno la controlli prima. Devi quindi essere",
+    "molto prudente: nel dubbio classifica sempre come \"altro\".",
+    "",
+    "Contesto (tutto ciò che sai, non inventare nulla oltre questo):",
     CONTESTO_GESTIONALE,
     "",
     "Un collaboratore ha scritto questa domanda:",
     `"""${domanda}"""`,
     "",
-    "Classificala:",
-    '- "tecnica": riguarda l\'uso del gestionale, un malfunzionamento, un errore, o "come si fa X" —',
-    "  qualcosa che puoi spiegare con certezza dal contesto sopra, senza inventare dettagli che non conosci.",
-    '- "altro": riguarda il processo editoriale, decisioni, valutazioni, casi personali, o qualsiasi',
-    "  cosa richieda un giudizio umano o informazioni che non hai (es. lo stato specifico del suo account,",
-    "  scadenze, valutazioni sul suo lavoro).",
-    "Nel dubbio, classifica come \"altro\": è sempre meglio far rispondere una persona che rischiare",
-    "una bozza sbagliata o inventata.",
+    "Classificala \"tecnica\" SOLO se riguarda la meccanica generica dell'app — come si fa",
+    "un'azione, dove si trova qualcosa, come installare l'app, un errore tecnico generico",
+    "— e puoi rispondere con certezza usando SOLO il contesto sopra.",
+    "",
+    "Classificala SEMPRE \"altro\" (nessuna eccezione) se la domanda:",
+    "- riguarda lo stato specifico di QUESTA persona (se è stata approvata, a che punto è",
+    "  il suo accordo, le sue scadenze, se un suo materiale va bene) — non hai questi dati,",
+    "  quindi qualunque risposta sarebbe inventata;",
+    "- chiede una valutazione, un'eccezione, un permesso, o un giudizio sul suo lavoro;",
+    "- riguarda il processo editoriale, decisioni del Coordinatore, o questioni personali;",
+    "- ha qualsiasi implicazione legale, di scadenza, di consenso GDPR o economica;",
+    "- non è chiaramente riconducibile a un punto preciso del contesto sopra.",
+    "",
+    "La bozza, quando la scrivi, deve restare generica e istruttiva (spiegare un procedimento),",
+    "mai affermare fatti su questo specifico utente o sul suo account.",
     "",
     "Rispondi SOLO con un JSON senza testo intorno, con questa forma:",
     '{"categoria":"tecnica|altro","bozza":"risposta breve e utile in italiano, o null se categoria è altro"}',

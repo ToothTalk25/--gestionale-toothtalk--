@@ -232,12 +232,13 @@ export default async function AdminPage() {
       .select("id, user_id, pacchetto_id, ruolo, motivo, stato, creato_at, risolta_da, risolta_at")
       .order("creato_at", { ascending: false })
       .returns<RigaRicaricamentoDichiarazione[]>(),
-    // Domande dei collaboratori (sezione "Domande" lato utente): processo
-    // editoriale o malfunzionamenti, con eventuale bozza IA per le tecniche.
+    // Domande dei collaboratori (widget chat lato utente): processo
+    // editoriale o malfunzionamenti, con eventuale risposta IA automatica
+    // per le tecniche.
     supabase
       .from("domande_supporto")
       .select(
-        "id, user_id, domanda, creato_at, categoria_ia, bozza_risposta_ia, risposta, risposto_da, risposto_at",
+        "id, user_id, domanda, creato_at, categoria_ia, bozza_risposta_ia, richiede_coordinatore, risposta, risposto_da, risposto_at",
       )
       .order("creato_at", { ascending: false })
       .returns<RigaDomandaSupporto[]>(),
@@ -286,7 +287,9 @@ export default async function AdminPage() {
   const richiesteRegistrazioneAperte = (richieste ?? []).length;
   const richiesteRimozioneAperte = (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length;
   const notificheArt82Pendenti = (notificheArt82 ?? []).filter((n) => !n.notificata_at).length;
-  const domandePendenti = (domande ?? []).filter((d) => !d.risposta).length;
+  const domandePendenti = (domande ?? []).filter(
+    (d) => !d.risposta && (d.categoria_ia !== "tecnica" || d.richiede_coordinatore),
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -352,7 +355,7 @@ export default async function AdminPage() {
             id: "domande",
             etichetta: "Domande dei collaboratori",
             promemoria: {
-              cosa: "rispondi alle domande sul processo editoriale o su malfunzionamenti. Per le domande tecniche l'IA prepara una bozza — rivedila sempre prima di inviarla, non è mai inviata da sola.",
+              cosa: "rispondi alle domande sul processo editoriale o su malfunzionamenti. Le domande tecniche ricevono subito una risposta automatica dell'IA (le vedi comunque qui, sotto \"Risposte automatiche\") — rispondi tu solo a quelle rimaste in attesa o dove il collaboratore ha chiesto esplicitamente di parlare con te.",
             },
             badge: domandePendenti || undefined,
             contenuto: <DomandeSupportoAdmin domande={domande ?? []} nomi={nomi} />,

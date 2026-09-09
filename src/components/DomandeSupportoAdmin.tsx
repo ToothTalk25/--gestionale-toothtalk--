@@ -6,10 +6,13 @@ import { rispondiDomanda } from "@/app/actions-supporto";
 import type { RigaDomandaSupporto } from "@/app/actions-supporto";
 
 /**
- * Coda delle domande dei collaboratori (sezione "Domande" lato utente).
- * Per le domande classificate "tecnica" dall'IA, il campo risposta parte
- * già precompilato con la bozza — il Coordinatore la rivede/modifica prima
- * di inviarla: non viene mai spedita automaticamente.
+ * Coda delle domande dei collaboratori (widget chat lato utente).
+ * Le domande "tecniche" ricevono subito una risposta automatica dell'IA
+ * (nessuna revisione prima dell'invio, scelta esplicita) — qui restano
+ * comunque visibili per trasparenza. "Da gestire" sono quelle senza
+ * risposta del Coordinatore E (l'IA non le ha gestite, oppure il
+ * collaboratore ha chiesto esplicitamente di parlare con lui anche dopo
+ * una risposta automatica).
  */
 export default function DomandeSupportoAdmin({
   domande,
@@ -18,32 +21,61 @@ export default function DomandeSupportoAdmin({
   domande: RigaDomandaSupporto[];
   nomi: Record<string, string>;
 }) {
-  const pendenti = domande.filter((d) => !d.risposta);
-  const risposte = domande.filter((d) => !!d.risposta);
+  const daGestire = domande.filter((d) => !d.risposta && (d.categoria_ia !== "tecnica" || d.richiede_coordinatore));
+  const risposteAutomatiche = domande.filter(
+    (d) => !d.risposta && d.categoria_ia === "tecnica" && !d.richiede_coordinatore,
+  );
+  const risposteCoordinatore = domande.filter((d) => !!d.risposta);
 
   if (domande.length === 0) return <p className="text-sm text-slate-500">Nessuna domanda finora.</p>;
 
   return (
     <div className="space-y-6">
-      {pendenti.length > 0 ? (
+      {daGestire.length > 0 ? (
         <div className="space-y-3">
-          {pendenti.map((d) => (
+          {daGestire.map((d) => (
             <RigaPendente key={d.id} domanda={d} nome={nomi[d.user_id] ?? d.user_id.slice(0, 8)} />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Nessuna domanda in attesa.</p>
+        <p className="text-sm text-slate-500">Nessuna domanda da gestire.</p>
       )}
 
-      {risposte.length > 0 && (
+      {risposteAutomatiche.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-slate-500">Già risposte</p>
+          <p className="text-xs font-medium text-slate-500">
+            Risposte automatiche dell&apos;IA (nessuna richiesta di intervento)
+          </p>
           <ul className="mt-2 space-y-2">
-            {risposte.map((d) => (
+            {risposteAutomatiche.map((d) => (
               <li key={d.id} className="tt-card p-3 text-xs">
                 <p className="font-medium text-slate-700">{nomi[d.user_id] ?? d.user_id.slice(0, 8)}</p>
                 <p className="mt-1 text-slate-600">{d.domanda}</p>
-                <p className="mt-2 rounded bg-slate-50 p-2 text-slate-600">{d.risposta}</p>
+                <p className="mt-2 rounded bg-tt-blue-50 p-2 text-slate-600">{d.bozza_risposta_ia}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {risposteCoordinatore.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-slate-500">Già risposte da te</p>
+          <ul className="mt-2 space-y-2">
+            {risposteCoordinatore.map((d) => (
+              <li key={d.id} className="tt-card p-3 text-xs">
+                <p className="font-medium text-slate-700">{nomi[d.user_id] ?? d.user_id.slice(0, 8)}</p>
+                <p className="mt-1 text-slate-600">{d.domanda}</p>
+                {d.bozza_risposta_ia && (
+                  <p className="mt-2 rounded bg-tt-blue-50 p-2 text-slate-500">
+                    <span className="font-medium">IA: </span>
+                    {d.bozza_risposta_ia}
+                  </p>
+                )}
+                <p className="mt-2 rounded bg-slate-50 p-2 text-slate-600">
+                  <span className="font-medium">Tu: </span>
+                  {d.risposta}
+                </p>
                 <p className="mt-1 text-slate-400">
                   {d.risposto_at ? new Date(d.risposto_at).toLocaleString("it-IT") : ""}
                 </p>
@@ -58,7 +90,7 @@ export default function DomandeSupportoAdmin({
 
 function RigaPendente({ domanda, nome }: { domanda: RigaDomandaSupporto; nome: string }) {
   const router = useRouter();
-  const [testo, setTesto] = useState(domanda.bozza_risposta_ia ?? "");
+  const [testo, setTesto] = useState("");
   const [pending, start] = useTransition();
   const [errore, setErrore] = useState<string | null>(null);
 
@@ -82,9 +114,15 @@ function RigaPendente({ domanda, nome }: { domanda: RigaDomandaSupporto; nome: s
       </div>
       <p className="mt-1 text-sm text-slate-700">{domanda.domanda}</p>
 
+      {domanda.richiede_coordinatore && (
+        <p className="mt-1 text-xs font-medium text-amber-700">
+          Il collaboratore ha chiesto esplicitamente di parlare con te.
+        </p>
+      )}
       {domanda.bozza_risposta_ia && (
-        <p className="mt-2 text-xs font-medium text-tt-blue-600">
-          Bozza IA precompilata sotto — rivedila prima di inviare.
+        <p className="mt-2 rounded bg-tt-blue-50 p-2 text-xs text-slate-600">
+          <span className="font-medium">L&apos;IA ha già risposto: </span>
+          {domanda.bozza_risposta_ia}
         </p>
       )}
 

@@ -21,12 +21,16 @@ export type RigaDomandaSupporto = {
   creato_at: string;
   categoria_ia: "tecnica" | "altro" | null;
   bozza_risposta_ia: string | null;
+  richiede_coordinatore: boolean;
   risposta: string | null;
   risposto_da: string | null;
   risposto_at: string | null;
 };
 
-/** Scrive una nuova domanda (qualsiasi collaboratore). Avvia in background classificazione IA e notifica push al Coordinatore. */
+const COLONNE_DOMANDA =
+  "id, user_id, domanda, creato_at, categoria_ia, bozza_risposta_ia, richiede_coordinatore, risposta, risposto_da, risposto_at";
+
+/** Scrive una nuova domanda (qualsiasi collaboratore). Avvia in background classificazione IA e, se serve, notifica push al Coordinatore. */
 export async function inviaDomanda(testoGrezzo: string): Promise<Esito> {
   const ctx = await requireSession();
   const domanda = testoGrezzo.trim();
@@ -52,7 +56,6 @@ export async function inviaDomanda(testoGrezzo: string): Promise<Esito> {
     });
   });
 
-  revalidatePath("/domande");
   return { ok: true };
 }
 
@@ -69,11 +72,48 @@ async function arricchisciEDinotifica(id: string, domanda: string, nomeMittente:
     })
     .eq("id", id);
 
+  // Se l'IA ha già risposto (categoria "tecnica"), il Coordinatore non deve
+  // essere interrotto subito: la vede comunque nella sua sezione, ma senza
+  // notifica push — quella è riservata a ciò che ha davvero bisogno di lui.
+  if (esito.categoria === "tecnica") return;
+
   await inviaPushAdmin({
     title: "Nuova domanda — ToothTalk",
     body: `${nomeMittente}: ${domanda.slice(0, 120)}${domanda.length > 120 ? "…" : ""}`,
     url: "/admin",
   });
+}
+
+/** Le proprie domande (widget chat), più recenti per ultime. */
+export async function elencaMieDomande(): Promise<RigaDomandaSupporto[]> {
+  const ctx = await requireSession();
+  const supabase = await supabaseServer();
+  const { data } = await supabase
+    .from("domande_supporto")
+    .select(COLONNE_DOMANDA)
+    .eq("user_id", ctx.profile.id)
+    .order("creato_at", { ascending: true })
+    .returns<RigaDomandaSupporto[]>();
+  return data ?? [];
+}
+
+/** Il collaboratore chiede esplicitamente di parlare col Coordinatore (anche dopo una risposta IA). */
+export async function richiediCoordinatore(id: string): Promise<Esito> {
+  const ctx = await requireSession();
+  const supabase = await supabaseServer();
+  const { error } = await supabase.rpc("richiedi_coordinatore_domanda", { p_id: id });
+  if (error) return errore(error.message);
+
+  after(async () => {
+    await inviaPushAdmin({
+      title: "Un collaboratore chiede di te — ToothTalk",
+      body: `${ctx.profile.full_name ?? ctx.profile.email} vuole parlare con te nella sezione Domande.`,
+      url: "/admin",
+    }).catch((e) => console.error("Notifica richiediCoordinatore fallita:", e));
+  });
+
+  revalidatePath("/admin");
+  return { ok: true };
 }
 
 /** Risponde a una domanda (solo Coordinatore). testoGrezzo può essere la bozza IA rivista o una risposta scritta da zero. */
@@ -92,7 +132,6 @@ export async function rispondiDomanda(id: string, testoGrezzo: string): Promise<
   if (error) return errore(error.message);
 
   revalidatePath("/admin");
-  revalidatePath("/domande");
   return { ok: true };
 }
 

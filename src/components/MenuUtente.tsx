@@ -96,14 +96,6 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           >
             Progetti
           </Link>
-          <Link
-            href="/domande"
-            onClick={() => setAperto(false)}
-            role="menuitem"
-            className={pathname === "/domande" ? vociAttive : vociInattive}
-          >
-            Domande
-          </Link>
           {isAdmin && (
             <>
               <Link
