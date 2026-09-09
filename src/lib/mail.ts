@@ -25,6 +25,8 @@ export async function inviaEmailGmail(opts: {
   destinatario: string;
   oggetto: string;
   testo: string;
+  /** Versione HTML opzionale (es. con un bottone); testo resta il fallback per i client che non la mostrano. */
+  html?: string;
 }): Promise<boolean> {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
     console.warn("MAIL_USER/MAIL_PASS non configurate: email saltata.");
@@ -52,6 +54,7 @@ export async function inviaEmailGmail(opts: {
       to: destinatario,
       subject: oggetto,
       text: opts.testo,
+      html: opts.html,
     });
     return true;
   } catch (e) {
