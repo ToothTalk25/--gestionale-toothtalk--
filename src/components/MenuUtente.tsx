@@ -96,6 +96,14 @@ export default function MenuUtente({ profile, isAdmin }: { profile: Profile; isA
           >
             Progetti
           </Link>
+          <Link
+            href="/risorse"
+            onClick={() => setAperto(false)}
+            role="menuitem"
+            className={pathname === "/risorse" ? vociAttive : vociInattive}
+          >
+            Risorse
+          </Link>
           {isAdmin && (
             <>
               <Link
