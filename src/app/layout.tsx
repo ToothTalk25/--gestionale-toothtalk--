@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
 };
 
 export const viewport: Viewport = {
