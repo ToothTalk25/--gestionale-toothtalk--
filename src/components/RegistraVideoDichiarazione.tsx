@@ -57,6 +57,7 @@ export default function RegistraVideoDichiarazione({
   const [fase, setFase] = useState<Fase>("idle");
   const [errore, setErrore] = useState<string | null>(null);
   const [secondi, setSecondi] = useState(0);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -97,6 +98,10 @@ export default function RegistraVideoDichiarazione({
   function fermaStream() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    // Scollega subito l'anteprima live dallo stream fermato: senza questo,
+    // l'elemento continuerebbe a puntare a un MediaStream con i track già
+    // stoppati (schermo nero) finché non viene smontato dal DOM.
+    if (previewRef.current) previewRef.current.srcObject = null;
   }
 
   function revocaBlob() {
@@ -104,6 +109,70 @@ export default function RegistraVideoDichiarazione({
     blobUrlRef.current = null;
     blobRef.current = null;
     chunksRef.current = [];
+  }
+
+  // Richiede la fotocamera indicata e la aggancia all'anteprima live.
+  // Separata da avviaRecorder: serve anche per il solo cambio fotocamera,
+  // senza toccare una registrazione già in corso quando non necessario.
+  async function avviaStream(mode: "user" | "environment") {
+    fermaStream();
+    // facingMode come preferenza "ideale", non "exact": su un notebook con
+    // una sola fotocamera (o senza posteriore) la richiesta non fallisce,
+    // torna semplicemente l'unica disponibile.
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: mode },
+      audio: true,
+    });
+    streamRef.current = stream;
+    if (previewRef.current) {
+      previewRef.current.srcObject = stream;
+      void previewRef.current.play().catch(() => {});
+    }
+    return stream;
+  }
+
+  function avviaRecorder(stream: MediaStream) {
+    const supportato = ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find((m) =>
+      window.MediaRecorder.isTypeSupported(m),
+    );
+    const recorder = new window.MediaRecorder(stream, supportato ? { mimeType: supportato } : undefined);
+    recorderRef.current = recorder;
+    chunksRef.current = [];
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "video/webm" });
+      blobRef.current = blob;
+      fermaStream();
+      fermaTimer();
+      setSecondi(0);
+      setFase("revisione");
+      // L'anteprima va agganciata al <video> di revisione dopo il render.
+      // Il ramo "revisione" ha una key diversa da quello di registrazione
+      // (vedi JSX sotto): React smonta il vecchio nodo <video> invece di
+      // riusarlo, quindi qui non resta mai un .srcObject residuo che
+      // vincerebbe su .src facendo apparire lo schermo nero.
+      requestAnimationFrame(() => {
+        if (reviewRef.current && blobUrlRef.current === null) {
+          reviewRef.current.srcObject = null;
+          blobUrlRef.current = URL.createObjectURL(blob);
+          reviewRef.current.src = blobUrlRef.current;
+        }
+      });
+    };
+
+    recorder.start(1000);
+    setFase("registrazione");
+    setSecondi(0);
+    timerRef.current = window.setInterval(() => {
+      setSecondi((s) => {
+        const n = s + 1;
+        if (n >= DURATA_MAX_SECONDI) ferma();
+        return n;
+      });
+    }, 1000);
   }
 
   async function avvia() {
@@ -116,55 +185,47 @@ export default function RegistraVideoDichiarazione({
     }
     setFase("avvio");
     try {
-      // facingMode "user" (non "exact"): preferisce la fotocamera frontale,
-      // così chi si registra da solo si vede — su un notebook con una sola
-      // fotocamera il vincolo "ideale" non fa fallire la richiesta.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
-        audio: true,
-      });
-      streamRef.current = stream;
-      if (previewRef.current) {
-        previewRef.current.srcObject = stream;
-        void previewRef.current.play().catch(() => {});
+      const stream = await avviaStream(facingMode);
+      avviaRecorder(stream);
+    } catch (e) {
+      fermaStream();
+      setFase("idle");
+      setErrore(messaggioErroreCamera(e));
+    }
+  }
+
+  // Cambia fotocamera frontale/posteriore. MediaRecorder resta legato allo
+  // stream con cui è stato creato: non è possibile sostituire la sorgente
+  // video di una registrazione in corso, quindi se si sta registrando si
+  // riparte da zero con la nuova fotocamera (scartando quanto già ripreso,
+  // dopo un avviso all'utente).
+  async function cambiaFotocamera() {
+    const stavaRegistrando = fase === "registrazione";
+    const nuovoFacing = facingMode === "user" ? "environment" : "user";
+    setFacingMode(nuovoFacing);
+    setErrore(null);
+
+    if (stavaRegistrando) {
+      fermaTimer();
+      const r = recorderRef.current;
+      if (r && r.state !== "inactive") {
+        // Sganciati anche da ondataavailable: se il vecchio recorder consegna
+        // l'ultimo chunk in ritardo (dopo che avviaRecorder ha già creato il
+        // nuovo chunksRef), non deve finire mescolato nella nuova ripresa.
+        r.onstop = null;
+        r.ondataavailable = null;
+        try {
+          r.stop();
+        } catch {
+          /* noop */
+        }
       }
-
-      const supportato = ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find((m) =>
-        window.MediaRecorder.isTypeSupported(m),
-      );
-      const recorder = new window.MediaRecorder(stream, supportato ? { mimeType: supportato } : undefined);
-      recorderRef.current = recorder;
       chunksRef.current = [];
+    }
 
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "video/webm" });
-        blobRef.current = blob;
-        fermaStream();
-        fermaTimer();
-        setSecondi(0);
-        setFase("revisione");
-        // L'anteprima va agganciata al <video> di revisione dopo il render.
-        requestAnimationFrame(() => {
-          if (reviewRef.current && blobUrlRef.current === null) {
-            blobUrlRef.current = URL.createObjectURL(blob);
-            reviewRef.current.src = blobUrlRef.current;
-          }
-        });
-      };
-
-      recorder.start(1000);
-      setFase("registrazione");
-      setSecondi(0);
-      timerRef.current = window.setInterval(() => {
-        setSecondi((s) => {
-          const n = s + 1;
-          if (n >= DURATA_MAX_SECONDI) ferma();
-          return n;
-        });
-      }, 1000);
+    try {
+      const stream = await avviaStream(nuovoFacing);
+      if (stavaRegistrando) avviaRecorder(stream);
     } catch (e) {
       fermaStream();
       setFase("idle");
@@ -216,7 +277,11 @@ export default function RegistraVideoDichiarazione({
 
   if (fase === "avvio" || fase === "registrazione") {
     return (
-      <div className="mt-2 w-full max-w-xs">
+      // key distinta da quella del ramo "revisione" sotto: così React smonta
+      // e rimonta il nodo <video> invece di riusarlo tra le due fasi — senza
+      // questo, l'anteprima di revisione può restare agganciata allo stream
+      // della fotocamera (già fermato) invece che al video registrato.
+      <div key="camera-live" className="mt-2 w-full max-w-xs">
         <video
           ref={previewRef}
           autoPlay
@@ -235,6 +300,13 @@ export default function RegistraVideoDichiarazione({
           >
             Ferma e rivedi
           </button>
+          <button
+            onClick={cambiaFotocamera}
+            disabled={fase === "avvio"}
+            className="tt-btn border border-slate-300 px-4 py-2 text-sm disabled:opacity-50"
+          >
+            Cambia fotocamera
+          </button>
           <button onClick={annullaRegistrazione} className="tt-btn border border-slate-300 px-4 py-2 text-sm">
             Annulla
           </button>
@@ -245,7 +317,7 @@ export default function RegistraVideoDichiarazione({
 
   if (fase === "revisione") {
     return (
-      <div className="mt-2 w-full max-w-xs">
+      <div key="camera-revisione" className="mt-2 w-full max-w-xs">
         <video ref={reviewRef} controls playsInline className="h-40 w-full rounded-lg bg-slate-900 object-contain" />
         <p className="mt-1 text-center text-xs text-slate-500">
           Rivedi il video: è solo su questo dispositivo, non ancora caricato.
