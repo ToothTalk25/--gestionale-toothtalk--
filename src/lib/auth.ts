@@ -84,6 +84,43 @@ export async function requireAdmin(): Promise<SessionContext> {
 }
 
 /**
+ * Le cinque condizioni che sbloccano l'accesso ai progetti — stessa logica
+ * usata dal layout del gruppo (app) per decidere il redirect verso
+ * /profilo, estratta qui così anche il login (destinazioneIngresso sotto)
+ * la applica senza duplicarla.
+ */
+export function accordoCompleto(profile: Profile, isAdmin: boolean): boolean {
+  // Franchigia per chi era già approvato PRIMA che la controfirma
+  // esistesse: vedi il commento gemello nel layout del gruppo (app).
+  const controfirmaNonRichiestaPerApprovazionePregressa =
+    !!profile.accordo_approvato_admin_at && !profile.accordo_controfirmato_path;
+  return (
+    isAdmin ||
+    (!!profile.accordo_path &&
+      profile.accordo_letto_confermato &&
+      profile.accordo_verificato === "ok" &&
+      !!profile.accordo_approvato_admin_at &&
+      (!!profile.accordo_controfirma_confermata_at || controfirmaNonRichiestaPerApprovazionePregressa))
+  );
+}
+
+/**
+ * Dove deve atterrare un utente appena autenticato, applicando nello stesso
+ * ordine le regole di redirect del layout (app): usata dal login per andare
+ * dritti alla destinazione giusta invece di passare da /dashboard e farsi
+ * rimandare indietro dal layout — un redirect server-side innescato a metà
+ * di una transizione client (router.replace) mandava il router di Next.js
+ * 16 in un loop di richieste continue in produzione, riscontrato end-to-end
+ * con un account appena approvato ma senza accordo ancora caricato.
+ */
+export function destinazioneIngresso(ctx: SessionContext): string {
+  if (ctx.soloConfermaUscita) return "/uscita";
+  if (!accordoCompleto(ctx.profile, ctx.isAdmin)) return "/profilo";
+  if (!ctx.isAdmin && accordoScaduto(ctx.profile.accordo_scadenza)) return "/rinnovo";
+  return "/dashboard";
+}
+
+/**
  * L'Accordo (Art. 9.1) ha durata fissa di 6 mesi: la scadenza (accordo_scadenza,
  * una data) è "passata" quando è OGGI + 1 giorno — il giorno di scadenza
  * appartiene ancora al periodo, la sospensione parte il giorno dopo. Stessa

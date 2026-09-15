@@ -64,19 +64,24 @@ export default function LoginForm() {
       localStorage.setItem("tt_ricordami", "0");
     }
 
-    // Il parametro "next" viene usato solo se è un percorso INTERNO:
-    // altrimenti (es. next=https://maligno.com, //evil.com) si va sulla
-    // dashboard. È la difesa contro l'open redirect dopo il login.
+    // La destinazione arriva già calcolata dal server (stesse regole del
+    // layout del gruppo (app): accordo completo? uscita in sospeso?
+    // rinnovo scaduto?). Si naviga dritti lì invece di passare sempre da
+    // /dashboard e farsi rimandare indietro dal layout quando non è la
+    // meta giusta — un redirect server-side a metà di una transizione
+    // client (router.replace) mandava il router di Next.js 16 in un loop
+    // di richieste continue in produzione: pagina bianca con "Accesso…"
+    // bloccato per sempre, riscontrato end-to-end con un account di test.
     //
-    // Niente router.refresh() dopo questo replace: replace() naviga già
-    // verso dati freschi (nuova route = nuovo RSC payload). Chiamare
-    // refresh() subito dopo, sulla stessa transizione, mandava il router in
-    // un loop di richieste continue quando la destinazione fa a sua volta un
-    // redirect server-side — come per chi ha l'accordo non ancora completo
-    // (rimandato da /dashboard a /profilo): la pagina restava bianca con
-    // "Accesso…" bloccato per sempre, riscontrato con un account di test.
+    // Il parametro "next" (deep link a cui si tentava di accedere prima di
+    // essere rimandati al login) vale solo se è un percorso INTERNO — difesa
+    // contro l'open redirect — e solo se la destinazione calcolata è
+    // /dashboard: se è una qualunque altra pagina obbligata (/profilo,
+    // /rinnovo, /uscita), "next" non sarebbe comunque raggiungibile e
+    // andarci ricreerebbe lo stesso redirect a rischio di loop.
     const next = params.get("next");
-    router.replace(percorsoInternoValido(next) ? next! : "/dashboard");
+    const destinazione = esito.dati.destinazione;
+    router.replace(destinazione === "/dashboard" && percorsoInternoValido(next) ? next! : destinazione);
   }
 
   return (

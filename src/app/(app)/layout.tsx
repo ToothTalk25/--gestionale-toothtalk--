@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { requireSession, accordoScaduto } from "@/lib/auth";
+import { requireSession, accordoScaduto, accordoCompleto } from "@/lib/auth";
 import MenuUtente from "@/components/MenuUtente";
 import BannerConsenso from "@/components/BannerConsenso";
 import NavLink from "@/components/NavLink";
@@ -20,7 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   // --- Blocco accesso progetti finché l'accordo non è completo ---------
-  // Cinque condizioni, TUTTE necessarie per i Collaboratori:
+  // Cinque condizioni, TUTTE necessarie per i Collaboratori (vedi
+  // accordoCompleto in src/lib/auth.ts, condivisa col login per calcolare
+  // subito la destinazione giusta senza passare da qui):
   //   1. accordo caricato (accordo_path)
   //   2. spunta "ho letto e compreso" (accordo_letto_confermato)
   //   3. verifica IA = 'ok' (accordo_verificato)
@@ -30,27 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // restare SOLO su /profilo (dove carica/gestisce l'accordo): tutto il
   // resto viene rimandato lì. Il redirect esclude esplicitamente /profilo
   // per evitare un loop infinito (il layout gira anche per /profilo).
-  //
-  // Franchigia per chi era già approvato PRIMA che la controfirma (0118)
-  // esistesse: quella quinta condizione non può mai diventare vera per loro
-  // (nessuna controfirma è mai stata caricata: accordo_controfirmato_path è
-  // null), e non le fabbrichiamo — dichiarare confermato un documento
-  // firmato che fisicamente non esiste sarebbe scorretto. Restano quindi
-  // sbloccati com'erano prima di questa migrazione, finché il Titolare non
-  // decide di avviare per loro il percorso reale caricando una controfirma:
-  // da quel momento tornano bloccati come chiunque altro, in attesa della
-  // loro conferma.
-  const controfirmaNonRichiestaPerApprovazionePregressa =
-    !!profile.accordo_approvato_admin_at && !profile.accordo_controfirmato_path;
   const pathname = (await headers()).get("x-pathname") ?? "";
-  const accordoCompleto =
-    isAdmin ||
-    (!!profile.accordo_path &&
-      profile.accordo_letto_confermato &&
-      profile.accordo_verificato === "ok" &&
-      !!profile.accordo_approvato_admin_at &&
-      (!!profile.accordo_controfirma_confermata_at || controfirmaNonRichiestaPerApprovazionePregressa));
-  if (!accordoCompleto && pathname !== "/profilo") {
+  const accordoOk = accordoCompleto(profile, isAdmin);
+  if (!accordoOk && pathname !== "/profilo") {
     redirect("/profilo");
   }
 
@@ -80,7 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               viewport è aggressivo) — riscontrato end-to-end con un account
               di test appena approvato, mai arrivato a completare l'accordo.
             */}
-            <Link href={accordoCompleto ? "/dashboard" : "/profilo"} className="order-1 shrink-0">
+            <Link href={accordoOk ? "/dashboard" : "/profilo"} className="order-1 shrink-0">
               <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-6 w-auto" />
             </Link>
 
@@ -106,7 +90,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               spiegato sopra per il logo si sarebbe ripetuto una volta per
               ogni polo mostrato.
             */}
-            {accordoCompleto && (
+            {accordoOk && (
               <nav className="order-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-600 md:order-2 md:w-auto md:min-w-0 md:flex-1 md:flex-nowrap md:gap-3 md:overflow-x-auto md:whitespace-nowrap md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
                 {poli.map((p) => (
                   <NavLink key={p.id} href={`/polo/${p.id}`} activePrefix={`/polo/${p.id}`} poloId={p.id}>
