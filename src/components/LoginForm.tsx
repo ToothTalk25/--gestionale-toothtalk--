@@ -67,9 +67,16 @@ export default function LoginForm() {
     // Il parametro "next" viene usato solo se è un percorso INTERNO:
     // altrimenti (es. next=https://maligno.com, //evil.com) si va sulla
     // dashboard. È la difesa contro l'open redirect dopo il login.
+    //
+    // Niente router.refresh() dopo questo replace: replace() naviga già
+    // verso dati freschi (nuova route = nuovo RSC payload). Chiamare
+    // refresh() subito dopo, sulla stessa transizione, mandava il router in
+    // un loop di richieste continue quando la destinazione fa a sua volta un
+    // redirect server-side — come per chi ha l'accordo non ancora completo
+    // (rimandato da /dashboard a /profilo): la pagina restava bianca con
+    // "Accesso…" bloccato per sempre, riscontrato con un account di test.
     const next = params.get("next");
     router.replace(percorsoInternoValido(next) ? next! : "/dashboard");
-    router.refresh();
   }
 
   return (
