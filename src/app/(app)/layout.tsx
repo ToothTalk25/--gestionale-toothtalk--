@@ -71,7 +71,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-screen flex-col">
         <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:flex-nowrap md:gap-x-6 md:px-8">
-            <Link href="/dashboard" className="order-1 shrink-0">
+            {/*
+              Se l'accordo non è completo, ogni rotta di questo gruppo tranne
+              /profilo rimanda lì (vedi il redirect sopra): puntare comunque
+              il logo a /dashboard lascerebbe Next.js precaricare in
+              continuazione una pagina che rimbalza indietro, generando un
+              loop di richieste in produzione (dove il prefetch dei Link in
+              viewport è aggressivo) — riscontrato end-to-end con un account
+              di test appena approvato, mai arrivato a completare l'accordo.
+            */}
+            <Link href={accordoCompleto ? "/dashboard" : "/profilo"} className="order-1 shrink-0">
               <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-6 w-auto" />
             </Link>
 
@@ -89,14 +98,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               testo tagliato a bordo schermo dallo scroll orizzontale
               invisibile). Da tablet in su torna lo scorrimento orizzontale,
               c'è spazio per stare su una riga sola.
+
+              Nascosta finché l'accordo non è completo: ogni /polo/[id]
+              rimanda comunque a /profilo (redirect sopra), quindi non solo
+              sarebbero link morti — Next.js li precarica da soli perché
+              sempre in viewport, e lo stesso loop di prefetch-poi-redirect
+              spiegato sopra per il logo si sarebbe ripetuto una volta per
+              ogni polo mostrato.
             */}
-            <nav className="order-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-600 md:order-2 md:w-auto md:min-w-0 md:flex-1 md:flex-nowrap md:gap-3 md:overflow-x-auto md:whitespace-nowrap md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
-              {poli.map((p) => (
-                <NavLink key={p.id} href={`/polo/${p.id}`} activePrefix={`/polo/${p.id}`} poloId={p.id}>
-                  {p.nome}
-                </NavLink>
-              ))}
-            </nav>
+            {accordoCompleto && (
+              <nav className="order-3 flex w-full flex-wrap items-center gap-2 text-sm text-slate-600 md:order-2 md:w-auto md:min-w-0 md:flex-1 md:flex-nowrap md:gap-3 md:overflow-x-auto md:whitespace-nowrap md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
+                {poli.map((p) => (
+                  <NavLink key={p.id} href={`/polo/${p.id}`} activePrefix={`/polo/${p.id}`} poloId={p.id}>
+                    {p.nome}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
           </div>
         </header>
 
