@@ -610,7 +610,10 @@ export default function PacchettoVideo({
                       onClick={async () => {
                         const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_identita");
                         if (!esito.ok) window.alert(esito.errore);
-                        else router.refresh();
+                        else {
+                          window.alert("Errore segnalato: il Coordinatore libererà il campo per un nuovo caricamento.");
+                          router.refresh();
+                        }
                       }}
                       className="tt-btn mt-2 border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
                     >
@@ -685,7 +688,10 @@ export default function PacchettoVideo({
                       onClick={async () => {
                         const esito = await segnalaErroreDichiarazione(pacchetto.id, "dichiarazione_integrazione");
                         if (!esito.ok) window.alert(esito.errore);
-                        else router.refresh();
+                        else {
+                          window.alert("Errore segnalato: il Coordinatore libererà il campo per un nuovo caricamento.");
+                          router.refresh();
+                        }
                       }}
                       className="tt-btn mt-2 border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
                     >
