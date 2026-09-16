@@ -8,6 +8,7 @@ import NavLink from "@/components/NavLink";
 import { PoloAttivoProvider } from "@/components/PoloAttivoContext";
 import ControlloRicordami from "@/components/ControlloRicordami";
 import WidgetDomande from "@/components/WidgetDomande";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, poli, isAdmin, soloConfermaUscita } = await requireSession();
@@ -152,6 +153,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <BannerConsenso />
         <ControlloRicordami />
+        <PullToRefresh />
         {/* Solo per i collaboratori: l'admin ha già "Domande dei collaboratori" nel Registro. */}
         {!isAdmin && <WidgetDomande />}
       </div>
