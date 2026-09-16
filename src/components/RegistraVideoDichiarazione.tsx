@@ -133,13 +133,23 @@ export default function RegistraVideoDichiarazione({
 
   function avviaRecorder(stream: MediaStream) {
     // mp4 preferito quando disponibile: il Coordinatore rivede questi video
-    // su Mac (Safari/QuickTime), che non decodificano affatto WebM. Se il
-    // dispositivo di chi registra non sa produrre mp4, isTypeSupported
-    // restituisce false e si scende comunque sul webm come prima — nessuna
+    // su Mac (Safari/QuickTime), che non decodificano affatto WebM. Il primo
+    // tentativo chiede ESPLICITAMENTE h264+aac (avc1/mp4a): un "video/mp4"
+    // generico lascia al browser la scelta del codec, e Safari 18.4+ può
+    // scegliere di default HEVC o audio Opus dentro l'mp4 — entrambi non
+    // decodificati in modo affidabile da QuickTime/Safari sullo stesso Mac
+    // che dovrebbe poi rivederli (riscontrato con un video mp4 vero, non
+    // riproducibile). avc1/mp4a è la combinazione più compatibile che
+    // esista, supportata da Safari da anni. Se il dispositivo di chi
+    // registra non sa produrre nessuna variante mp4, isTypeSupported
+    // restituisce false e si scende sul webm come prima — nessuna
     // regressione per chi non lo supporta.
-    const supportato = ["video/mp4", "video/webm;codecs=vp8,opus", "video/webm"].find((m) =>
-      window.MediaRecorder.isTypeSupported(m),
-    );
+    const supportato = [
+      "video/mp4;codecs=avc1,mp4a.40.2",
+      "video/mp4",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+    ].find((m) => window.MediaRecorder.isTypeSupported(m));
     const recorder = new window.MediaRecorder(stream, supportato ? { mimeType: supportato } : undefined);
     recorderRef.current = recorder;
     chunksRef.current = [];
@@ -149,10 +159,20 @@ export default function RegistraVideoDichiarazione({
     };
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "video/webm" });
-      blobRef.current = blob;
       fermaStream();
       fermaTimer();
       setSecondi(0);
+      // Registrazione vuota (es. fermata troppo in fretta dopo un cambio
+      // fotocamera, che riparte sempre da un MediaRecorder nuovo): niente
+      // fotogrammi catturati. Invece di portare su un player rotto (schermo
+      // nero, 0:00/0:00), si torna a "idle" con un errore chiaro.
+      if (blob.size === 0) {
+        chunksRef.current = [];
+        setFase("idle");
+        setErrore("Registrazione troppo breve: non è stato catturato nulla. Riprova, aspettando qualche secondo prima di fermare (specialmente dopo aver cambiato fotocamera).");
+        return;
+      }
+      blobRef.current = blob;
       setFase("revisione");
       // L'anteprima va agganciata al <video> di revisione dopo il render.
       // Il ramo "revisione" ha una key diversa da quello di registrazione
@@ -300,7 +320,8 @@ export default function RegistraVideoDichiarazione({
         <div className="mt-1.5 flex justify-center gap-2">
           <button
             onClick={ferma}
-            disabled={fase === "avvio"}
+            disabled={fase === "avvio" || secondi < 1}
+            title={secondi < 1 ? "Aspetta un secondo prima di fermare" : undefined}
             className="tt-btn bg-red-600 px-4 py-2 text-sm text-white hover:brightness-95 disabled:opacity-50"
           >
             Ferma e rivedi
