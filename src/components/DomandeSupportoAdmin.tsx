@@ -7,10 +7,11 @@ import type { RigaDomandaSupporto } from "@/app/actions-supporto";
 
 /**
  * Coda delle domande dei collaboratori (widget chat lato utente). Le
- * domande "tecniche" NON ricevono più una risposta autonoma dell'IA:
- * vengono inoltrate via email ai Collaboratori Tecnici attivi
- * (/admin/tecnico), e tornano qui "da gestire" come tutte le altre — è
- * l'accesso globale a incollare la risposta ricevuta in rispondiDomanda().
+ * domande "tecniche" NON ricevono una risposta autonoma dell'IA e NON
+ * passano più dall'accesso globale: le vede e risponde direttamente il
+ * Collaboratore Tecnico dalla sua pagina /tecnico (ruolo 'tecnico', 0133),
+ * e la risposta arriva subito a chi ha chiesto. Restano qui per trasparenza
+ * — e perché l'accesso globale può sempre rispondere lui, se serve.
  * Restano nella sezione "risposte automatiche" SOLO le righe storiche da
  * prima di questo cambio, che hanno già una bozza dell'IA salvata: quelle
  * erano già state mostrate al collaboratore come risposta, non ha senso
@@ -124,8 +125,9 @@ function RigaPendente({ domanda, nome }: { domanda: RigaDomandaSupporto; nome: s
       )}
       {domanda.categoria_ia === "tecnica" && !domanda.bozza_risposta_ia && (
         <p className="mt-1 text-xs text-slate-500">
-          Inoltrata via email ai Collaboratori Tecnici attivi: incolla qui la
-          risposta che ti mandano.
+          Domanda tecnica: la vede e risponde direttamente il Collaboratore
+          Tecnico dalla sua pagina (/tecnico) — puoi rispondere anche tu, se
+          ti serve.
         </p>
       )}
       {domanda.bozza_risposta_ia && (

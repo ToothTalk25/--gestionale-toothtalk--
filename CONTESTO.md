@@ -113,6 +113,17 @@ Chi ha `role = 'admin'` ha accesso trasversale a tutti i gruppi. Non compare
 nessuna etichetta accanto al nome: la differenza si vede solo dalle voci di menu
 disponibili.
 
+**Il Collaboratore Tecnico** (`role = 'tecnico'`, migrazioni `0133`-`0135`) è
+una figura esterna con un proprio accesso, limitato a una cosa sola: la coda
+delle domande tecniche in `/tecnico`. Non ha accordo editoriale né appartenenza
+a un gruppo, quindi la RLS non gli mostra gruppi, progetti, magazzino o chat;
+delle domande vede solo quelle tecniche, e di chi le scrive vede **solo il nome
+di battesimo** (`nome_battesimo()`, che per tutti gli altri ruoli restituisce
+null). La sua risposta arriva direttamente a chi ha chiesto, senza passare
+dall'accesso globale; un trigger gli permette di scrivere solo i tre campi della
+risposta, non di riscrivere la domanda. Il Documento 5 va aggiornato di
+conseguenza: era scritto sull'ipotesi "solo PEC, nessun profilo applicativo".
+
 Verificato con prova reale: un partecipante di Messina che digita a mano
 l'indirizzo di un altro gruppo riceve 404, non una pagina vuota.
 
@@ -159,13 +170,13 @@ nei byte.
 
 ## 9. Regole tecniche da rispettare
 
-**Migrazioni.** Da `0001` a `0128` sono già state applicate al database reale.
+**Migrazioni.** Da `0001` a `0135` sono già state applicate al database reale.
 **Non modificarle**: file e database divergerebbero. Per cambiare qualcosa si
 aggiunge un file nuovo (`0018_...sql`) e si lancia `npm run migra -- 0018`.
 
-I file che aggiungono valori a un enum (`0005`, `0010`, `0012`) vanno eseguiti
-**da soli**: Postgres non permette di usare un valore di enum nella stessa
-transazione in cui è stato creato.
+I file che aggiungono valori a un enum (`0005`, `0010`, `0012`, `0133`) vanno
+eseguiti **da soli**: Postgres non permette di usare un valore di enum nella
+stessa transazione in cui è stato creato.
 
 **`.env.local`** contiene le chiavi vere ed è escluso da git. Non committarlo,
 non stamparlo, non incollarlo in chat.
@@ -199,6 +210,12 @@ Aggiornato al 16 settembre 2026.
    quindi la piattaforma non può creare file su Drive. La coda
    `esportazioni_drive` la svuota `scripts/esporta-drive.mjs` (rclone, account del
    progetto): `--verifica`, simulazione di default, `--esegui` per eseguire.
+6. **Accesso del Collaboratore Tecnico**: creato l'account con ruolo `tecnico` e
+   pagina `/tecnico` (le domande tecniche non passano più dall'accesso globale e
+   non partono più email). L'indirizzo è ancora provvisorio
+   (`tecnico@toothtalk.local`): va sostituito con quello vero prima di
+   consegnarlo, perché è anche l'identificativo di accesso e finirà nel
+   contratto. Password provvisoria consegnata a parte, non scritta qui.
 
 ## 11. Il limite dichiarato
 

@@ -115,6 +115,9 @@ export function accordoCompleto(profile: Profile, isAdmin: boolean): boolean {
  */
 export function destinazioneIngresso(ctx: SessionContext): string {
   if (ctx.soloConfermaUscita) return "/uscita";
+  // Il Collaboratore Tecnico ('tecnico', 0133) non ha accordo né gruppi: il
+  // suo unico posto è la coda delle domande tecniche, fuori dal gruppo (app).
+  if (ctx.profile.role === "tecnico") return "/tecnico";
   if (!accordoCompleto(ctx.profile, ctx.isAdmin)) return "/profilo";
   if (!ctx.isAdmin && accordoScaduto(ctx.profile.accordo_scadenza)) return "/rinnovo";
   return "/dashboard";

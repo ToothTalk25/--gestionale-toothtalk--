@@ -29,7 +29,9 @@ export default function ProfiliUscenti({
   poliDi: Record<string, string[]>;
   materialiDi: Record<string, number>;
 }) {
-  const uscenti = profili.filter((p) => !p.attivo && p.role !== "admin");
+  // Solo i Collaboratori dei gruppi ('member'): l'accesso globale e il
+  // Collaboratore Tecnico ('tecnico', 0133) non escono mai con questa procedura.
+  const uscenti = profili.filter((p) => !p.attivo && p.role === "member");
 
   if (uscenti.length === 0) return null;
 

@@ -20,6 +20,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/uscita");
   }
 
+  // Il Collaboratore Tecnico ('tecnico', 0133) non ha accordo editoriale: ogni
+  // pagina di questo gruppo lo rimanderebbe in loop su /profilo. La sua area è
+  // /tecnico, fuori da questo gruppo di rotte.
+  if (profile.role === "tecnico") {
+    redirect("/tecnico");
+  }
+
   // --- Blocco accesso progetti finché l'accordo non è completo ---------
   // Cinque condizioni, TUTTE necessarie per i Collaboratori (vedi
   // accordoCompleto in src/lib/auth.ts, condivisa col login per calcolare

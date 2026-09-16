@@ -147,6 +147,7 @@ export default async function AdminPage() {
       .eq("attivo", false)
       .is("approvato_at", null)
       .neq("role", "admin")
+      .neq("role", "tecnico")
       .order("created_at", { ascending: true })
       .returns<RigaRichiestaRegistrazione[]>(),
     // Modelli dell'accordo editoriale (ultimo = attivo), con nome di chi ha caricato.
@@ -174,6 +175,7 @@ export default async function AdminPage() {
       .eq("accordo_verificato", "ok")
       .is("accordo_approvato_admin_at", null)
       .neq("role", "admin")
+      .neq("role", "tecnico")
       .order("accordo_caricato_at", { ascending: true })
       .returns<RigaAccordoDaApprovare[]>(),
     // Documenti di rinnovo dell'accordo (Art. 9.1) caricati ma non ancora
@@ -184,6 +186,7 @@ export default async function AdminPage() {
       .select("id, full_name, email, rinnovo_caricato_at, accordo_scadenza")
       .not("rinnovo_path", "is", null)
       .neq("role", "admin")
+      .neq("role", "tecnico")
       .order("rinnovo_caricato_at", { ascending: true })
       .returns<RigaRinnovoDaApprovare[]>(),
     // Richieste di rimozione di contenuti pubblicati (art. 17(3)(a) GDPR):
@@ -282,7 +285,10 @@ export default async function AdminPage() {
       }));
   }
 
-  const collaboratoriAttivi = (profili ?? []).filter((p) => p.attivo && p.role !== "admin").length;
+  // I Collaboratori dei gruppi sono i soli 'member': l'accesso globale e il
+  // Collaboratore Tecnico (ruolo 'tecnico', 0133) non sono "collaboratori"
+  // con accordo editoriale, quindi non entrano in questo conteggio.
+  const collaboratoriAttivi = (profili ?? []).filter((p) => p.attivo && p.role === "member").length;
   const richiesteRegistrazioneAperte = (richieste ?? []).length;
   const richiesteRimozioneAperte = (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length;
   const notificheArt82Pendenti = (notificheArt82 ?? []).filter((n) => !n.notificata_at).length;
@@ -482,7 +488,7 @@ export default async function AdminPage() {
             </thead>
             <tbody>
               {(profili ?? [])
-                .filter((p) => p.role !== "admin")
+                .filter((p) => p.role === "member")
                 .map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
                     <td className="py-2 pr-4 text-xs text-slate-500" data-label="Gruppo">

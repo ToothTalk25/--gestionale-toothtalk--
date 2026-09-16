@@ -1,4 +1,9 @@
-export type UserRole = "admin" | "member";
+/**
+ * Ruoli applicativi. "tecnico" (0133) è il Collaboratore Tecnico: non ha
+ * accordo editoriale né gruppi, il suo unico accesso è la coda delle domande
+ * tecniche in /tecnico. "member" è il Collaboratore nei gruppi.
+ */
+export type UserRole = "admin" | "member" | "tecnico";
 
 /** Versione corrente dell'informativa privacy e della cookie policy. */
 export const PRIVACY_VERSION = "2026-08-27a";
