@@ -59,14 +59,29 @@ export default function RegistraVideoDichiarazione({
   const [secondi, setSecondi] = useState(0);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
+  // URL blob del video da rivedere: stato React (non un ref con assegnazione
+  // imperativa di .src dopo il render) apposta — quel pattern, usato prima,
+  // lasciava una finestra in cui il <video> di revisione poteva restare
+  // senza sorgente su Safari iOS, riscontrato con un video vero registrato
+  // e mai riprodotto sullo stesso telefono che l'aveva appena girato.
+  const [blobUrl, setBlobUrlState] = useState<string | null>(null);
+
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const blobRef = useRef<Blob | null>(null);
+  // Specchio di blobUrl in un ref: serve solo alla pulizia allo smontaggio
+  // (un effect con dipendenze vuote non vedrebbe mai il valore più recente
+  // dello stato).
   const blobUrlRef = useRef<string | null>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
-  const reviewRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<number | null>(null);
+
+  function impostaBlobUrl(url: string | null) {
+    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    blobUrlRef.current = url;
+    setBlobUrlState(url);
+  }
 
   // Pulizia totale all'uscita: la fotocamera non deve restare accesa e gli
   // URL blob non devono restare in memoria se l'utente cambia pagina.
@@ -105,8 +120,7 @@ export default function RegistraVideoDichiarazione({
   }
 
   function revocaBlob() {
-    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-    blobUrlRef.current = null;
+    impostaBlobUrl(null);
     blobRef.current = null;
     chunksRef.current = [];
   }
@@ -173,19 +187,11 @@ export default function RegistraVideoDichiarazione({
         return;
       }
       blobRef.current = blob;
+      // src passato direttamente nel JSX (vedi il ramo "revisione" sotto):
+      // niente più assegnazione imperativa dopo il render, che su Safari
+      // iOS poteva lasciare il <video> senza sorgente.
+      impostaBlobUrl(URL.createObjectURL(blob));
       setFase("revisione");
-      // L'anteprima va agganciata al <video> di revisione dopo il render.
-      // Il ramo "revisione" ha una key diversa da quello di registrazione
-      // (vedi JSX sotto): React smonta il vecchio nodo <video> invece di
-      // riusarlo, quindi qui non resta mai un .srcObject residuo che
-      // vincerebbe su .src facendo apparire lo schermo nero.
-      requestAnimationFrame(() => {
-        if (reviewRef.current && blobUrlRef.current === null) {
-          reviewRef.current.srcObject = null;
-          blobUrlRef.current = URL.createObjectURL(blob);
-          reviewRef.current.src = blobUrlRef.current;
-        }
-      });
     };
 
     recorder.start(1000);
@@ -344,7 +350,17 @@ export default function RegistraVideoDichiarazione({
   if (fase === "revisione") {
     return (
       <div key="camera-revisione" className="mt-2 w-full max-w-xs">
-        <video ref={reviewRef} controls playsInline className="h-40 w-full rounded-lg bg-slate-900 object-contain" />
+        {/* key={blobUrl}: forza un nodo <video> del tutto nuovo per ogni
+            registrazione, invece di riusare quello di un tentativo
+            precedente e limitarsi a cambiarne il src — un pattern con cui
+            Safari iOS può restare bloccato sul contenuto vecchio. */}
+        <video
+          key={blobUrl}
+          controls
+          playsInline
+          src={blobUrl ?? undefined}
+          className="h-40 w-full rounded-lg bg-slate-900 object-contain"
+        />
         <p className="mt-1 text-center text-xs text-slate-500">
           Rivedi il video: è solo su questo dispositivo, non ancora caricato.
         </p>
