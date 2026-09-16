@@ -96,7 +96,7 @@ export async function eliminaAccount(
   // di ruolo esplicito prima, altrimenti si perderebbe l'accesso globale.
   if (profilo.role === "admin") {
     return errore(
-      "Non è possibile eliminare un account con ruolo Coordinatore da qui — serve un cambio di ruolo esplicito prima.",
+      "Non è possibile eliminare un account con ruolo di amministrazione da qui — serve un cambio di ruolo esplicito prima.",
     );
   }
 
@@ -352,7 +352,7 @@ export async function terminaCollaborazione(
   conferma: boolean,
 ): Promise<Esito<{ on_screen: boolean }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   if (!conferma) return errore("Conferma esplicita richiesta per terminare la collaborazione.");
 
   const admin = supabaseAdmin();
@@ -365,7 +365,7 @@ export async function terminaCollaborazione(
   if (!target) return errore("Profilo non trovato.");
   if (target.role === "admin") {
     return errore(
-      "Non è possibile terminare un account con ruolo Coordinatore da qui — serve un cambio di ruolo esplicito prima.",
+      "Non è possibile terminare un account con ruolo di amministrazione da qui — serve un cambio di ruolo esplicito prima.",
     );
   }
   if (!target.attivo) return errore("La collaborazione di questo partecipante è già terminata.");
@@ -405,7 +405,7 @@ export async function terminaCollaborazione(
  */
 export async function riattivaCollaborazione(userId: string): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   const admin = supabaseAdmin();
 
   const { data: target } = await admin
@@ -414,7 +414,7 @@ export async function riattivaCollaborazione(userId: string): Promise<Esito> {
     .eq("id", userId)
     .single<{ id: string; attivo: boolean; role: string }>();
   if (!target) return errore("Profilo non trovato.");
-  if (target.role === "admin") return errore("Gli account con ruolo Coordinatore non passano da qui.");
+  if (target.role === "admin") return errore("Gli account con ruolo di amministrazione non passano da qui.");
   if (target.attivo) return errore("Questo account è già attivo.");
 
   const { error } = await admin.from("profiles").update({ attivo: true }).eq("id", userId);
@@ -427,7 +427,7 @@ export async function riattivaCollaborazione(userId: string): Promise<Esito> {
       action: "riattivazione_collaborazione",
       entity_type: "profile",
       entity_id: userId,
-      meta: { motivo: "Riattivazione manuale da parte del Coordinatore" },
+      meta: { motivo: "Riattivazione manuale da parte dell'accesso globale" },
     }),
   );
 
@@ -544,7 +544,7 @@ export type RigaNotificaArt82 = {
  */
 export async function notificaArt82(id: string): Promise<Esito> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   // L'update usa la sessione dell'admin loggato (non il service_role): il
   // trigger fn_notifiche82_guard valorizza notificata_da := auth.uid(), e
@@ -573,14 +573,14 @@ export async function notificaArt82(id: string): Promise<Esito> {
         oggetto: "[ToothTalk] Contenuti pubblicati che ti ritraggono",
         testo:
           `Ciao ${destinatario.full_name ?? ""},\n\n` +
-          `Hai revocato il consenso all'uso della tua immagine e voce. Il Coordinatore ` +
+          `Hai revocato il consenso all'uso della tua immagine e voce. L'accesso globale ` +
           `individuerà ed eliminerà, entro 30 giorni, il materiale grezzo non pubblicato ` +
           `che ti ritrae — non è una cancellazione automatica: il sistema registra chi ha ` +
           `caricato un file, non chi vi compare, quindi la verifica di quali file eliminare ` +
           `è sempre umana.\n\n` +
           `Ti informiamo che potrebbero esistere contenuti già pubblicati, alla data della revoca, ` +
           `che ti ritraggono. Hai facoltà di chiederne la rimozione o l'oscuramento in qualsiasi ` +
-          `momento, scrivendo al Coordinatore: la richiesta viene valutata caso per caso ai sensi ` +
+          `momento, scrivendo all'accesso globale: la richiesta viene valutata caso per caso ai sensi ` +
           `dell'art. 17, par. 3, GDPR (Art. 8.3 dell'Accordo Editoriale).\n\n— ToothTalk™`,
       }),
     );
@@ -621,7 +621,7 @@ export async function risolviRichiestaRimozione(
   motivazione: string,
 ): Promise<Esito> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   if (!motivazione.trim()) return errore("Indica una motivazione per la decisione.");
 
   const supabase = await supabaseServer();
@@ -685,7 +685,7 @@ export async function eseguiEliminazioneGrezzo(
   note?: string,
 ): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   if (!versionIds.length) return errore("Seleziona almeno un file da eliminare.");
 
   const admin = supabaseAdmin();
@@ -883,14 +883,14 @@ export async function preparaUploadRinnovo(fileName: string): Promise<EsitoUploa
 /** Prepara l'upload del modello dell'accordo editoriale (admin only). */
 export async function preparaUploadModelloAccordo(fileName: string): Promise<EsitoUpload> {
   const { profile } = await requireSession();
-  if (profile.role !== "admin") return errore("Solo il Coordinatore può caricare il modello.");
+  if (profile.role !== "admin") return errore("Solo chi ha accesso globale può caricare il modello.");
   return firmaUpload("finali", `modello-accordo/${randomUUID()}__${sanifica(fileName)}`, true);
 }
 
 /** Prepara l'upload della scansione controfirmata di un collaboratore (admin only). */
 export async function preparaUploadControfirma(userId: string, fileName: string): Promise<EsitoUpload> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   return firmaUpload("finali", `controfirma/${userId}/${randomUUID()}__${sanifica(fileName)}`, true);
 }
 
@@ -1316,7 +1316,7 @@ export async function caricaModelloAccordo(
   storagePath: string,
 ): Promise<Esito<{ id: string }>> {
   const { profile } = await requireSession();
-  if (profile.role !== "admin") return errore("Solo il Coordinatore può caricare il modello.");
+  if (profile.role !== "admin") return errore("Solo chi ha accesso globale può caricare il modello.");
 
   const supabase = await supabaseServer();
 
@@ -1356,7 +1356,7 @@ export async function approvaRegistrazione(
   onScreenConfermato: boolean,
 ): Promise<Esito<{ messageId: string }>> {
   const { profile: admin } = await requireSession();
-  if (admin.role !== "admin") return errore("Solo il Coordinatore può approvare registrazioni.");
+  if (admin.role !== "admin") return errore("Solo chi ha accesso globale può approvare registrazioni.");
 
   const supabase = await supabaseServer();
 
@@ -1597,7 +1597,7 @@ export async function impostaOnScreen(
   appare: boolean,
 ): Promise<Esito<{ appare: boolean }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   const supabase = await supabaseServer();
   const { error } = await supabase
@@ -1791,7 +1791,7 @@ export async function caricaControfirmaAccordo(
   _sha256Client: string,
 ): Promise<Esito<{ approvatoAt: string }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   const supabase = await supabaseServer();
 
@@ -2098,7 +2098,7 @@ export async function approvaRinnovoAccordo(
   userId: string,
 ): Promise<Esito<{ approvatoAt: string; nuovaScadenza: string }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   const supabase = await supabaseServer();
 
@@ -2169,7 +2169,7 @@ export async function approvaRinnovoAccordo(
  */
 export async function urlDocumentoRinnovo(userId: string): Promise<Esito<string>> {
   const { isAdmin } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   const admin = supabaseAdmin();
   const { data: target } = await admin
@@ -2198,7 +2198,7 @@ export async function rifiutaRinnovoAccordo(
   motivo: string,
 ): Promise<Esito<void>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   const supabase = await supabaseServer();
 

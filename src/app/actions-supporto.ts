@@ -106,7 +106,7 @@ export async function richiediCoordinatore(id: string): Promise<Esito> {
 
   after(async () => {
     await inviaPushAdmin({
-      title: "Un collaboratore chiede di te — ToothTalk",
+      title: "Un partecipante chiede di te — ToothTalk",
       body: `${ctx.profile.full_name ?? ctx.profile.email} vuole parlare con te nella sezione Domande.`,
       url: "/admin",
     }).catch((e) => console.error("Notifica richiediCoordinatore fallita:", e));
@@ -119,7 +119,7 @@ export async function richiediCoordinatore(id: string): Promise<Esito> {
 /** Risponde a una domanda (solo Coordinatore). testoGrezzo può essere la bozza IA rivista o una risposta scritta da zero. */
 export async function rispondiDomanda(id: string, testoGrezzo: string): Promise<Esito> {
   const ctx = await requireSession();
-  if (!ctx.isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!ctx.isAdmin) return errore("Operazione riservata all'accesso globale.");
 
   const risposta = testoGrezzo.trim();
   if (!risposta) return errore("Scrivi una risposta prima di inviare.");

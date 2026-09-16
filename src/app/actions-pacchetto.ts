@@ -176,7 +176,7 @@ export async function segnalaErroreDichiarazione(
  */
 export async function liberaCampoDichiarazione(richiestaId: string): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   const admin = supabaseAdmin();
   // La chiusura usa la sessione admin: il trigger valorizza risolta_da.
   const supabase = await supabaseServer();
@@ -286,7 +286,7 @@ export async function urlDichiarazione(
   ruolo: RuoloElemento,
 ): Promise<Esito<{ url: string; urlDownload: string; file_name: string }>> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   if (ruolo !== "dichiarazione_identita" && ruolo !== "dichiarazione_integrazione") {
     return errore("Ruolo dichiarazione non valido.");
   }
@@ -350,7 +350,7 @@ export async function eliminaDichiarazione(
   ruolo: RuoloElemento,
 ): Promise<Esito> {
   const { isAdmin, profile } = await requireSession();
-  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
   if (ruolo !== "dichiarazione_identita" && ruolo !== "dichiarazione_integrazione") {
     return errore("Ruolo dichiarazione non valido.");
   }

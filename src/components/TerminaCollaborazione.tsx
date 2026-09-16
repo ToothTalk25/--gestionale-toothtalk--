@@ -29,11 +29,11 @@ export default function TerminaCollaborazione({
 
   async function termina() {
     const ok = await chiedi({
-      titolo: `Terminare la collaborazione con ${fullName ?? "questo partecipante"}?`,
+      titolo: `Concludere la partecipazione di ${fullName ?? "questo partecipante"}?`,
       descrizione:
         "Disattiva solo l'accesso: nessun file viene toccato, in nessun caso — anche se appare in video, i contenuti restano dove sono. La revoca del consenso a immagine/voce è un atto separato, che spetta a lui/lei dal proprio profilo.",
       peso: "grave",
-      testoConferma: "Termina Collaborazione",
+      testoConferma: "Concludi la partecipazione",
     });
     if (!ok) return;
 
@@ -58,7 +58,7 @@ export default function TerminaCollaborazione({
         disabled={inCorso}
         className="tt-btn w-full border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
       >
-        {inCorso ? "Termino…" : "Termina Collaborazione"}
+        {inCorso ? "Concludo…" : "Concludi la partecipazione"}
       </button>
       {messaggio && <span className="text-xs text-slate-500">{messaggio}</span>}
       {dialogo}

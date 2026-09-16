@@ -304,7 +304,7 @@ export default async function AdminPage() {
       <AttivaNotifichePush />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatAdmin etichetta="Collaboratori attivi" valore={collaboratoriAttivi} icona="collaboratori" />
+        <StatAdmin etichetta="Partecipanti attivi" valore={collaboratoriAttivi} icona="collaboratori" />
         <StatAdmin
           etichetta="Richieste di registrazione"
           valore={richiesteRegistrazioneAperte}
@@ -344,9 +344,9 @@ export default async function AdminPage() {
           },
           {
             id: "domande",
-            etichetta: "Domande dei collaboratori",
+            etichetta: "Domande dei partecipanti",
             promemoria: {
-              cosa: "rispondi alle domande sul processo editoriale o su malfunzionamenti. Le domande tecniche ricevono subito una risposta automatica dell'IA (le vedi comunque qui, sotto \"Risposte automatiche\") — rispondi tu solo a quelle rimaste in attesa o dove il collaboratore ha chiesto esplicitamente di parlare con te.",
+              cosa: "rispondi alle domande sul processo editoriale o su malfunzionamenti. Le domande tecniche ricevono subito una risposta automatica dell'IA (le vedi comunque qui, sotto \"Risposte automatiche\") — rispondi tu solo a quelle rimaste in attesa o dove il partecipante ha chiesto esplicitamente di parlare con te.",
             },
             badge: domandePendenti || undefined,
             contenuto: <DomandeSupportoAdmin domande={domande ?? []} nomi={nomi} />,
@@ -449,7 +449,7 @@ export default async function AdminPage() {
             etichetta: "Registro partecipanti",
             promemoria: {
               cosa: "gestisci anagrafica, stato \"in video\" e chiusura della collaborazione di ogni partecipante attivo.",
-              attenzione: "\"Termina Collaborazione\" disattiva solo l'accesso: NON tocca alcun file, per nessuno, indipendentemente dallo stato \"in video\". Uscire dal progetto e revocare il consenso a immagine/voce sono due atti distinti — la revoca la avvia il Collaboratore dal proprio profilo, e la cancellazione del materiale grezzo è sempre una verifica manuale del Coordinatore (sezione \"Eliminazione grezzo\").",
+              attenzione: "\"Termina Collaborazione\" disattiva solo l'accesso: NON tocca alcun file, per nessuno, indipendentemente dallo stato \"in video\". Uscire dal progetto e revocare il consenso a immagine/voce sono due atti distinti — la revoca la avvia il partecipante dal proprio profilo, e la cancellazione del materiale grezzo è sempre una verifica manuale dell'accesso globale (sezione \"Eliminazione grezzo\").",
             },
             contenuto: (
               <section className="tt-card p-4 md:p-6">
@@ -573,7 +573,7 @@ export default async function AdminPage() {
             id: "liberatorie",
             etichetta: "Liberatorie e accordi",
             promemoria: {
-              cosa: "consulti il registro delle liberatorie firmate da soggetti esterni e degli accordi caricati dai collaboratori.",
+              cosa: "consulti il registro delle liberatorie firmate da soggetti esterni e degli accordi caricati dai partecipanti.",
               attenzione: "solo consultazione — i documenti restano protetti, non sono scaricabili da qui per tutela della privacy dei terzi.",
             },
             contenuto: <SezioneLiberatorie documenti={registoConsensi ?? []} />,
@@ -607,7 +607,7 @@ export default async function AdminPage() {
             etichetta: "Notifiche dovute (Art. 8.2)",
             promemoria: {
               cosa: "quando qualcuno revoca il consenso a immagine/voce SENZA chiedere anche la rimozione del pubblicato, l'Accordo (Art. 8.2) impone comunque di dargliene atto entro 30 giorni.",
-              attenzione: "il bottone \"Notifica\" manda davvero l'email al Collaboratore: falla solo quando hai verificato se esistono contenuti pubblicati che lo ritraggono.",
+              attenzione: "il bottone \"Notifica\" manda davvero l'email al partecipante: falla solo quando hai verificato se esistono contenuti pubblicati che lo ritraggono.",
             },
             contenuto: (
               <NotificheDovuteArt82

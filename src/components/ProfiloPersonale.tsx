@@ -111,11 +111,11 @@ export default function ProfiloPersonale({
     const ok = await chiedi({
       titolo: "Revocare il consenso a immagine e voce?",
       descrizione:
-        "Il materiale grezzo non ancora pubblicato che ti ritrae verrà individuato ed eliminato dal Coordinatore entro 30 giorni, previa verifica di quali file ti ritraggono davvero — non è una cancellazione automatica. " +
+        "Il materiale grezzo non ancora pubblicato che ti ritrae verrà individuato ed eliminato dall'accesso globale entro 30 giorni, previa verifica di quali file ti ritraggono davvero — non è una cancellazione automatica. " +
         (chiediRimozionePubblicato
-          ? "Hai anche chiesto la rimozione dei contenuti già pubblicati: si apre una richiesta che il Coordinatore valuta entro 30 giorni (prorogabili a 90) — non viene rimosso nulla in automatico. "
+          ? "Hai anche chiesto la rimozione dei contenuti già pubblicati: si apre una richiesta che l'accesso globale valuta entro 30 giorni (prorogabili a 90) — non viene rimosso nulla in automatico. "
           : "I contenuti già pubblicati restano online, a meno che tu non chieda anche la loro rimozione qui sopra. ") +
-        "Questo non incide sulla tua partecipazione al progetto: puoi restare come Collaboratore anche dopo la revoca.",
+        "Questo non incide sulla tua partecipazione al progetto: puoi restare nel progetto anche dopo la revoca.",
       peso: "grave",
       testoConferma: "Revoca il consenso",
     });
@@ -130,9 +130,9 @@ export default function ProfiloPersonale({
       return;
     }
     setMessaggioRevoca(
-      "Consenso a immagine/voce revocato. Il Coordinatore individuerà ed eliminerà il materiale grezzo che ti ritrae entro 30 giorni." +
+      "Consenso a immagine/voce revocato. L'accesso globale individuerà ed eliminerà il materiale grezzo che ti ritrae entro 30 giorni." +
         (esito.dati.richiestaRimozioneAperta
-          ? " Richiesta di rimozione del pubblicato aperta: il Coordinatore la valuterà entro i termini di legge."
+          ? " Richiesta di rimozione del pubblicato aperta: l'accesso globale la valuterà entro i termini di legge."
           : ""),
     );
     setRevocaImmagineAperta(false);
@@ -461,7 +461,7 @@ export default function ProfiloPersonale({
                 <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs text-amber-800">
                     Il materiale grezzo non ancora pubblicato che ti ritrae
-                    verrà individuato ed eliminato dal Coordinatore entro 30
+                    verrà individuato ed eliminato dall'accesso globale entro 30
                     giorni, previa verifica di quali file ti ritraggono
                     davvero — non è una cancellazione automatica. I contenuti
                     già pubblicati restano online, a meno che tu non chieda

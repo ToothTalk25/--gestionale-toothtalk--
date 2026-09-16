@@ -25,7 +25,7 @@ export async function accedi(email: string, password: string): Promise<Esito<{ d
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, errore: "Credenziali non valide." };
   const ctx = await getSessionContext();
-  if (!ctx) return { ok: false, errore: "Accesso riuscito ma profilo non trovato. Contatta il Coordinatore." };
+  if (!ctx) return { ok: false, errore: "Accesso riuscito ma profilo non trovato. Contatta chi gestisce il Gestionale." };
   return { ok: true, dati: { destinazione: destinazioneIngresso(ctx) } };
 }
 

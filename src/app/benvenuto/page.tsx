@@ -26,7 +26,7 @@ export default async function BenvenutoPage({
           <h2 className="text-lg font-semibold text-red-800">Link non più valido</h2>
           <p className="mt-1 text-sm text-red-600">
             Questo link è scaduto (i link di accesso durano 7 giorni). Chiedi al
-            Coordinatore di inviartene uno nuovo.
+            chi ti ha mandato il link di inviartene uno nuovo.
           </p>
         </div>
       ) : (

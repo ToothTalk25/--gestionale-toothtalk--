@@ -63,6 +63,17 @@ Tre difese indipendenti proteggono il sigillato: il trigger
 `fn_versions_append_only`, il vincolo di chiave esterna `on delete restrict`, e
 `fn_elementi_congelati`. Sono ridondanti apposta.
 
+**Il magazzino del gruppo** (`documenti_magazzino` + bucket `magazzino`) sta
+nella zona di lavoro: materiali di servizio che non appartengono a un progetto
+(moduli, guide, immagini di riferimento), quindi senza catena di impronte e
+cancellabili da tutto il gruppo. Bucket separato per la stessa ragione degli
+altri: una policy sbagliata qui non può toccare i materiali di progetto.
+
+**Doppio ruolo.** Chi ha accesso globale e appartiene anche a un gruppo lavora
+lì come un partecipante — deposita versioni originali, compone il pacchetto —
+e conserva i poteri globali per il resto. Fuori dai propri gruppi deposita
+versioni derivate, come sempre.
+
 ## 4. Come funziona la prova (il punto meno intuitivo)
 
 La PEC non trasporta il video quando è grosso: i gestori si fermano a 50-100 MB
@@ -148,7 +159,7 @@ nei byte.
 
 ## 9. Regole tecniche da rispettare
 
-**Migrazioni.** Da `0001` a `0017` sono già state applicate al database reale.
+**Migrazioni.** Da `0001` a `0128` sono già state applicate al database reale.
 **Non modificarle**: file e database divergerebbero. Per cambiare qualcosa si
 aggiunge un file nuovo (`0018_...sql`) e si lancia `npm run migra -- 0018`.
 
@@ -171,14 +182,23 @@ questo `bodySizeLimit` è a 1 MB e va lasciato lì.
 L'upload usa `upsert: false` obbligatoriamente: sui bucket immutabili non esiste
 policy di UPDATE, quindi un upsert verrebbe respinto.
 
-## 10. Cosa manca
+## 10. Stato e cose aperte
 
-1. **Credenziali PEC** in `.env.local` (`PEC_USER`, `PEC_PASSWORD`,
-   `PEC_MITTENTE`, `PEC_DESTINATARI`). Host e limite sono già impostati su Poste.
-2. **Account dei partecipanti** — `npm run utente -- crea` e `-- assegna`.
-3. **Pubblicazione online** (Vercel + GitHub): oggi gira solo in locale.
-4. **Cancellare l'account di prova** `mario.rossi.messina@esempio.it` prima di
-   andare online.
+Aggiornato al 16 settembre 2026.
+
+1. **PEC**: credenziali presenti in `.env.local` (`PEC_USER`, `PEC_PASSWORD`,
+   `PEC_MITTENTE`, `PEC_DESTINATARI`), host e limite già impostati su Poste.
+2. **Account dei partecipanti**: due strade — l'invito dal Registro globale
+   (email con codice del gruppo e link di registrazione) oppure
+   `npm run utente -- crea|assegna`. Le registrazioni si approvano dal Registro.
+3. **Pubblicazione online**: attiva (GitHub + Vercel, `main` = produzione).
+4. **Account di prova**: gli `@toothtalk.local` e i `+test…` sono stati rimossi
+   o anonimizzati (`ex-…@toothtalk.local`, disattivati). Resta
+   `mario.rossi.messina@esempio.it`, tenuto come partecipante di prova su Messina.
+5. **Export su Google Drive**: la service account non ha quota di archiviazione,
+   quindi la piattaforma non può creare file su Drive. La coda
+   `esportazioni_drive` la svuota `scripts/esporta-drive.mjs` (rclone, account del
+   progetto): `--verifica`, simulazione di default, `--esegui` per eseguire.
 
 ## 11. Il limite dichiarato
 
