@@ -4,7 +4,6 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { KIND_LABEL, type DeliverableKind, type Polo } from "@/lib/types";
 import GestioneInviti, { type RigaInvito } from "@/components/GestioneInviti";
-import InviaLinkOnboarding from "@/components/InviaLinkOnboarding";
 import AttivaNotifichePush from "@/components/AttivaNotifichePush";
 import DomandeSupportoAdmin from "@/components/DomandeSupportoAdmin";
 import type { RigaDomandaSupporto } from "@/app/actions-supporto";
@@ -338,18 +337,10 @@ export default async function AdminPage() {
             id: "inviti",
             etichetta: "Inviti",
             promemoria: {
-              cosa: "crei o disattivi i codici che permettono a nuovi collaboratori di registrarsi in un polo.",
+              cosa: "scegli il gruppo e invii l invito a un indirizzo: parte un unica email con il link di registrazione, il codice del gruppo e le istruzioni per installare il Gestionale come app. Qui vedi anche i codici attivi e puoi disattivarli.",
               attenzione: "disattivare un codice blocca subito nuove registrazioni con quel codice — non tocca chi si è già registrato.",
             },
             contenuto: <GestioneInviti poli={ordinaPoli(poli ?? [])} inviti={inviti ?? []} />,
-          },
-          {
-            id: "onboarding",
-            etichetta: "Invia link di accesso",
-            promemoria: {
-              cosa: "mandi a un indirizzo email il link del gestionale, con le istruzioni per installarlo come app su iPhone, Android, Mac e Windows.",
-            },
-            contenuto: <InviaLinkOnboarding />,
           },
           {
             id: "domande",
