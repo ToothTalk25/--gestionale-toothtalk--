@@ -178,6 +178,7 @@ export default async function DashboardPage() {
                   <span className="text-xs text-slate-400">
                     {t.n_consegne_originali} file
                   </span>
+                  <StatusBadge status={t.status} />
                   {t.status === "da_fare" && (
                     <AzioniProgettoRiga
                       taskId={t.id}
@@ -185,7 +186,6 @@ export default async function DashboardPage() {
                       poloId={t.polo_id}
                     />
                   )}
-                  <StatusBadge status={t.status} />
                 </Link>
               </li>
             ))}

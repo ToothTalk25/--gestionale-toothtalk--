@@ -127,6 +127,12 @@ export default async function PoloPage({
                       scad. {new Date(t.scadenza).toLocaleDateString("it-IT")}
                     </span>
                   )}
+                  {!!richiesteApertePerTask[t.id] && (
+                    <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
+                      {richiesteApertePerTask[t.id]} modifica richiesta
+                    </span>
+                  )}
+                  <StatusBadge status={t.status} />
                   {t.status === "da_fare" && (
                     <AzioniProgettoRiga
                       taskId={t.id}
@@ -134,12 +140,6 @@ export default async function PoloPage({
                       poloId={poloId}
                     />
                   )}
-                  {!!richiesteApertePerTask[t.id] && (
-                    <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
-                      {richiesteApertePerTask[t.id]} modifica richiesta
-                    </span>
-                  )}
-                  <StatusBadge status={t.status} />
                 </Link>
               </li>
             ))}
