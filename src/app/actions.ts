@@ -13,11 +13,14 @@ import {
   archiviaFileFinaleSchema,
   cambiaStatoSchema,
   creaTaskSchema,
+  eliminaDocumentoSchema,
   eliminaProjettoSchema,
   eliminaVersioneSchema,
   impostaBloccoSchema,
   impostaCoinvolgeTerziSchema,
+  preparaUploadDocumentoSchema,
   preparaUploadSchema,
+  registraDocumentoSchema,
   registraVersioneSchema,
   urlFirmatoSchema,
 } from "@/lib/schemi";
@@ -369,7 +372,7 @@ export async function preparaUpload(
   if (!validazione.ok) return { ok: false, errore: validazione.errore };
   ({ taskId, kind, archivio, fileName, titolo } = validazione.dati);
 
-  const { isAdmin } = await requireSession();
+  const { profile, isAdmin } = await requireSession();
   const supabase = await supabaseServer();
 
   const { data: task, error: eTask } = await supabase
@@ -410,7 +413,17 @@ export async function preparaUpload(
   // di upload valido una volta sola per QUESTO esatto path — le stesse
   // policy RLS di sempre (is_member_of/is_admin/task_aperta) si applicano
   // in questo istante, non a ogni upload.
-  const origin: VersionOrigin = isAdmin ? "admin_edit" : "originale";
+  // Doppio ruolo: chi ha accesso globale E appartiene al gruppo deposita come
+  // un partecipante (versione originale); chi non appartiene al gruppo deposita
+  // una versione derivata (bucket revisioni). Il controllo è sul database, non
+  // su quello che dichiara il browser.
+  const { data: appartenenza } = await supabase
+    .from("memberships")
+    .select("polo_id")
+    .eq("user_id", profile.id)
+    .eq("polo_id", task.polo_id)
+    .maybeSingle<{ polo_id: string }>();
+  const origin: VersionOrigin = isAdmin && !appartenenza ? "admin_edit" : "originale";
   const bucket = bucketPer(origin, archivio);
   const path = `${task.polo_id}/${task.id}/${deliverableId}/${randomUUID()}__${sanifica(fileName)}`;
 
@@ -610,7 +623,12 @@ export async function urlFirmato(
   // bucket "profili" (accordo, modulo di nomina, ricevute) passano SOLO
   // dalle action dedicate (scaricaAccordo, scaricaDocumentoNomina,
   // scaricaRicevutaConsenso), mai da un path arbitrario scelto dal client.
-  if (bucket !== "originali" && bucket !== "finali" && bucket !== "revisioni") {
+  if (
+    bucket !== "originali" &&
+    bucket !== "finali" &&
+    bucket !== "revisioni" &&
+    bucket !== "magazzino"
+  ) {
     return fallita({ message: "Accesso negato" }, "Download non autorizzato");
   }
   const poloId = path.split("/")[0] ?? "";
@@ -630,23 +648,44 @@ export async function urlFirmato(
   // sensibile viene registrato nell'audit log a catena, con l'impronta
   // SHA-256 del file quando il path risolve a una versione del registro
   // (così l'evento resta collegato al materiale specifico).
-  if (bucket === "originali" || bucket === "finali" || bucket === "revisioni") {
+  if (
+    bucket === "originali" ||
+    bucket === "finali" ||
+    bucket === "revisioni" ||
+    bucket === "magazzino"
+  ) {
     try {
-      const { data: versione } = await supabase
-        .from("deliverable_versions")
-        .select("sha256")
-        .eq("bucket", bucket)
-        .eq("storage_path", path)
-        .limit(1)
-        .maybeSingle<{ sha256: string }>();
+      // Nel magazzino l'impronta sta sulla riga del documento, non su una
+      // versione del registro: l'evento resta collegato al materiale preciso.
+      let sha256: string | null = null;
+      let entita = "deliverable_versions";
+      if (bucket === "magazzino") {
+        const { data: documento } = await supabase
+          .from("documenti_magazzino")
+          .select("sha256")
+          .eq("storage_path", path)
+          .limit(1)
+          .maybeSingle<{ sha256: string }>();
+        sha256 = documento?.sha256 ?? null;
+        entita = "documenti_magazzino";
+      } else {
+        const { data: versione } = await supabase
+          .from("deliverable_versions")
+          .select("sha256")
+          .eq("bucket", bucket)
+          .eq("storage_path", path)
+          .limit(1)
+          .maybeSingle<{ sha256: string }>();
+        sha256 = versione?.sha256 ?? null;
+      }
       await supabaseAdmin().from("audit_log").insert({
         actor: profile.id,
         actor_role: profile.role,
         action: "download_file",
-        entity_type: "deliverable_versions",
+        entity_type: entita,
         entity_id: null,
         polo_id: poloId ?? undefined,
-        meta: { bucket, storage_path: path, sha256: versione?.sha256 ?? null },
+        meta: { bucket, storage_path: path, sha256 },
       });
     } catch (e) {
       // L'audit non deve mai bloccare il download.
@@ -708,3 +747,145 @@ export async function impostaGoogleDocUrl(
   return { ok: true, dati: undefined };
 }
 
+
+// ------------------------------------------------------------- magazzino
+
+/**
+ * Deposito di un documento nel magazzino del gruppo.
+ *
+ * Stesso meccanismo dei materiali di progetto: il file va dal browser
+ * dritto su Storage con un URL firmato valido una volta sola, al server
+ * arrivano solo i metadati. Il bucket lo decide il server, e le policy
+ * decidono chi può: chi non appartiene al gruppo non riesce nemmeno a
+ * farsi firmare l'URL di caricamento.
+ */
+export async function preparaUploadDocumento(
+  poloId: string,
+  fileName: string,
+): Promise<Esito<{ bucket: string; path: string; token: string; signedUrl: string }>> {
+  const validazione = valida(preparaUploadDocumentoSchema, { poloId, fileName });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+
+  const supabase = await supabaseServer();
+  const path = `${poloId}/${randomUUID()}__${sanifica(fileName)}`;
+
+  const { data: firma, error } = await supabase.storage.from("magazzino").createSignedUploadUrl(path);
+  if (error || !firma) return fallita(error, "Impossibile preparare il caricamento");
+
+  return { ok: true, dati: { bucket: "magazzino", path, token: firma.token, signedUrl: firma.signedUrl } };
+}
+
+/**
+ * Registra nel magazzino un documento già caricato su Storage.
+ *
+ * Zero Trust come per i materiali di progetto: il path deve appartenere al
+ * gruppo dichiarato, l'oggetto deve esistere davvero, e il contenuto viene
+ * ricontrollato dai magic bytes — un .pdf che in realtà è un eseguibile
+ * viene respinto e rimosso.
+ */
+export async function registraDocumentoMagazzino(input: {
+  poloId: string;
+  storagePath: string;
+  fileName: string;
+  mimeType?: string | null;
+  sizeBytes: number;
+  sha256: string;
+}): Promise<Esito<{ id: string }>> {
+  const validazione = valida(registraDocumentoSchema, input);
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+  input = validazione.dati as typeof input;
+
+  const { profile } = await requireSession();
+  const supabase = await supabaseServer();
+
+  // Il path appartiene al gruppo dichiarato solo se inizia con il suo id:
+  // il primo segmento è la chiave di autorizzazione delle policy.
+  if (!input.storagePath.startsWith(`${input.poloId}/`)) {
+    return fallita({ message: "Accesso negato" }, "Documento non accessibile");
+  }
+
+  const dir = input.storagePath.split("/").slice(0, -1).join("/");
+  const nome = input.storagePath.split("/").pop()!;
+  const { data: elenco } = await supabase.storage.from("magazzino").list(dir, {
+    search: nome,
+    limit: 1,
+  });
+  if (!elenco?.length) {
+    return { ok: false, errore: "File non trovato nello storage: caricamento incompleto." };
+  }
+
+  // Upload DoS / formato reale: il contenuto viene verificato dai magic
+  // bytes, non dal nome o dal Content-Type dichiarato dal client.
+  try {
+    const { verificaUpload, primiByte } = await import("@/lib/upload-guard");
+    const { data: blobFile } = await supabaseAdmin().storage.from("magazzino").download(input.storagePath);
+    if (blobFile) {
+      const buffer = Buffer.from(await blobFile.arrayBuffer());
+      const esito = verificaUpload("documento", buffer.byteLength, await primiByte(buffer));
+      if (!esito.ok) {
+        await supabase.storage.from("magazzino").remove([input.storagePath]).catch(() => {});
+        return { ok: false, errore: esito.errore };
+      }
+    }
+  } catch (e) {
+    // Se la verifica fallisce per un errore tecnico blocchiamo comunque:
+    // meglio rifiutare un caricamento ambiguo che registrare un file sospetto.
+    console.error("Verifica magic bytes fallita:", e);
+    return { ok: false, errore: "Impossibile verificare il contenuto del file." };
+  }
+
+  const { data, error } = await supabase
+    .from("documenti_magazzino")
+    .insert({
+      polo_id: input.poloId,
+      caricato_da: profile.id,
+      storage_path: input.storagePath,
+      file_name: input.fileName,
+      mime_type: input.mimeType ?? null,
+      size_bytes: input.sizeBytes,
+      sha256: input.sha256.toLowerCase(),
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (error) {
+    // La riga non esiste: il file da solo non serve a nessuno.
+    await supabase.storage.from("magazzino").remove([input.storagePath]).catch(() => {});
+    return fallita(error, "Registrazione del documento fallita");
+  }
+
+  revalidatePath(`/polo/${input.poloId}`);
+  return { ok: true, dati: { id: data.id } };
+}
+
+/**
+ * Toglie un documento dal magazzino.
+ *
+ * Ordine delle operazioni: prima la riga, poi il file. Se il secondo passo
+ * fallisce resta un file inutilizzato nello storage — invisibile e innocuo —
+ * invece di una riga che punta a un file inesistente.
+ */
+export async function eliminaDocumentoMagazzino(id: string): Promise<Esito> {
+  const validazione = valida(eliminaDocumentoSchema, { id });
+  if (!validazione.ok) return { ok: false, errore: validazione.errore };
+
+  const supabase = await supabaseServer();
+
+  // La RLS decide: se il documento non è del proprio gruppo, questa query
+  // non restituisce nulla e l'azione si ferma qui.
+  const { data: documento } = await supabase
+    .from("documenti_magazzino")
+    .select("id, polo_id, storage_path")
+    .eq("id", id)
+    .maybeSingle<{ id: string; polo_id: string; storage_path: string }>();
+
+  if (!documento) return fallita({ message: "Accesso negato" }, "Documento non accessibile");
+
+  const { error } = await supabase.from("documenti_magazzino").delete().eq("id", id);
+  if (error) return fallita(error, "Eliminazione non consentita");
+
+  await supabase.storage.from("magazzino").remove([documento.storage_path]);
+
+  revalidatePath(`/polo/${documento.polo_id}`);
+  return { ok: true, dati: undefined };
+}

@@ -61,6 +61,7 @@ export default function PacchettoVideo({
   pacchetto,
   elementi,
   isAdmin,
+  membro,
   locked,
   coinvolgeTerzi,
   esportazione,
@@ -75,6 +76,8 @@ export default function PacchettoVideo({
   pacchetto: PacchettoVideoRow | null;
   elementi: ElementoCaricato[];
   isAdmin: boolean;
+  /** true se chi guarda appartiene al gruppo (anche se ha accesso globale). */
+  membro: boolean;
   locked: boolean;
   coinvolgeTerzi: boolean;
   esportazione: EsportazioneDriveRow | null;
@@ -121,9 +124,11 @@ export default function PacchettoVideo({
 
   const stato = pacchetto?.stato ?? "bozza";
   const inBozza = stato === "bozza";
-  // Il pacchetto lo compone il gruppo, non chi ha accesso globale: è il loro deposito, e
-  // la RLS rifiuterebbe comunque una consegna "originale" fatta dall'Admin.
-  const componibile = inBozza && !locked && !isAdmin;
+  // Il pacchetto lo compone il gruppo. Chi ha accesso globale e NON appartiene al
+  // gruppo non lo compone: la RLS rifiuterebbe comunque una consegna originale
+  // fatta da lui. Se invece appartiene al gruppo (doppio ruolo) compone come un
+  // partecipante, e resta accesso globale per il resto.
+  const componibile = inBozza && !locked && (membro || !isAdmin);
   // Il contatto per la liberatoria non è un file "originale" soggetto a RLS:
   // può correggerlo anche l'Admin (es. refuso nell'email), non solo il gruppo.
   const contattoModificabile = inBozza && !locked;

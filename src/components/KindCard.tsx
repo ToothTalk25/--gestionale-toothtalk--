@@ -40,6 +40,7 @@ export default function KindCard({
   kind,
   label,
   isAdmin,
+  membro,
   locked,
   isGoogleDoc,
   googleDocUrl,
@@ -53,6 +54,8 @@ export default function KindCard({
   kind: DeliverableKind;
   label: string;
   isAdmin: boolean;
+  /** true se chi guarda appartiene al gruppo (anche se ha accesso globale). */
+  membro: boolean;
   locked: boolean;
   isGoogleDoc: boolean;
   googleDocUrl: string | null;
@@ -110,6 +113,7 @@ export default function KindCard({
           taskId={taskId}
           kind={kind}
           isAdmin={isAdmin}
+          membro={membro}
           locked={locked}
           accetta={accetta}
         />
@@ -138,6 +142,7 @@ function Contenuto({
   taskId,
   kind,
   isAdmin,
+  membro,
   locked,
   accetta,
 }: {
@@ -149,6 +154,7 @@ function Contenuto({
   taskId: string;
   kind: DeliverableKind;
   isAdmin: boolean;
+  membro: boolean;
   locked: boolean;
   accetta?: string;
 }) {
@@ -173,6 +179,7 @@ function Contenuto({
         taskId={taskId}
         kind={kind}
         isAdmin={isAdmin}
+        membro={membro}
         locked={locked}
         esisteOriginale={versioni.some((v) => v.origin === "originale")}
         accept={accetta}
@@ -192,6 +199,7 @@ function Contenuto({
       taskId={taskId}
       kind={kind}
       isAdmin={isAdmin}
+      membro={membro}
       locked={locked}
       esisteOriginale={false}
       accept={accetta}

@@ -398,3 +398,18 @@ export type SessionContext = {
    */
   soloConfermaUscita?: boolean;
 };
+
+/** Documento depositato nel magazzino del gruppo (zona di lavoro). */
+export type DocumentoMagazzino = {
+  id: string;
+  polo_id: string;
+  caricato_da: string | null;
+  storage_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number;
+  sha256: string;
+  creato_at: string;
+  /** Nome di chi ha depositato il file (risolto dalla pagina via nomi_visibili). */
+  caricato_da_nome?: string | null;
+};

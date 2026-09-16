@@ -36,6 +36,8 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   taskId: string;
   kind: DeliverableKind;
   isAdmin: boolean;
+  /** true se chi carica appartiene al gruppo (anche se ha accesso globale). */
+  membro?: boolean;
   locked: boolean;
   esisteOriginale?: boolean;
   archivio?: Archivio;
@@ -49,6 +51,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   taskId,
   kind,
   isAdmin,
+  membro = false,
   locked,
   esisteOriginale = false,
   archivio = "lavorazione",
@@ -65,12 +68,14 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
   const [progresso, setProgresso] = useState(0);
   const [messaggio, setMessaggio] = useState<string | null>(null);
 
-  // Chi ha accesso globale deposita sempre versioni derivate: la RLS impedisce di
-  // scrivere un "originale", così non può fabbricare un deposito a nome
-  // del gruppo né sostituire quella vera.
-  const origin = isAdmin ? "admin_edit" : "originale";
+  // Chi ha accesso globale deposita versioni derivate: la RLS impedisce di
+  // scrivere un "originale", così non può fabbricare un deposito a nome di un
+  // gruppo di cui non fa parte. Se però appartiene al gruppo deposita come un
+  // partecipante: è il doppio ruolo.
+  const agisceComeAdmin = isAdmin && !membro;
+  const origin = agisceComeAdmin ? "admin_edit" : "originale";
 
-  const bloccato = !isAdmin && locked;
+  const bloccato = locked && !agisceComeAdmin;
 
   async function carica(file: File) {
     if (inCorso.current) return; // niente doppio upload in parallelo sullo stesso slot
@@ -149,8 +154,8 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
     return <span className="text-xs text-slate-400">Caricamento bloccato</span>;
   }
 
-  const base = etichetta ?? (isAdmin ? "Carica versione editata" : "Carica file");
-  const baseCorto = etichetta ?? (isAdmin ? "Carica versione" : "Carica file");
+  const base = etichetta ?? (agisceComeAdmin ? "Carica versione editata" : "Carica file");
+  const baseCorto = etichetta ?? (agisceComeAdmin ? "Carica versione" : "Carica file");
   const etichette: Record<Fase, string> = {
     idle: base,
     hash: `Calcolo impronta ${Math.round(progresso * 100)}%`,
@@ -200,7 +205,7 @@ const UploadDeliverable = forwardRef<UploadDeliverableHandle, {
           </>
         )}
       </button>
-      {isAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
+      {agisceComeAdmin && !esisteOriginale && fase === "idle" && archivio === "lavorazione" && (
         <p className="mx-auto mt-1.5 max-w-[11rem] text-[11px] leading-tight text-amber-600">
           Nessun materiale depositato dal gruppo.
         </p>

@@ -6,7 +6,8 @@ import StatusBadge from "@/components/StatusBadge";
 import NewTaskForm from "@/components/NewTaskForm";
 import AzioniProgettoRiga from "@/components/AzioniProgettoRiga";
 import TornaIndietro from "@/components/TornaIndietro";
-import type { Formato, Polo, TaskStatus } from "@/lib/types";
+import MagazzinoDocumenti from "@/components/MagazzinoDocumenti";
+import type { DocumentoMagazzino, Formato, Polo, TaskStatus } from "@/lib/types";
 
 export default async function PoloPage({
   params,
@@ -87,6 +88,21 @@ export default async function PoloPage({
     {},
   );
 
+  // Magazzino del gruppo: materiali di servizio che non appartengono a un
+  // progetto. La RLS restituisce solo i documenti dei gruppi a cui si
+  // appartiene (l'accesso globale li vede tutti).
+  const { data: documentiMagazzino } = await supabase
+    .from("documenti_magazzino")
+    .select("id, polo_id, caricato_da, storage_path, file_name, mime_type, size_bytes, sha256, creato_at")
+    .eq("polo_id", poloId)
+    .order("creato_at", { ascending: false })
+    .returns<DocumentoMagazzino[]>();
+
+  const documenti = (documentiMagazzino ?? []).map((d) => ({
+    ...d,
+    caricato_da_nome: d.caricato_da ? nomeDi[d.caricato_da] ?? null : null,
+  }));
+
   return (
     <div className="space-y-8">
       <TornaIndietro href="/dashboard" etichetta="Dashboard" />
@@ -95,6 +111,9 @@ export default async function PoloPage({
         <p className="mt-1 text-sm text-slate-500">
           {polo.citta ? `${polo.citta} · ` : ""}
           {membri?.length ?? 0} partecipanti, tutti con gli stessi permessi.
+          {documenti.length > 0
+            ? ` · ${documenti.length} ${documenti.length === 1 ? "documento" : "documenti"} in magazzino`
+            : ""}
         </p>
         {!!membri?.length && (
           <p className="mt-2 text-xs text-slate-400">
@@ -148,6 +167,8 @@ export default async function PoloPage({
           </ul>
         )}
       </section>
+
+      <MagazzinoDocumenti poloId={poloId} documenti={documenti} />
     </div>
   );
 }

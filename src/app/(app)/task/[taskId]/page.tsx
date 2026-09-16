@@ -92,6 +92,17 @@ export default async function TaskPage({
 
   if (!task) notFound();
 
+  // Doppio ruolo: chi ha accesso globale e appartiene a questo gruppo lavora
+  // qui anche dal lato partecipante (deposita materiali originali, compone il
+  // pacchetto). Fuori dai propri gruppi resta solo accesso globale.
+  const { data: appartenenza } = await supabase
+    .from("memberships")
+    .select("polo_id")
+    .eq("user_id", profile.id)
+    .eq("polo_id", task.polo_id)
+    .maybeSingle<{ polo_id: string }>();
+  const membroDelGruppo = !!appartenenza;
+
   const ids = (deliverables ?? []).map((d) => d.id);
 
   const [{ data: polo }, { data: versioni }, { data: elementiRaw }, { data: esportazione }, { data: liberatoriaInfo }] =
@@ -295,6 +306,7 @@ export default async function TaskPage({
                 kind={kind}
                 label={KIND_LABEL[kind]}
                 isAdmin={isAdmin}
+                membro={membroDelGruppo}
                 locked={task.locked}
                 isGoogleDoc={isGoogleDoc}
                 googleDocUrl={d?.google_doc_url ?? null}
@@ -314,6 +326,7 @@ export default async function TaskPage({
         pacchetto={pacchetto ?? null}
         elementi={elementiPacchetto}
         isAdmin={isAdmin}
+        membro={membroDelGruppo}
         locked={task.locked}
         coinvolgeTerzi={task.coinvolge_terzi}
         esportazione={esportazione ?? null}

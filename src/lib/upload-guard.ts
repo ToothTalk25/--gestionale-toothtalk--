@@ -86,6 +86,12 @@ export const LIMITI_KIND: Record<string, number> = {
   descrizione: 1024 * 1024,
   titolo_youtube: 1024 * 1024,
   altro: 500 * 1024 * 1024,
+  // Magazzino documenti: solo limite di dimensione, nessuna allowlist di
+  // formato. Non è pigrizia: docx/xlsx/pptx/zip condividono gli stessi
+  // magic bytes (contenitore ZIP), quindi una lista rigida respingerebbe
+  // documenti legittimi senza aggiungere sicurezza — nel magazzino
+  // l'applicazione non esegue nulla.
+  documento: 100 * 1024 * 1024, // 100 MB
 };
 
 /** Tipi MIME reali ammessi per kind. */

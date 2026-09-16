@@ -131,7 +131,7 @@ export const eliminaVersioneSchema = z.object({
 });
 
 export const urlFirmatoSchema = z.object({
-  bucket: z.enum(["originali", "finali", "revisioni", "profili"]),
+  bucket: z.enum(["originali", "finali", "revisioni", "profili", "magazzino"]),
   path: z
     .string()
     .min(3)
@@ -147,4 +147,29 @@ export const salvaPacchettoSchema = z.object({
     script: testoLiberoSchema(20000, "Lo script").optional(),
     titolo_youtube: testoLiberoSchema(150, "Il titolo YouTube").optional(),
   }),
+});
+
+// ------------------------------------------------------------- magazzino
+
+/** Deposito di un documento nel magazzino del gruppo. */
+export const preparaUploadDocumentoSchema = z.object({
+  poloId: uuidSchema,
+  fileName: z.string().min(1).max(255),
+});
+
+export const registraDocumentoSchema = z.object({
+  poloId: uuidSchema,
+  storagePath: z
+    .string()
+    .min(3)
+    .max(500)
+    .regex(/^[a-zA-Z0-9._/-]+$/, "Path di storage non valido"),
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().max(200).nullable().optional(),
+  sizeBytes: z.number().int().positive().max(100 * 1024 * 1024),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/i, "Impronta SHA-256 non valida"),
+});
+
+export const eliminaDocumentoSchema = z.object({
+  id: uuidSchema,
 });
