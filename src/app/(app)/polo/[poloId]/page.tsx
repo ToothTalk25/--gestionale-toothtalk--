@@ -121,7 +121,7 @@ export default async function PoloPage({
                   href={`/task/${t.id}`}
                   className="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-5 py-4 hover:bg-slate-50"
                 >
-                  <span className="flex-1 text-sm font-medium">{t.titolo}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.titolo}</span>
                   {t.scadenza && (
                     <span className="text-xs text-slate-400">
                       scad. {new Date(t.scadenza).toLocaleDateString("it-IT")}
@@ -134,11 +134,13 @@ export default async function PoloPage({
                   )}
                   <StatusBadge status={t.status} />
                   {t.status === "da_fare" && (
-                    <AzioniProgettoRiga
-                      taskId={t.id}
-                      titolo={t.titolo}
-                      poloId={poloId}
-                    />
+                    <div className="w-full">
+                      <AzioniProgettoRiga
+                        taskId={t.id}
+                        titolo={t.titolo}
+                        poloId={poloId}
+                      />
+                    </div>
                   )}
                 </Link>
               </li>

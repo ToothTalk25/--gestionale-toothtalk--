@@ -171,7 +171,7 @@ export default async function DashboardPage() {
                   <span className="w-[76px] shrink-0 text-[11.5px] font-semibold uppercase text-slate-400">
                     {t.polo_nome}
                   </span>
-                  <span className="flex-1 text-sm font-medium">{t.titolo}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.titolo}</span>
                   {t.locked && (
                     <span className="text-[11.5px] text-slate-400">bloccato</span>
                   )}
@@ -180,11 +180,13 @@ export default async function DashboardPage() {
                   </span>
                   <StatusBadge status={t.status} />
                   {t.status === "da_fare" && (
-                    <AzioniProgettoRiga
-                      taskId={t.id}
-                      titolo={t.titolo}
-                      poloId={t.polo_id}
-                    />
+                    <div className="w-full">
+                      <AzioniProgettoRiga
+                        taskId={t.id}
+                        titolo={t.titolo}
+                        poloId={t.polo_id}
+                      />
+                    </div>
                   )}
                 </Link>
               </li>

@@ -53,8 +53,14 @@ const config: NextConfig = {
               // 'blob:' serve alla revisione del video di dichiarazione
               // registrato in-app: il blob vive solo nel browser del
               // Collaboratore e non viene mai trasferito prima della
-              // conferma esplicita.
-              "media-src 'self' blob:",
+              // conferma esplicita. https://*.supabase.co serve al player
+              // del Coordinatore in ControlliAdminDichiarazione, che punta
+              // direttamente a un URL firmato di Storage (non a un blob
+              // locale) — senza, il browser blocca il caricamento per CSP e
+              // sembra un problema di formato/codec quando non lo è
+              // (verificato: l'oggetto su Storage è un mp4 valido, con
+              // supporto Range/206 corretto).
+              "media-src 'self' blob: https://*.supabase.co",
               "font-src 'self' data:",
               // blob: qui serve allo stesso worker di ffmpeg.wasm di cui
               // sopra: comunica col proprio script (caricato da blob:) anche
