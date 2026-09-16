@@ -2,28 +2,28 @@ import Link from "next/link";
 
 const documenti = [
   {
-    href: "/documenti/1-accordo-editoriale.docx",
+    href: "/documenti/1-accordo-editoriale.pdf",
     numero: "Documento 1",
     titolo: "Accordo Editoriale",
     descrizione:
-      "Modello dell'accordo di collaborazione volontaria che ogni Collaboratore firma al momento della registrazione.",
+      "Modello dell'accordo di collaborazione volontaria che ogni partecipante firma al momento della registrazione.",
   },
   {
-    href: "/documenti/2-informativa-liberatoria-esterni.docx",
+    href: "/documenti/2-informativa-liberatoria-esterni.pdf",
     numero: "Documento 2",
     titolo: "Informativa e Liberatoria per interviste",
     descrizione:
-      "Informativa privacy e liberatoria compilabile online dai soggetti esterni intervistati (non Collaboratori).",
+      "Informativa privacy e liberatoria compilabile online dai soggetti esterni intervistati (non partecipanti).",
   },
   {
-    href: "/documenti/3-protocollo-operativo.docx",
+    href: "/documenti/3-protocollo-operativo.pdf",
     numero: "Documento 3",
     titolo: "Protocollo Operativo e Comportamentale",
     descrizione:
       "Regole operative e comportamentali per la realizzazione dei contenuti, allegato all'Accordo Editoriale.",
   },
   {
-    href: "/documenti/4-modulo-nomina.docx",
+    href: "/documenti/4-modulo-nomina.pdf",
     numero: "Documento 4",
     titolo: "Modulo di nomina individuale",
     descrizione:
@@ -62,7 +62,7 @@ export default function DocumentiPage() {
             <p className="text-xs font-medium uppercase tracking-wide text-tt-blue">{d.numero}</p>
             <p className="mt-1 text-base font-medium text-slate-900">{d.titolo}</p>
             <p className="mt-1 text-sm text-slate-500">{d.descrizione}</p>
-            <p className="mt-2 text-xs text-slate-400">Scarica (.docx) →</p>
+            <p className="mt-2 text-xs text-slate-400">Scarica (.pdf) →</p>
           </a>
         ))}
       </section>

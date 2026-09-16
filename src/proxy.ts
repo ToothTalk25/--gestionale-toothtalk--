@@ -28,7 +28,7 @@ const PUBBLICHE = [
   // nessun dato sensibile, deve restare raggiungibile senza sessione.
   "/google97604b8436f2db92.html",
   // Libreria documenti (modelli, non copie firmate): i link di download
-  // sono file statici in public/documenti/*.docx — senza questa riga il
+  // sono file statici in public/documenti/*.pdf — senza questa riga il
   // proxy li avrebbe rimandati al login invece di scaricarli, per
   // chiunque non fosse già loggato.
   "/documenti",
