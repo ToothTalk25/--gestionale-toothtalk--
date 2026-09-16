@@ -132,7 +132,12 @@ export default function RegistraVideoDichiarazione({
   }
 
   function avviaRecorder(stream: MediaStream) {
-    const supportato = ["video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find((m) =>
+    // mp4 preferito quando disponibile: il Coordinatore rivede questi video
+    // su Mac (Safari/QuickTime), che non decodificano affatto WebM. Se il
+    // dispositivo di chi registra non sa produrre mp4, isTypeSupported
+    // restituisce false e si scende comunque sul webm come prima — nessuna
+    // regressione per chi non lo supporta.
+    const supportato = ["video/mp4", "video/webm;codecs=vp8,opus", "video/webm"].find((m) =>
       window.MediaRecorder.isTypeSupported(m),
     );
     const recorder = new window.MediaRecorder(stream, supportato ? { mimeType: supportato } : undefined);

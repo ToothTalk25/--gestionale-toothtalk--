@@ -557,6 +557,7 @@ export default function PacchettoVideo({
               id="dichiarazione"
               titolo="7 · Video di dichiarazione"
               elemento={dichiarazione}
+              senzaScaricaGenerico
               confermato={testiConfermati || !inBozza}
               onDropFile={
                 componibile && !dichiarazione
@@ -637,6 +638,7 @@ export default function PacchettoVideo({
               id="dichiarazione-integrazione"
               titolo="7b · Video di integrazione della dichiarazione"
               elemento={dichiarazioneIntegrazione}
+              senzaScaricaGenerico
               confermato={testiConfermati || !inBozza}
               onDropFile={
                 componibile && !dichiarazioneIntegrazione
@@ -1037,6 +1039,7 @@ function Slot({
   footer,
   isAdmin,
   evidenziato,
+  senzaScaricaGenerico,
 }: {
   id?: string;
   titolo: string;
@@ -1054,6 +1057,12 @@ function Slot({
   evidenziato?: boolean;
   /** Mostra "Scarica" quando l'elemento porta bucket/storage_path (solo per l'admin, vedi pacchetto_elementi_meta). */
   isAdmin: boolean;
+  /**
+   * Nasconde lo "Scarica" generico qui sopra: per i video di dichiarazione
+   * il footer porta già ControlliAdminDichiarazione (occhio/download/elimina,
+   * con URL firmati dedicati) — senza questo il bottone compariva due volte.
+   */
+  senzaScaricaGenerico?: boolean;
 }) {
   const [conferma, setConferma] = useState(false);
   const [confermaArchivia, setConfermaArchivia] = useState(false);
@@ -1127,7 +1136,7 @@ function Slot({
             {new Date(elemento.uploaded_at).toLocaleString("it-IT")}
           </p>
 
-          {isAdmin && elemento.bucket && elemento.storage_path && (
+          {isAdmin && elemento.bucket && elemento.storage_path && !senzaScaricaGenerico && (
             <p className="mt-1.5 flex items-center gap-1.5 text-xs">
               <button
                 onClick={scarica}

@@ -25,10 +25,12 @@ export default function ControlliAdminDichiarazione({
   const router = useRouter();
   const [link, setLink] = useState<{ url: string; urlDownload: string } | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
+  const [nonRiproducibile, setNonRiproducibile] = useState(false);
   const { chiedi, dialogo } = useConferma();
 
   async function vedi() {
     setErrore(null);
+    setNonRiproducibile(false);
     const esito = await urlDichiarazione(pacchettoId, ruolo);
     if (!esito.ok) return setErrore(esito.errore);
     // Un secondo click sull'occhio chiude il player.
@@ -122,13 +124,24 @@ export default function ControlliAdminDichiarazione({
       </div>
 
       {link && (
-        <video
-          key={link.url}
-          controls
-          playsInline
-          src={link.url}
-          className="mt-2 w-full max-w-xs rounded-lg bg-slate-900"
-        />
+        <>
+          <video
+            key={link.url}
+            controls
+            playsInline
+            src={link.url}
+            onError={() => setNonRiproducibile(true)}
+            className="mt-2 w-full max-w-xs rounded-lg bg-slate-900"
+          />
+          {nonRiproducibile && (
+            <p className="mt-1 max-w-xs text-xs text-amber-700">
+              Il browser non riesce a riprodurre questo video (formato non
+              supportato — capita spesso con Safari/QuickTime su Mac e i
+              video registrati da telefoni Android). Scaricalo e aprilo con
+              Chrome o VLC.
+            </p>
+          )}
+        </>
       )}
       {errore && <p className="mt-1 text-xs text-red-600">{errore}</p>}
       {dialogo}
