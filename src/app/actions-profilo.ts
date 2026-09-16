@@ -2162,6 +2162,94 @@ export async function approvaRinnovoAccordo(
 }
 
 /**
+ * Link firmato e temporaneo al documento di rinnovo caricato da un
+ * collaboratore, per la revisione del Coordinatore prima di approvare o
+ * rifiutare (Art. 9.1). Il bucket "profili" non è mai accessibile
+ * direttamente dal client.
+ */
+export async function urlDocumentoRinnovo(userId: string): Promise<Esito<string>> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+
+  const admin = supabaseAdmin();
+  const { data: target } = await admin
+    .from("profiles")
+    .select("rinnovo_path")
+    .eq("id", userId)
+    .single<{ rinnovo_path: string | null }>();
+  if (!target?.rinnovo_path) return errore("Nessun documento di rinnovo caricato.");
+
+  const { data } = await admin.storage.from("profili").createSignedUrl(target.rinnovo_path, 300);
+  if (!data?.signedUrl) return errore("Impossibile generare il link.");
+  return { ok: true, dati: data.signedUrl };
+}
+
+/**
+ * Rifiuta il documento di rinnovo caricato: libera il campo (rinnovo_path
+ * torna null) così il Collaboratore può ricaricarne uno nuovo. Non tocca
+ * accordo_scadenza: l'accesso resta sospeso esattamente come se il rinnovo
+ * non fosse mai stato caricato (Art. 9.1). Il motivo del rifiuto va
+ * comunicato fuori dal gestionale — stesso canale informale con cui oggi il
+ * documento di rinnovo viene inviato al Collaboratore — ma resta comunque
+ * in audit_log per chi deve ricostruire la storia.
+ */
+export async function rifiutaRinnovoAccordo(
+  userId: string,
+  motivo: string,
+): Promise<Esito<void>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata al Coordinatore.");
+
+  const supabase = await supabaseServer();
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, full_name, rinnovo_path, rinnovo_caricato_at")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      rinnovo_path: string | null;
+      rinnovo_caricato_at: string | null;
+    }>();
+  if (!target) return errore("Utente non trovato.");
+  if (!target.rinnovo_path) {
+    return errore("Nessun documento di rinnovo caricato per questo utente.");
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      rinnovo_path: null,
+      rinnovo_sha256: null,
+      rinnovo_caricato_at: null,
+    })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "rifiuto_rinnovo_accordo",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: {
+        utente: target.full_name,
+        motivo,
+        rinnovo_caricato_at: target.rinnovo_caricato_at,
+        rifiutato_at: new Date().toISOString(),
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  revalidatePath("/profilo");
+  revalidatePath("/rinnovo");
+  return { ok: true, dati: undefined };
+}
+
+/**
  * Restituisce un link firmato e temporaneo al Modulo di nomina (Documento
  * 4) del chiamante — o, se admin, di un userId a scelta. Come per la PEC,
  * il download passa dal server: nessun bucket è pubblico.

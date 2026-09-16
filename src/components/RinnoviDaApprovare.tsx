@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { approvaRinnovoAccordo } from "@/app/actions-profilo";
+import { approvaRinnovoAccordo, rifiutaRinnovoAccordo, urlDocumentoRinnovo } from "@/app/actions-profilo";
 
 export type RigaRinnovoDaApprovare = {
   id: string;
@@ -22,12 +22,26 @@ function accordoScaduta(scadenza: string): boolean {
  * collaboratori che hanno caricato il documento di rinnovo dell'accordo
  * scaduto e attendono l'approvazione del Titolare. L'approvazione riattiva
  * l'accesso ai progetti e sposta la scadenza di 6 mesi avanti; il Modulo di
- * nomina (Documento 4) NON viene rigenerato: resta valido.
+ * nomina (Documento 4) NON viene rigenerato: resta valido. Il rifiuto
+ * libera il campo senza toccare la scadenza: l'accesso resta sospeso come
+ * se il rinnovo non fosse mai stato caricato, finché non ne arriva uno nuovo.
  */
 export default function RinnoviDaApprovare({ rinnovi }: { rinnovi: RigaRinnovoDaApprovare[] }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
+  const [inRifiuto, setInRifiuto] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
+
+  async function vedi(userId: string) {
+    setMessaggio(null);
+    const esito = await urlDocumentoRinnovo(userId);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    window.open(esito.dati, "_blank", "noopener,noreferrer");
+  }
 
   async function approva(userId: string) {
     setInCorso(userId);
@@ -40,6 +54,23 @@ export default function RinnoviDaApprovare({ rinnovi }: { rinnovi: RigaRinnovoDa
     }
     setMessaggio(
       `Rinnovo approvato: l'accesso ai progetti è riattivato e la scadenza dell'accordo è ora il ${esito.dati.nuovaScadenza.replaceAll("-", "/")}.`,
+    );
+    router.refresh();
+  }
+
+  async function confermaRifiuto(userId: string) {
+    setInCorso(userId);
+    setMessaggio(null);
+    const esito = await rifiutaRinnovoAccordo(userId, motivo.trim());
+    setInCorso(null);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    setInRifiuto(null);
+    setMotivo("");
+    setMessaggio(
+      "Documento di rinnovo rifiutato: il campo è di nuovo libero, il collaboratore può ricaricarne uno nuovo. Ricorda di spiegargli il motivo fuori dal gestionale (stesso canale con cui gli hai inviato il documento).",
     );
     router.refresh();
   }
@@ -101,14 +132,62 @@ export default function RinnoviDaApprovare({ rinnovi }: { rinnovi: RigaRinnovoDa
                     </p>
                   ))}
               </div>
-              <button
-                onClick={() => approva(r.id)}
-                disabled={inCorso === r.id}
-                className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {inCorso === r.id ? "Approvo…" : "Approva rinnovo"}
-              </button>
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                <button
+                  onClick={() => vedi(r.id)}
+                  className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  Vedi documento
+                </button>
+                <button
+                  onClick={() => approva(r.id)}
+                  disabled={inCorso === r.id}
+                  className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {inCorso === r.id ? "Approvo…" : "Approva rinnovo"}
+                </button>
+                <button
+                  onClick={() => {
+                    setInRifiuto(r.id);
+                    setMotivo("");
+                  }}
+                  disabled={inCorso === r.id}
+                  className="tt-btn border border-red-200 bg-white px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Rifiuta
+                </button>
+              </div>
             </div>
+
+            {inRifiuto === r.id && (
+              <div className="mt-3 rounded-lg bg-red-50 p-3">
+                <label className="text-xs font-medium text-red-800">
+                  Motivo del rifiuto (per la tua traccia — comunicalo comunque al collaboratore fuori dal gestionale)
+                </label>
+                <textarea
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  rows={2}
+                  className="mt-1.5 w-full rounded-lg border border-red-200 px-3 py-2 text-sm"
+                  placeholder="es. firma illeggibile, documento sbagliato, pagina mancante…"
+                />
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    onClick={() => setInRifiuto(null)}
+                    className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    onClick={() => confermaRifiuto(r.id)}
+                    disabled={inCorso === r.id}
+                    className="tt-btn bg-red-600 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
+                  >
+                    {inCorso === r.id ? "Rifiuto…" : "Conferma rifiuto"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
