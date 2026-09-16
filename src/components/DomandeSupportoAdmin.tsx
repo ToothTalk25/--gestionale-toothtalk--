@@ -6,13 +6,15 @@ import { rispondiDomanda } from "@/app/actions-supporto";
 import type { RigaDomandaSupporto } from "@/app/actions-supporto";
 
 /**
- * Coda delle domande dei collaboratori (widget chat lato utente).
- * Le domande "tecniche" ricevono subito una risposta automatica dell'IA
- * (nessuna revisione prima dell'invio, scelta esplicita) — qui restano
- * comunque visibili per trasparenza. "Da gestire" sono quelle senza
- * risposta del Coordinatore E (l'IA non le ha gestite, oppure il
- * collaboratore ha chiesto esplicitamente di parlare con lui anche dopo
- * una risposta automatica).
+ * Coda delle domande dei collaboratori (widget chat lato utente). Le
+ * domande "tecniche" NON ricevono più una risposta autonoma dell'IA:
+ * vengono inoltrate via email ai Collaboratori Tecnici attivi
+ * (/admin/tecnico), e tornano qui "da gestire" come tutte le altre — è
+ * l'accesso globale a incollare la risposta ricevuta in rispondiDomanda().
+ * Restano nella sezione "risposte automatiche" SOLO le righe storiche da
+ * prima di questo cambio, che hanno già una bozza dell'IA salvata: quelle
+ * erano già state mostrate al collaboratore come risposta, non ha senso
+ * rimetterle in coda.
  */
 export default function DomandeSupportoAdmin({
   domande,
@@ -21,10 +23,11 @@ export default function DomandeSupportoAdmin({
   domande: RigaDomandaSupporto[];
   nomi: Record<string, string>;
 }) {
-  const daGestire = domande.filter((d) => !d.risposta && (d.categoria_ia !== "tecnica" || d.richiede_coordinatore));
-  const risposteAutomatiche = domande.filter(
-    (d) => !d.risposta && d.categoria_ia === "tecnica" && !d.richiede_coordinatore,
-  );
+  const rispostaAutomaticaStorica = (d: RigaDomandaSupporto) =>
+    d.categoria_ia === "tecnica" && !!d.bozza_risposta_ia && !d.richiede_coordinatore;
+
+  const daGestire = domande.filter((d) => !d.risposta && !rispostaAutomaticaStorica(d));
+  const risposteAutomatiche = domande.filter((d) => !d.risposta && rispostaAutomaticaStorica(d));
   const risposteCoordinatore = domande.filter((d) => !!d.risposta);
 
   if (domande.length === 0) return <p className="text-sm text-slate-500">Nessuna domanda finora.</p>;
@@ -117,6 +120,12 @@ function RigaPendente({ domanda, nome }: { domanda: RigaDomandaSupporto; nome: s
       {domanda.richiede_coordinatore && (
         <p className="mt-1 text-xs font-medium text-amber-700">
           Il collaboratore ha chiesto esplicitamente di parlare con te.
+        </p>
+      )}
+      {domanda.categoria_ia === "tecnica" && !domanda.bozza_risposta_ia && (
+        <p className="mt-1 text-xs text-slate-500">
+          Inoltrata via email ai Collaboratori Tecnici attivi: incolla qui la
+          risposta che ti mandano.
         </p>
       )}
       {domanda.bozza_risposta_ia && (

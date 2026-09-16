@@ -275,8 +275,8 @@ function MessaggioDomanda({
             <p className="ml-1 text-xs text-amber-700">Il Coordinatore è stato avvisato.</p>
           ) : domanda.categoria_ia === null ? (
             <p className="ml-1 text-xs text-slate-400">Sto pensando…</p>
-          ) : domanda.categoria_ia === "altro" ? (
-            <p className="ml-1 text-xs text-slate-400">In attesa di una risposta del Coordinatore…</p>
+          ) : domanda.categoria_ia === "altro" || domanda.categoria_ia === "tecnica" ? (
+            <p className="ml-1 text-xs text-slate-400">In attesa di una risposta…</p>
           ) : null}
         </>
       )}

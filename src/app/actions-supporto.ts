@@ -7,6 +7,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { classificaDomandaSupporto } from "@/lib/gemini";
 import { inviaPushAdmin } from "@/lib/push";
+import { inviaEmailGmail } from "@/lib/mail";
 
 type Esito = { ok: true } | { ok: false; errore: string };
 
@@ -63,6 +64,28 @@ async function arricchisciEDinotifica(id: string, domanda: string, nomeMittente:
   const admin = supabaseAdmin();
 
   const esito = await classificaDomandaSupporto(domanda);
+
+  if (esito.categoria === "tecnica") {
+    // Le domande tecniche non ricevono più una risposta autonoma dell'IA:
+    // vanno al Collaboratore Tecnico via email, non a rispondere lui
+    // stesso nel gestionale (rispondiDomanda resta admin-only — allargare
+    // quel permesso a una persona esterna contraddirebbe il perimetro di
+    // accesso minimo scritto nel Documento 5, Art. 4). Chi risponde nel
+    // gestionale resta sempre e solo l'accesso globale, incollando la
+    // risposta ricevuta dal Collaboratore Tecnico.
+    await admin
+      .from("domande_supporto")
+      .update({
+        categoria_ia: "tecnica",
+        bozza_risposta_ia: null,
+        bozza_generata_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    await inoltraDomandaTecnica(domanda, nomeMittente);
+    return;
+  }
+
   await admin
     .from("domande_supporto")
     .update({
@@ -72,16 +95,54 @@ async function arricchisciEDinotifica(id: string, domanda: string, nomeMittente:
     })
     .eq("id", id);
 
-  // Se l'IA ha già risposto (categoria "tecnica"), il Coordinatore non deve
-  // essere interrotto subito: la vede comunque nella sua sezione, ma senza
-  // notifica push — quella è riservata a ciò che ha davvero bisogno di lui.
-  if (esito.categoria === "tecnica") return;
-
   await inviaPushAdmin({
     title: "Nuova domanda — ToothTalk",
     body: `${nomeMittente}: ${domanda.slice(0, 120)}${domanda.length > 120 ? "…" : ""}`,
     url: "/admin",
   });
+}
+
+/**
+ * Inoltra una domanda tecnica ai Collaboratori Tecnici attivi, via email —
+ * solo nome di battesimo di chi ha chiesto (Documento 5, Art. 8.2:
+ * minimizzazione, il cognome non serve mai a rispondere a una domanda
+ * tecnica). Se non c'è ancora nessun Collaboratore Tecnico configurato in
+ * /admin/tecnico, la domanda resta comunque visibile in admin per
+ * trasparenza — solo senza nessuno a cui inoltrarla.
+ */
+async function inoltraDomandaTecnica(domanda: string, nomeMittente: string): Promise<void> {
+  const admin = supabaseAdmin();
+  const { data: tecnici } = await admin
+    .from("collaboratori_tecnici")
+    .select("contatto")
+    .eq("attivo", true)
+    .returns<{ contatto: string }[]>();
+  if (!tecnici?.length) return;
+
+  const primoNome = nomeMittente.split(" ")[0];
+  const testo = [
+    "Ciao,",
+    "",
+    `${primoNome} ha fatto questa domanda tecnica nel gestionale ToothTalk:`,
+    "",
+    `"${domanda}"`,
+    "",
+    "Rispondi a Enrico (non a questa email): la incollerà lui nel gestionale,",
+    "così resta lui l'ultimo controllo su cosa arriva ufficialmente al",
+    "Collaboratore che ha chiesto.",
+    "",
+    "Messaggio generato automaticamente dal gestionale ToothTalk.",
+  ].join("\n");
+
+  await Promise.all(
+    tecnici.map((t) =>
+      inviaEmailGmail({
+        destinatario: t.contatto,
+        oggetto: "[ToothTalk] Domanda tecnica dal supporto",
+        testo,
+      }),
+    ),
+  );
 }
 
 /** Le proprie domande (widget chat), più recenti per ultime. */

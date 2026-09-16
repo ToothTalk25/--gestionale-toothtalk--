@@ -286,8 +286,13 @@ export default async function AdminPage() {
   const richiesteRegistrazioneAperte = (richieste ?? []).length;
   const richiesteRimozioneAperte = (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length;
   const notificheArt82Pendenti = (notificheArt82 ?? []).filter((n) => !n.notificata_at).length;
+  // Le domande "tecniche" non ricevono più una risposta autonoma dell'IA
+  // (vanno ai Collaboratori Tecnici via email, vedi actions-supporto.ts):
+  // contano come pendenti come tutte le altre. Restano escluse solo le
+  // righe storiche da prima di questo cambio, che hanno già una bozza
+  // dell'IA salvata — quelle erano già state "risposte" al collaboratore.
   const domandePendenti = (domande ?? []).filter(
-    (d) => !d.risposta && (d.categoria_ia !== "tecnica" || d.richiede_coordinatore),
+    (d) => !d.risposta && !(d.categoria_ia === "tecnica" && !!d.bozza_risposta_ia && !d.richiede_coordinatore),
   ).length;
 
   return (
@@ -298,6 +303,12 @@ export default async function AdminPage() {
           Vista trasversale su tutti i gruppi. Il registro è append-only:
           nessuna voce può essere modificata o cancellata, nemmeno da questa
           pagina.
+        </p>
+        <p className="mt-2 text-xs text-slate-400">
+          <Link href="/admin/tecnico" className="text-tt-blue underline">
+            Collaboratore Tecnico
+          </Link>{" "}
+          — anagrafica, registro degli accessi e rinnovo del Documento 5.
         </p>
       </header>
 
