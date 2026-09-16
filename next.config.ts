@@ -39,7 +39,15 @@ const config: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
+              // 'blob:' in script-src serve a ffmpeg.wasm (remux del video di
+              // dichiarazione, vedi RegistraVideoDichiarazione): il suo worker
+              // viene caricato da un blob: URL, e Chrome verifica questo
+              // caricamento con script-src quando script-src-elem non è
+              // impostato esplicitamente (non basta worker-src da solo,
+              // verificato empiricamente). Il blob deriva comunque da un file
+              // che l'app stessa ha scaricato da /ffmpeg (stesso dominio),
+              // non da una CDN esterna.
+              `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               // 'blob:' serve alla revisione del video di dichiarazione
@@ -48,7 +56,11 @@ const config: NextConfig = {
               // conferma esplicita.
               "media-src 'self' blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              // blob: qui serve allo stesso worker di ffmpeg.wasm di cui
+              // sopra: comunica col proprio script (caricato da blob:) anche
+              // via connect-src, non solo script-src.
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co blob:",
+              "worker-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from "react";
  * assenti, browser non supportato).
  */
 
-type Fase = "idle" | "avvio" | "registrazione" | "revisione" | "caricamento";
+type Fase = "idle" | "avvio" | "registrazione" | "revisione" | "elaborazione" | "caricamento";
 
 /** Cap di durata: un video di dichiarazione è breve; oltre si ferma da solo. */
 const DURATA_MAX_SECONDI = 10 * 60;
@@ -49,6 +49,38 @@ function messaggioErroreCamera(e: unknown): string {
   }
   return "Registrazione non riuscita. Controlla i permessi del browser e riprova, oppure usa il caricamento file.";
 }
+
+/**
+ * Rimuove la frammentazione da un mp4 registrato dal browser (riscrive solo
+ * il contenitore con -c copy: nessuna ricompressione, stessa qualità),
+ * così è apribile con QuickTime/Safari e non solo con Chrome/VLC.
+ *
+ * @ffmpeg/ffmpeg è importato dinamicamente (non nel bundle iniziale: pesa
+ * ~30 MB, va scaricato solo se e quando serve davvero, cioè qui). I file
+ * del motore sono su /ffmpeg (stesso dominio, non una CDN esterna — vedi
+ * worker-src nella CSP di next.config.ts).
+ */
+async function remuxMp4(blob: Blob): Promise<Blob> {
+  const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
+    import("@ffmpeg/ffmpeg"),
+    import("@ffmpeg/util"),
+  ]);
+  const ffmpeg = new FFmpeg();
+  await ffmpeg.load({
+    coreURL: await toBlobURL("/ffmpeg/ffmpeg-core.js", "text/javascript"),
+    wasmURL: await toBlobURL("/ffmpeg/ffmpeg-core.wasm", "application/wasm"),
+  });
+  try {
+    await ffmpeg.writeFile("input.mp4", new Uint8Array(await blob.arrayBuffer()));
+    await ffmpeg.exec(["-i", "input.mp4", "-c", "copy", "-movflags", "+faststart", "output.mp4"]);
+    const output = await ffmpeg.readFile("output.mp4");
+    const bytes = output as Uint8Array;
+    return new Blob([new Uint8Array(bytes)], { type: "video/mp4" });
+  } finally {
+    ffmpeg.terminate();
+  }
+}
+
 export default function RegistraVideoDichiarazione({
   onFileReady,
 }: {
@@ -288,12 +320,32 @@ export default function RegistraVideoDichiarazione({
     setFase("idle");
   }
 
-  function conferma() {
+  async function conferma() {
     const blob = blobRef.current;
     if (!blob) return;
     const estensione = blob.type.includes("mp4") ? "mp4" : "webm";
     const nome = `dichiarazione-${new Date().toISOString().replace(/[:.]/g, "-")}.${estensione}`;
-    const file = new File([blob], nome, { type: blob.type || "video/webm" });
+
+    let blobDaCaricare = blob;
+    // I registratori dei browser producono mp4 "frammentato" (a pezzi, per
+    // lo streaming): valido, ma QuickTime/Safari su Mac spesso non lo
+    // riproducono aprendolo come file — anche essendo la stessa piattaforma
+    // che l'ha registrato. Il remux (solo riorganizzare il contenitore, non
+    // ricomprimere: stessa qualità, stessi secondi) lo rende un mp4
+    // "normale" apribile ovunque. Se fallisce per qualunque motivo (rete,
+    // browser non supportato), si carica comunque il file originale — mai
+    // bloccare la consegna della dichiarazione per un problema di comodità
+    // nella revisione.
+    if (estensione === "mp4") {
+      setFase("elaborazione");
+      try {
+        blobDaCaricare = await remuxMp4(blob);
+      } catch {
+        blobDaCaricare = blob;
+      }
+    }
+
+    const file = new File([blobDaCaricare], nome, { type: blobDaCaricare.type || blob.type || "video/webm" });
     setFase("caricamento");
     revocaBlob();
     onFileReady(file);
@@ -372,6 +424,14 @@ export default function RegistraVideoDichiarazione({
             Riprova
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (fase === "elaborazione") {
+    return (
+      <div className="mt-2 w-full max-w-xs text-center">
+        <p className="text-xs text-slate-500">Preparazione del video…</p>
       </div>
     );
   }
