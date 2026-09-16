@@ -29,6 +29,13 @@ const documenti = [
     descrizione:
       "Nomina a persona autorizzata al trattamento dei dati, generata automaticamente all'approvazione dell'Accordo.",
   },
+  {
+    href: "/documenti/5-accordo-collaboratore-tecnico.pdf",
+    numero: "Documento 5",
+    titolo: "Accordo per il Collaboratore Tecnico",
+    descrizione:
+      "Accordo per chi contribuisce allo sviluppo del gestionale e alle automazioni: limiti di accesso ai sistemi, cessione della proprietà intellettuale del codice e clausole di sicurezza.",
+  },
 ];
 
 /**
