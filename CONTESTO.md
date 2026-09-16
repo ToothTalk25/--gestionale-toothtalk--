@@ -215,7 +215,9 @@ Aggiornato al 16 settembre 2026.
    non partono più email). L'indirizzo è ancora provvisorio
    (`tecnico@toothtalk.local`): va sostituito con quello vero prima di
    consegnarlo, perché è anche l'identificativo di accesso e finirà nel
-   contratto. Password provvisoria consegnata a parte, non scritta qui.
+   contratto. Password provvisoria consegnata a parte, non scritta qui: per
+   rieseguire la prova `node scripts/_e2e_tecnico.mjs` la vuole in `.env.local`
+   come `TECNICO_PASSWORD` (file escluso da git).
 
 ## 11. Il limite dichiarato
 
