@@ -200,7 +200,19 @@ export async function eliminaAccount(
   try {
     await admin.auth.admin.deleteUser(userId);
   } catch {
-    // restano i riferimenti all'archivio: profilo anonimizzato + disattivato
+    // Il database non permette di cancellare (ci sono riferimenti
+    // nell'archivio: il registro degli eventi è append-only e non si tocca).
+    // L'account resta, disattivato — ma NON deve continuare a tenere occupato
+    // il suo indirizzo email: altrimenti quella persona non può più
+    // registrarsi con la propria casella, e chi riprova trova "esiste già un
+    // account" senza avere più alcun accesso. Si anonimizza anche il contatto
+    // di accesso, esattamente come si fa per il profilo.
+    await ignora(
+      admin.auth.admin.updateUserById(userId, {
+        email: `ex-${userId.slice(0, 8)}@toothtalk.local`,
+        email_confirm: true,
+      }),
+    );
   }
 
   // Traccia l'eliminazione (chi, quando) nella catena di audit.
