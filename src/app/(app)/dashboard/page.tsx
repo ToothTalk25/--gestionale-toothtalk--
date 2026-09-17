@@ -34,9 +34,21 @@ export default async function DashboardPage() {
   const righe = tasks ?? [];
 
   // Panoramica per polo: riservata all'admin.
-  const { data: panoramicaPoli } = isAdmin
+  const { data: panoramicaPoliGrezza } = isAdmin
     ? await supabase.from("v_polo_overview").select("*").order("polo_nome").returns<PoloOverview[]>()
     : { data: null };
+
+  // PROVA è il gruppo di test: tenuto visivamente accanto a UCAM Universidad
+  // invece che in coda all'ordine alfabetico (dove finirebbe da solo, essendo
+  // l'ultimo creato) — stesso principio del caso Genova in ordinaPoli
+  // (src/lib/auth.ts), qui applicato solo a questa vista.
+  const panoramicaPoli = panoramicaPoliGrezza
+    ? [...panoramicaPoliGrezza].sort((a, b) => {
+        if (a.polo_nome === "PROVA") return 1;
+        if (b.polo_nome === "PROVA") return -1;
+        return 0;
+      })
+    : panoramicaPoliGrezza;
 
   const inAttesaRevisione = isAdmin
     ? (panoramicaPoli ?? []).reduce((s, p) => s + Number(p.in_attesa_revisione), 0)
