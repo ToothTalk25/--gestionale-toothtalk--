@@ -61,6 +61,11 @@ const CASI = [
 
 const creati = [];
 for (const caso of CASI) {
+  // Ripetibile: se un tentativo precedente si è interrotto, l'account di prova
+  // è rimasto lì e la creazione fallirebbe con "already registered".
+  const { data: residuo } = await db.from("profiles").select("id").eq("email", caso.email).maybeSingle();
+  if (residuo) await db.auth.admin.deleteUser(residuo.id);
+
   const { data, error } = await db.auth.admin.createUser({
     email: caso.email,
     password: PASSWORD,
@@ -80,12 +85,32 @@ for (const caso of CASI) {
 
 const browser = await chromium.launch();
 for (const caso of CASI) {
-  const page = await browser.newPage();
+  // Un browser context NUOVO per ogni caso: i cookie di sessione sono
+  // condivisi fra le pagine dello stesso context, e senza questo isolamento il
+  // login del secondo utente partiva con la sessione del primo ancora addosso.
+  const contesto = await browser.newContext();
+  const page = await contesto.newPage();
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   await page.locator('input[type="email"]').fill(caso.email);
   await page.locator('input[type="password"]').fill(PASSWORD);
   await page.getByRole("button", { name: "Accedi" }).click();
-  await page.waitForTimeout(8000);
+  // Il login finisce con una navigazione "soft" (router.replace): aspettare
+  // l'evento load non funziona, quindi si guarda l'indirizzo finché non si
+  // esce dalla pagina di login. In locale il primo server action può essere
+  // lento, e un'attesa a tempo fisso darebbe risultati falsi.
+  const fuoriDalLogin = async (ms = 60000) => {
+    const fine = Date.now() + ms;
+    while (Date.now() < fine) {
+      if (!new URL(page.url()).pathname.startsWith("/login")) return true;
+      await page.waitForTimeout(500);
+    }
+    return false;
+  };
+  if (!(await fuoriDalLogin())) {
+    console.log(`  LOGIN NON RIUSCITO per ${caso.email} — resto su ${page.url()}`);
+    continue;
+  }
+  await page.waitForTimeout(2500);
   console.log(`\n— ${caso.nome} (${caso.email})`);
   console.log(`  atterra su: ${page.url().replace(BASE, "")}`);
   let coerente = true;
@@ -129,7 +154,7 @@ for (const caso of CASI) {
       console.log(`    clic ${percorso.padEnd(22)} -> non cliccabile  ✓`);
     }
   }
-  await page.close();
+  await contesto.close();
 }
 await browser.close();
 

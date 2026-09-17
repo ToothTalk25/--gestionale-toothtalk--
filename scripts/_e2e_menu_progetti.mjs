@@ -29,6 +29,10 @@ const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_
   auth: { persistSession: false },
 });
 const { data: polo } = await db.from("poli").select("id").eq("slug", "prova").single();
+// Ripetibile: toglie l'eventuale residuo di un tentativo interrotto.
+const { data: residuo } = await db.from("profiles").select("id").eq("email", EMAIL).maybeSingle();
+if (residuo) await db.auth.admin.deleteUser(residuo.id);
+
 const { data: creato, error } = await db.auth.admin.createUser({
   email: EMAIL,
   password: PASSWORD,
@@ -47,7 +51,10 @@ await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
 await page.locator('input[type="email"]').fill(EMAIL);
 await page.locator('input[type="password"]').fill(PASSWORD);
 await page.getByRole("button", { name: "Accedi" }).click();
-await page.waitForTimeout(9000);
+// Come nell'altra prova: attesa sull'URL, non su un tempo fisso (il primo
+// server action in locale può essere lento e falsare il risultato).
+await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 60000 });
+await page.waitForTimeout(3000);
 console.log("atterra su:", page.url().replace(BASE, ""));
 
 for (const voce of ["Progetti", "Risorse", "Profilo"]) {
