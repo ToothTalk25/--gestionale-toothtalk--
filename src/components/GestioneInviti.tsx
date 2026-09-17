@@ -136,7 +136,7 @@ export default function GestioneInviti({
         </label>
 
         <label className="text-xs text-slate-500">
-          Scadenza (facoltativa)
+          Scadenza del codice (facoltativa)
           <input
             type="date"
             value={scadenza}
@@ -180,7 +180,7 @@ export default function GestioneInviti({
                 <th className="py-2 pr-4">Gruppo</th>
                 <th className="py-2 pr-4">Codice</th>
                 <th className="py-2 pr-4">Usi</th>
-                <th className="py-2 pr-4">Scadenza</th>
+                <th className="py-2 pr-4">Scadenza del codice</th>
                 <th className="py-2"></th>
               </tr>
             </thead>
@@ -278,7 +278,7 @@ function ModificaLimite({ invito }: { invito: RigaInvito }) {
           />
         </label>
         <label className="text-xs text-slate-500">
-          Scade il
+          Il codice scade il
           <input
             type="date"
             value={scadeIl}
