@@ -107,7 +107,7 @@ export default function ProfiliUscenti({
                 </div>
                 <div className="flex flex-col items-start gap-1">
                   <RiattivaCollaborazione userId={p.id} />
-                  <EliminaAccountAdmin userId={p.id} />
+                  <EliminaAccountAdmin userId={p.id} giaAnonimizzato={p.full_name === "Ex partecipante"} />
                 </div>
               </div>
 

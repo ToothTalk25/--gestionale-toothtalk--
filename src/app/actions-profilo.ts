@@ -196,9 +196,15 @@ export async function eliminaAccount(
 
   // 5. Rimozione dell'account di accesso (se l'archivio lo consente;
   //    altrimenti resta disattivato: attivo=false impedisce di entrare).
-  try {
-    await admin.auth.admin.deleteUser(userId);
-  } catch {
+  // admin.auth.admin.deleteUser NON lancia mai un'eccezione per un errore
+  // Auth/Postgres (restituisce sempre { data, error }, stesso comportamento
+  // verificato per il ramo "mai approvato" sopra): il try/catch qui non
+  // intercetterebbe mai il vincolo di chiave esterna, va letto error.
+  let davveroEliminato = false;
+  const { error: eDeleteUser } = await admin.auth.admin.deleteUser(userId);
+  if (!eDeleteUser) {
+    davveroEliminato = true;
+  } else {
     // Il database non permette di cancellare (ci sono riferimenti
     // nell'archivio: il registro degli eventi è append-only e non si tocca).
     // L'account resta, disattivato — ma NON deve continuare a tenere occupato
@@ -222,7 +228,7 @@ export async function eliminaAccount(
       action: "eliminazione_account",
       entity_type: "profile",
       entity_id: userId,
-      meta: { account: "ex" },
+      meta: { account: davveroEliminato ? "eliminato" : "ex", nome: profilo.full_name, email: profilo.email },
     }),
   );
 
@@ -242,7 +248,7 @@ export async function eliminaAccount(
 
   revalidatePath("/admin");
   revalidatePath("/profilo");
-  return { ok: true, dati: { account: "ex" } };
+  return { ok: true, dati: { account: davveroEliminato ? "eliminato" : "anonimizzato" } };
 }
 
 /**

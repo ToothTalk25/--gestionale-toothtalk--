@@ -19,9 +19,12 @@ import { useConferma } from "@/components/ConfermaAzione";
 export default function EliminaAccountAdmin({
   userId,
   contesto,
+  giaAnonimizzato,
 }: {
   userId: string;
   contesto?: "registrazione";
+  /** Riga già "Ex partecipante": un altro giro qui rifarebbe la stessa cosa (anonimizzazione, poi un tentativo di cancellazione che fallirebbe di nuovo). */
+  giaAnonimizzato?: boolean;
 }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState(false);
@@ -58,9 +61,19 @@ export default function EliminaAccountAdmin({
     if (!esito.ok) {
       setMessaggio(`Errore: ${esito.errore}`);
     } else {
-      setMessaggio(registrazione ? "Richiesta eliminata." : "Account eliminato.");
+      setMessaggio(
+        registrazione
+          ? "Richiesta eliminata."
+          : esito.dati.account === "eliminato"
+            ? "Account eliminato."
+            : "Reso anonimo, ma resta nel Registro: ha materiale già certificato/archiviato che non si può cancellare.",
+      );
       router.refresh();
     }
+  }
+
+  if (giaAnonimizzato) {
+    return <span className="text-xs text-slate-400">Già reso anonimo — resta nel Registro (materiale archiviato).</span>;
   }
 
   return (

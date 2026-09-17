@@ -559,7 +559,7 @@ export default async function AdminPage() {
                           fullName={p.full_name}
                           giaTerminata={!p.attivo}
                         />
-                        <EliminaAccountAdmin userId={p.id} />
+                        <EliminaAccountAdmin userId={p.id} giaAnonimizzato={p.full_name === "Ex partecipante"} />
                       </div>
                     </td>
                   </tr>
