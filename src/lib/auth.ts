@@ -3,11 +3,19 @@ import { cache } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import type { Polo, Profile, SessionContext } from "@/lib/types";
 
-/** Genova è il gruppo storico del progetto: compare sempre per primo nelle liste. */
+/**
+ * Genova è il gruppo storico del progetto: compare sempre per primo nelle
+ * liste. PROVA è il gruppo di test: sta in fondo, dopo tutti i gruppi reali
+ * (quindi a destra di UCAM Universidad) invece di finire in mezzo all'ordine
+ * alfabetico. È la stessa regola della panoramica in dashboard, così la barra
+ * in alto e la dashboard non possono divergere.
+ */
 export function ordinaPoli(poli: Polo[]): Polo[] {
   return [...poli].sort((a, b) => {
     if (a.nome === "Genova") return -1;
     if (b.nome === "Genova") return 1;
+    if (a.nome === "PROVA") return 1;
+    if (b.nome === "PROVA") return -1;
     return 0;
   });
 }
