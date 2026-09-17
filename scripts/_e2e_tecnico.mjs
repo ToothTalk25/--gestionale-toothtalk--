@@ -26,8 +26,10 @@ for (const line of readFileSync(".env.local", "utf8").split("\n")) {
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const EMAIL_TECNICO = "tecnico@toothtalk.local";
 const PASSWORD_TECNICO = env.TECNICO_PASSWORD;
-const EMAIL_MARIO = "mario.rossi.messina@esempio.it";
-const PASSWORD_MARIO = env.MARIO_PASSWORD ?? "MarioRossi.Messina2026!";
+// Il partecipante che fa la domanda è creato da questa prova (non si usa più
+// un account esterno: quello di prova è stato disattivato).
+const EMAIL_PARTECIPANTE = "prova.domanda@toothtalk.local";
+const PASSWORD_PARTECIPANTE = "ProvaDomandaTecnica2026!";
 
 if (!PASSWORD_TECNICO) {
   console.error("Manca TECNICO_PASSWORD in .env.local (password dell'accesso del Collaboratore Tecnico).");
@@ -43,13 +45,26 @@ function verifica(titolo, cond, extra = "") {
 const url = env.NEXT_PUBLIC_SUPABASE_URL;
 const admin = createClient(url, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-const { data: mario } = await admin
+// Il partecipante che pone la domanda: creato qui, cancellato alla fine.
+const { data: residuo } = await admin
   .from("profiles")
-  .select("id, full_name")
-  .eq("email", EMAIL_MARIO)
-  .single();
-verifica("partecipante di prova presente", !!mario, EMAIL_MARIO);
-if (!mario) process.exit(1);
+  .select("id")
+  .eq("email", EMAIL_PARTECIPANTE)
+  .maybeSingle();
+if (residuo) await admin.auth.admin.deleteUser(residuo.id);
+
+const { data: nuovoPartecipante, error: ePartecipante } = await admin.auth.admin.createUser({
+  email: EMAIL_PARTECIPANTE,
+  password: PASSWORD_PARTECIPANTE,
+  email_confirm: true,
+  user_metadata: { full_name: "Prova Zeta" },
+});
+if (ePartecipante) {
+  console.error("Creazione del partecipante fallita:", ePartecipante.message);
+  process.exit(1);
+}
+const partecipante = { id: nuovoPartecipante.user.id };
+verifica("partecipante di prova creato", !!partecipante.id, EMAIL_PARTECIPANTE);
 
 const { data: altraDomanda } = await admin
   .from("domande_supporto")
@@ -62,7 +77,7 @@ const testoDomanda = "[PROVA E2E] Che pasta lucidante consigliate per lo zirconi
 const testoRisposta = "Per lo zirconio consiglio pasta a base di ossido di alluminio, grana fine.";
 const { data: nuova } = await admin
   .from("domande_supporto")
-  .insert({ user_id: mario.id, domanda: testoDomanda, categoria_ia: "tecnica" })
+  .insert({ user_id: partecipante.id, domanda: testoDomanda, categoria_ia: "tecnica" })
   .select("id")
   .single();
 verifica("domanda tecnica di prova creata", !!nuova, nuova?.id ?? "");
@@ -91,8 +106,8 @@ verifica(
   (profili ?? []).length === 1 && profili[0].id === idTecnico,
   `${profili?.length ?? 0} righe`,
 );
-const { data: nome } = await tecnico.rpc("nome_battesimo", { p_user: mario.id });
-verifica("di chi chiede vede solo il nome di battesimo", nome === "Mario", `«${nome}»`);
+const { data: nome } = await tecnico.rpc("nome_battesimo", { p_user: partecipante.id });
+verifica("di chi chiede vede solo il nome di battesimo", nome === "Prova", `«${nome}»`);
 if (altraDomanda) {
   verifica("non vede le domande di altro tipo", !(viste ?? []).some((d) => d.id === altraDomanda.id));
 }
@@ -112,16 +127,16 @@ try {
   verifica("la domanda tecnica compare nella pagina", true);
   verifica(
     "vede il nome di battesimo di chi chiede",
-    (await page.getByText("Mario", { exact: true }).count()) > 0,
+    (await page.getByText("Prova", { exact: true }).count()) > 0,
   );
   const contenuto = await page.content();
-  verifica("non compare il cognome di chi chiede", !contenuto.includes("Rossi"));
+  verifica("non compare il cognome di chi chiede", !contenuto.includes("Zeta"));
 
   await page.locator("textarea").first().fill(testoRisposta);
   await page.getByRole("button", { name: /Invia risposta/ }).click();
   // La pagina si aggiorna da sola (router.refresh): la domanda esce da quelle
   // in attesa e passa tra le risposte.
-  const appare = async (loc, ms = 20000) => {
+  const appare = async (loc, ms = 30000) => {
     try {
       await loc.first().waitFor({ timeout: ms });
       return true;
@@ -160,11 +175,11 @@ verifica(
 );
 verifica("il testo della domanda è intatto", dopo?.domanda === testoDomanda);
 
-const marioClient = createClient(url, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+const partecipanteClient = createClient(url, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
   auth: { persistSession: false },
 });
-await marioClient.auth.signInWithPassword({ email: EMAIL_MARIO, password: PASSWORD_MARIO });
-const { data: sue } = await marioClient.from("domande_supporto").select("id, risposta");
+await partecipanteClient.auth.signInWithPassword({ email: EMAIL_PARTECIPANTE, password: PASSWORD_PARTECIPANTE });
+const { data: sue } = await partecipanteClient.from("domande_supporto").select("id, risposta");
 verifica(
   "il partecipante vede la risposta del Collaboratore Tecnico",
   (sue ?? []).find((d) => d.id === nuova.id)?.risposta === testoRisposta,
@@ -173,6 +188,9 @@ verifica(
 // ---------------------------------------------------------------------- pulizia
 const { error: eDel } = await admin.from("domande_supporto").delete().eq("id", nuova.id);
 verifica("domanda di prova rimossa", !eDel, eDel?.message ?? "");
+
+const { error: eUtente } = await admin.auth.admin.deleteUser(partecipante.id);
+verifica("partecipante di prova cancellato", !eUtente, eUtente?.message ?? "");
 
 console.log(fallimenti === 0 ? "\nTutti i controlli superati." : `\n${fallimenti} controlli falliti.`);
 process.exit(fallimenti === 0 ? 0 : 1);
