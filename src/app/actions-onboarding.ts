@@ -60,6 +60,7 @@ function passiHTML(titolo: string, passi: string[]): string {
 function htmlInvito(gruppo: string, codice: string, linkInstallazione: string): string {
   return (
     `<div style="max-width:520px;margin:0 auto;font-family:system-ui,sans-serif;padding:20px;color:#1e293b">` +
+    `<img src="${URL_APP}/icon-192.png" width="44" height="44" alt="ToothTalk" style="display:block;border-radius:10px;margin-bottom:16px">` +
     `<p>Ciao,</p>` +
     `<p>Ecco come entrare nel Gestionale ToothTalk, gruppo <strong>${gruppo}</strong>.</p>` +
     `<p style="margin:24px 0 6px;font-weight:700;font-size:.95em">1 · Registrati</p>` +

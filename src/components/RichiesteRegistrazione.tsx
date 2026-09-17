@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { approvaRegistrazione } from "@/app/actions-profilo";
+import { approvaRegistrazione, ricertificaAccordoPec } from "@/app/actions-profilo";
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
 
 export type RigaRichiestaRegistrazione = {
@@ -11,6 +11,12 @@ export type RigaRichiestaRegistrazione = {
   email: string;
   pec: string | null;
   on_screen: boolean;
+};
+
+export type RigaDaRicertificare = {
+  id: string;
+  full_name: string | null;
+  email: string;
 };
 
 /**
@@ -26,12 +32,26 @@ export type RigaRichiestaRegistrazione = {
  */
 export default function RichiesteRegistrazione({
   richieste,
+  daRicertificare = [],
 }: {
   richieste: RigaRichiestaRegistrazione[];
+  /** Accordi mandati via Gmail perché la PEC (Aruba) era bloccata: da rispedire via PEC vera appena risolve davvero. */
+  daRicertificare?: RigaDaRicertificare[];
 }) {
   const router = useRouter();
   const [inCorso, setInCorso] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
+  const [ricertificando, setRicertificando] = useState<string | null>(null);
+  const [messaggioRicertifica, setMessaggioRicertifica] = useState<string | null>(null);
+
+  async function ricertifica(userId: string) {
+    setRicertificando(userId);
+    setMessaggioRicertifica(null);
+    const esito = await ricertificaAccordoPec(userId);
+    setRicertificando(null);
+    setMessaggioRicertifica(esito.ok ? "Rispedito via PEC." : `Errore: ${esito.errore}`);
+    if (esito.ok) router.refresh();
+  }
 
   // Flag on_screen corrente per ogni richiesta, correggibile dall'admin.
   const [onScreen, setOnScreen] = useState<Record<string, boolean>>(() =>
@@ -47,22 +67,52 @@ export default function RichiesteRegistrazione({
       setMessaggio(`Errore: ${esito.errore}`);
       return;
     }
-    setMessaggio("Registrazione approvata: la PEC con l'accordo è partita.");
+    setMessaggio(
+      esito.dati.viaGmail
+        ? "Registrazione approvata: la PEC non è partita (Aruba), l'accordo è stato mandato via email normale. Segnato per essere ricertificato via PEC appena Aruba risolve il blocco."
+        : "Registrazione approvata: la PEC con l'accordo è partita.",
+    );
     router.refresh();
   }
 
-  if (richieste.length === 0) {
-    return (
-      <section className="tt-card p-4 md:p-6">
-        <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di registrazione</h2>
-        <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          Nessuna richiesta in attesa di approvazione. ✅
-        </p>
-      </section>
-    );
-  }
-
   return (
+    <>
+      {daRicertificare.length > 0 && (
+        <section className="tt-card mb-4 border border-amber-200 bg-amber-50/40 p-4 md:p-6">
+          <h2 className="text-[15px] font-semibold text-amber-900">Accordi da ricertificare via PEC</h2>
+          <p className="mt-1 text-xs text-amber-700">
+            Mandati via email normale perché la PEC (Aruba) era bloccata — rispedisci via PEC vera quando il
+            blocco è davvero risolto, non solo dichiarato tale: stesso documento, solo il canale cambia.
+          </p>
+          {messaggioRicertifica && <p className="mt-2 text-sm text-slate-600">{messaggioRicertifica}</p>}
+          <div className="mt-3 space-y-2">
+            {daRicertificare.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-3 text-sm">
+                <div>
+                  <p className="font-medium">{r.full_name ?? "—"}</p>
+                  <p className="text-xs text-slate-500">{r.email}</p>
+                </div>
+                <button
+                  onClick={() => ricertifica(r.id)}
+                  disabled={ricertificando === r.id}
+                  className="tt-btn bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {ricertificando === r.id ? "Rispedisco…" : "Ricertifica via PEC"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {richieste.length === 0 ? (
+        <section className="tt-card p-4 md:p-6">
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di registrazione</h2>
+          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            Nessuna richiesta in attesa di approvazione. ✅
+          </p>
+        </section>
+      ) : (
     <section className="tt-card p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -138,5 +188,7 @@ export default function RichiesteRegistrazione({
         ))}
       </div>
     </section>
+      )}
+    </>
   );
 }

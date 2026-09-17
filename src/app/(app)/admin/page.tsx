@@ -246,6 +246,16 @@ export default async function AdminPage() {
       .returns<RigaDomandaSupporto[]>(),
   ]);
 
+  // Accordi mandati via Gmail perché la PEC (Aruba) era bloccata al momento
+  // dell'approvazione: da rispedire via PEC vera quando il blocco è davvero
+  // risolto (vedi accordo_pec_fallita_at, 0136).
+  const { data: daRicertificare } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .not("accordo_pec_fallita_at", "is", null)
+    .order("accordo_pec_fallita_at", { ascending: true })
+    .returns<{ id: string; full_name: string | null; email: string }[]>();
+
   const nomi = Object.fromEntries(
     (profili ?? []).map((p) => [p.id, p.full_name ?? p.email]),
   );
@@ -440,7 +450,9 @@ export default async function AdminPage() {
               cosa: "approvi o respingi le domande di chi si è appena registrato.",
               attenzione: "\"Approva\" attiva subito l'account e spedisce l'accordo editoriale alla persona — per PEC se ne ha indicata una, altrimenti via email: la PEC è facoltativa e senza di essa la registrazione funziona lo stesso. Controlla prima che il modello caricato in \"Modello accordo\" sia quello giusto. Respingere/eliminare una richiesta è definitivo, non recuperabile.",
             },
-            contenuto: <RichiesteRegistrazione richieste={richieste ?? []} />,
+            contenuto: (
+              <RichiesteRegistrazione richieste={richieste ?? []} daRicertificare={daRicertificare ?? []} />
+            ),
           },
           {
             id: "accordi-da-approvare",

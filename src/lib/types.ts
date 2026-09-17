@@ -124,6 +124,7 @@ export type Profile = {
   accordo_approvato_admin_at: string | null;
   accordo_approvato_da: string | null;
   accordo_scadenza: string | null;
+  accordo_pec_fallita_at: string | null;
   accordo_controfirmato_path: string | null;
   accordo_controfirmato_sha256: string | null;
   accordo_controfirmato_caricato_at: string | null;

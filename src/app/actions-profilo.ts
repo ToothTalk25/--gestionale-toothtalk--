@@ -8,6 +8,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession, getSessionContext } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
+import { URL_APP } from "@/lib/onboarding-testo";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
 import { inviaEmailGmail } from "@/lib/mail";
 import { archiviaAccordoSuDrive } from "@/lib/google-doc";
@@ -1354,7 +1355,7 @@ export async function caricaModelloAccordo(
 export async function approvaRegistrazione(
   userId: string,
   onScreenConfermato: boolean,
-): Promise<Esito<{ messageId: string }>> {
+): Promise<Esito<{ messageId: string; viaGmail: boolean }>> {
   const { profile: admin } = await requireSession();
   if (admin.role !== "admin") return errore("Solo chi ha accesso globale può approvare registrazioni.");
 
@@ -1434,36 +1435,34 @@ export async function approvaRegistrazione(
     }),
   );
 
-  try {
-    const { messageId } = await spedisciPec({
-      config,
-      oggetto: `[ToothTalk] Benvenuto/a in ToothTalk — un ultimo passo prima di partire`,
-      testo: [
-        "",
-        `Ciao ${nome}, benvenuto/a in ToothTalk!`,
-        "",
-        "La tua registrazione è stata approvata: da oggi fai parte del progetto,",
-        "e non vediamo l'ora di iniziare a lavorare insieme.",
-        "",
-        "Un solo passaggio prima di partire: in allegato trovi l'accordo",
-        "editoriale e il Protocollo Operativo ad esso allegato. Leggili con",
-        "calma, firma l'accordo e ricaricalo dal tuo profilo nel gestionale",
-        "(sezione \"Accordo editoriale\").",
-        "",
-        "Al momento del caricamento ti verrà chiesto di confermare di averlo",
-        "letto e compreso: quella conferma, insieme all'accordo firmato, ti",
-        "arriverà a sua volta via PEC con data certa — così hai sempre traccia",
-        "di tutto.",
-        "",
-        "Se hai domande o dubbi, scrivici pure: siamo qui per questo.",
-        "",
-        "A presto,",
-        "il team ToothTalk™",
-        "",
-        "Messaggio generato automaticamente dal gestionale ToothTalk.",
-        "",
-      ].join("\n"),
-      html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  const oggettoAccordo = `[ToothTalk] Benvenuto/a in ToothTalk — un ultimo passo prima di partire`;
+  const testoAccordo = [
+    "",
+    `Ciao ${nome}, benvenuto/a in ToothTalk!`,
+    "",
+    "La tua registrazione è stata approvata: da oggi fai parte del progetto,",
+    "e non vediamo l'ora di iniziare a lavorare insieme.",
+    "",
+    "Un solo passaggio prima di partire: in allegato trovi l'accordo",
+    "editoriale e il Protocollo Operativo ad esso allegato. Leggili con",
+    "calma, firma l'accordo e ricaricalo dal tuo profilo nel gestionale",
+    "(sezione \"Accordo editoriale\").",
+    "",
+    "Al momento del caricamento ti verrà chiesto di confermare di averlo",
+    "letto e compreso: quella conferma, insieme all'accordo firmato, ti",
+    "arriverà a sua volta via PEC con data certa — così hai sempre traccia",
+    "di tutto.",
+    "",
+    "Se hai domande o dubbi, scrivici pure: siamo qui per questo.",
+    "",
+    "A presto,",
+    "il team ToothTalk™",
+    "",
+    "Messaggio generato automaticamente dal gestionale ToothTalk.",
+    "",
+  ].join("\n");
+  const htmlAccordo = `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <img src="${URL_APP}/icon-192.png" width="48" height="48" alt="ToothTalk" style="display:block;border-radius:10px;margin-bottom:10px">
   <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
   <h1 style="font-size:20px;margin:4px 0 12px">Benvenuto/a in ToothTalk 🦷</h1>
   <p style="font-size:13px;line-height:1.6">
@@ -1484,22 +1483,153 @@ export async function approvaRegistrazione(
     Se hai domande o dubbi, scrivici pure: siamo qui per questo.<br>
     A presto,<br>il team ToothTalk™
   </p>
-</div>`,
-      allegati: [
-        { filename: nomeModello, content: bufferModello, contentType: "application/pdf" },
-        { filename: "3-protocollo-operativo.pdf", content: protocolloPdf, contentType: "application/pdf" },
-      ],
+</div>`;
+  const allegatiAccordo = [
+    { filename: nomeModello, content: bufferModello, contentType: "application/pdf" },
+    { filename: "3-protocollo-operativo.pdf", content: protocolloPdf, contentType: "application/pdf" },
+  ];
+
+  try {
+    const { messageId } = await spedisciPec({
+      config,
+      oggetto: oggettoAccordo,
+      testo: testoAccordo,
+      html: htmlAccordo,
+      allegati: allegatiAccordo,
       // "to": la persona — PEC se presente, altrimenti la sua email di
       // accesso (la PEC non è più obbligatoria per partecipare).
       destinatari: [richiedente.pec ?? richiedente.email],
       copiaConoscenza: config.destinatari, // "cc": accesso globale
     });
     revalidatePath("/admin");
+    return { ok: true, dati: { messageId, viaGmail: false } };
+  } catch (e) {
+    // La PEC (Aruba) non è partita: stesso contenuto via Gmail, così la
+    // persona non resta bloccata in attesa di un documento che non arriva
+    // mai. Il profilo viene segnato (accordo_pec_fallita_at) per poterlo
+    // ritrovare e rispedire via PEC vera quando il blocco IP di Aruba
+    // (ticket 19039798A) sarà DAVVERO risolto — stesso documento, basta
+    // ricertificarne l'invio.
+    const inviataViaGmail = await inviaEmailGmail({
+      destinatario: richiedente.email,
+      oggetto: oggettoAccordo,
+      testo: testoAccordo,
+      html: htmlAccordo,
+      allegati: allegatiAccordo,
+    });
+    if (!inviataViaGmail) {
+      return errore(
+        `Account approvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+      );
+    }
+    await ignora(
+      supabaseAdmin()
+        .from("profiles")
+        .update({ accordo_pec_fallita_at: new Date().toISOString() })
+        .eq("id", userId),
+    );
+    revalidatePath("/admin");
+    return { ok: true, dati: { messageId: "gmail-fallback", viaGmail: true } };
+  }
+}
+
+/**
+ * Rispedisce via PEC vera l'accordo di chi lo aveva ricevuto solo via Gmail
+ * (accordo_pec_fallita_at valorizzato da approvaRegistrazione quando Aruba
+ * era bloccata) — stesso documento, stesso modello attivo: basta a dare data
+ * certa a un invio che prima non l'aveva. Da usare quando Aruba conferma
+ * davvero risolto il blocco IP (ticket 19039798A), non solo dichiarato tale.
+ */
+export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ messageId: string }>> {
+  const { profile: admin } = await requireSession();
+  if (admin.role !== "admin") return errore("Solo chi ha accesso globale può ricertificare.");
+
+  const supabase = await supabaseServer();
+
+  const { data: modello } = await supabase
+    .from("modello_accordo")
+    .select("storage_path")
+    .order("caricato_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ storage_path: string }>();
+  if (!modello) return errore("Nessun modello di accordo caricato.");
+
+  const { data: richiedente } = await supabase
+    .from("profiles")
+    .select("full_name, email, pec, accordo_pec_fallita_at")
+    .eq("id", userId)
+    .single<{ full_name: string | null; email: string; pec: string | null; accordo_pec_fallita_at: string | null }>();
+  if (!richiedente) return errore("Profilo non trovato.");
+  if (!richiedente.accordo_pec_fallita_at) {
+    return errore("Questo profilo non ha nessuna PEC in sospeso da ricertificare.");
+  }
+
+  let config;
+  try {
+    config = leggiConfigPec();
+  } catch (e) {
+    return errore(e instanceof Error ? e.message : "PEC non configurata.");
+  }
+
+  const { data: blobModello, error: eBlob } = await supabase.storage
+    .from("finali")
+    .download(modello.storage_path);
+  if (eBlob || !blobModello) return errore("Impossibile leggere il modello dell'accordo.");
+  const bufferModello = Buffer.from(await blobModello.arrayBuffer());
+  const nomeModello = modello.storage_path.split("/").pop() ?? "accordo-editoriale.pdf";
+  const nome = richiedente.full_name ?? richiedente.email;
+
+  let protocolloPdf: Buffer;
+  try {
+    protocolloPdf = readFileSync(join(process.cwd(), "public", "documenti", "3-protocollo-operativo.pdf"));
+  } catch {
+    return errore("Impossibile allegare il Protocollo Operativo: file non leggibile dal server.");
+  }
+
+  try {
+    const { messageId } = await spedisciPec({
+      config,
+      oggetto: `[ToothTalk] Ricertificazione PEC — stesso accordo già ricevuto via email`,
+      testo: [
+        "",
+        `Ciao ${nome},`,
+        "",
+        "Ti avevamo già mandato l'accordo editoriale via email normale, perché",
+        "in quel momento la PEC non era disponibile. Ora che funziona di nuovo,",
+        "te lo rispediamo in allegato con data certa: è lo stesso identico",
+        "documento di prima.",
+        "",
+        "Se l'hai già firmato e ricaricato dal tuo profilo, non devi fare nulla.",
+        "",
+        "— ToothTalk™",
+      ].join("\n"),
+      html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <img src="${URL_APP}/icon-192.png" width="48" height="48" alt="ToothTalk" style="display:block;border-radius:10px;margin-bottom:10px">
+  <p style="font-size:13px;line-height:1.6">Ciao <strong>${esc(nome)}</strong>,</p>
+  <p style="font-size:13px;line-height:1.6">
+    Ti avevamo già mandato l'accordo editoriale via email normale, perché in
+    quel momento la PEC non era disponibile. Ora che funziona di nuovo, te lo
+    rispediamo in allegato con <strong>data certa</strong>: è lo stesso
+    identico documento di prima.
+  </p>
+  <p style="font-size:12px;color:#666">
+    Se l'hai già firmato e ricaricato dal tuo profilo, non devi fare nulla.
+  </p>
+  <p style="font-size:13px;line-height:1.6;margin-top:16px">— ToothTalk™</p>
+</div>`,
+      allegati: [
+        { filename: nomeModello, content: bufferModello, contentType: "application/pdf" },
+        { filename: "3-protocollo-operativo.pdf", content: protocolloPdf, contentType: "application/pdf" },
+      ],
+      destinatari: [richiedente.pec ?? richiedente.email],
+      copiaConoscenza: config.destinatari,
+    });
+
+    await supabase.from("profiles").update({ accordo_pec_fallita_at: null }).eq("id", userId);
+    revalidatePath("/admin");
     return { ok: true, dati: { messageId } };
   } catch (e) {
-    return errore(
-      `Account approvato ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
-    );
+    return errore(`PEC ancora non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`);
   }
 }
 
