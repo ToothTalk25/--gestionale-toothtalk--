@@ -8,7 +8,6 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession, getSessionContext } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
-import { URL_APP } from "@/lib/onboarding-testo";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
 import { inviaEmailGmail } from "@/lib/mail";
 import { archiviaAccordoSuDrive } from "@/lib/google-doc";
@@ -1474,8 +1473,6 @@ export async function approvaRegistrazione(
     "",
   ].join("\n");
   const htmlAccordo = `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
-  <img src="${URL_APP}/icon-192.png" width="48" height="48" alt="ToothTalk" style="display:block;border-radius:10px;margin-bottom:10px">
-  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
   <h1 style="font-size:20px;margin:4px 0 12px">Benvenuto/a in ToothTalk 🦷</h1>
   <p style="font-size:13px;line-height:1.6">
     Ciao <strong>${nome}</strong>, la tua registrazione è stata approvata: da oggi
@@ -1616,7 +1613,6 @@ export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ mes
         "— ToothTalk™",
       ].join("\n"),
       html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
-  <img src="${URL_APP}/icon-192.png" width="48" height="48" alt="ToothTalk" style="display:block;border-radius:10px;margin-bottom:10px">
   <p style="font-size:13px;line-height:1.6">Ciao <strong>${esc(nome)}</strong>,</p>
   <p style="font-size:13px;line-height:1.6">
     Ti avevamo già mandato l'accordo editoriale via email normale, perché in
