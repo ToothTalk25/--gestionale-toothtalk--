@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { accordoCompleto, accordoScaduto, type ProfiloAccordo } from "@/lib/accordo";
 
 type CookieDaImpostare = { name: string; value: string; options: CookieOptions };
 
@@ -27,12 +28,15 @@ const PUBBLICHE = [
   // File di verifica proprietà dominio (Google Search Console): statico,
   // nessun dato sensibile, deve restare raggiungibile senza sessione.
   "/google97604b8436f2db92.html",
-  // Libreria documenti (modelli, non copie firmate): i link di download
-  // sono file statici in public/documenti/*.pdf — senza questa riga il
-  // proxy li avrebbe rimandati al login invece di scaricarli, per
-  // chiunque non fosse già loggato.
-  "/documenti",
 ];
+
+/**
+ * Pagine che NON richiedono l'accordo completo: sono i posti dove chi non ha
+ * l'accordo può (o deve) stare — il profilo dove lo carica, il rinnovo quando
+ * l'accordo è scaduto, l'uscita per la conferma Art. 9.4, la pagina del
+ * Collaboratore Tecnico che non ha accordo per definizione.
+ */
+const SENZA_BLOCCO_ACCORDO = ["/profilo", "/rinnovo", "/uscita", "/tecnico"];
 
 // Flag di sicurezza per i cookie di sessione: Secure, SameSite=Strict e
 // HttpOnly. Il token non vive in localStorage, non viaggia in contesti
@@ -107,6 +111,42 @@ export async function proxy(request: NextRequest) {
   // Il pathname corrente serve al layout app per il blocco accordo
   // (senza aggiungere query extra a ogni richiesta).
   response.headers.set("x-pathname", path);
+
+  // ---------------------------------------------------- blocco dell'Accordo
+  // Questo controllo NON può vivere solo nel layout del gruppo (app): Next.js
+  // non riesegue un layout quando si naviga fra rotte che lo condividono,
+  // quindi con un clic dal profilo (o dal footer, che punta alla Libreria) si
+  // arrivava a una pagina dell'app senza aver caricato l'accordo — successo
+  // davvero in produzione. Qui passa OGNI richiesta, comprese le navigazioni
+  // fatte coi link interni, quindi la regola non è aggirabile dall'interfaccia.
+  // Costo: una lettura di una riga di profilo per richiesta autenticata, che
+  // per questo progetto (poche decine di persone) è trascurabile.
+  if (session && !pubblica && !SENZA_BLOCCO_ACCORDO.some((p) => path.startsWith(p))) {
+    const { data: profilo } = await supabase
+      .from("profiles")
+      .select(
+        "role, attivo, accordo_path, accordo_letto_confermato, accordo_verificato, accordo_approvato_admin_at, accordo_controfirmato_path, accordo_controfirma_confermata_at, accordo_scadenza",
+      )
+      .eq("id", session.user.id)
+      .maybeSingle<ProfiloAccordo & { role: string; attivo: boolean; accordo_scadenza: string | null }>();
+
+    // Profilo illeggibile (sessione non valida) o non attivo: non decidiamo
+    // nulla qui, se ne occupano getSessionContext e il layout come prima.
+    if (profilo?.attivo) {
+      const vaiA = (destinazione: string) => {
+        const url = request.nextUrl.clone();
+        url.pathname = destinazione;
+        url.search = "";
+        return NextResponse.redirect(url);
+      };
+
+      if (profilo.role === "tecnico") return vaiA("/tecnico");
+      if (profilo.role !== "admin") {
+        if (!accordoCompleto(profilo, false)) return vaiA("/profilo");
+        if (accordoScaduto(profilo.accordo_scadenza)) return vaiA("/rinnovo");
+      }
+    }
+  }
 
   return response;
 }

@@ -101,6 +101,34 @@ for (const caso of CASI) {
     );
   }
   console.log(`  esito: ${coerente ? "corretto" : "NON CORRETTO"}`);
+
+  // --- navigazione coi CLIC (navigazione client: il layout NON si riesegue).
+  // Era il buco: da /profilo si poteva cliccare un link del footer (Libreria
+  // documenti) e da lì girare dentro l'app senza aver caricato l'accordo.
+  console.log("  — con i clic (navigazione interna):");
+  const link = await page.$$eval("a[href]", (as) => [
+    ...new Set(as.map((a) => a.getAttribute("href") ?? "")),
+  ]);
+  const daProvare = link.filter(
+    (l) => l.startsWith("/") && l !== "/profilo" && !l.startsWith("/privacy"),
+  );
+  if (daProvare.length === 0) console.log("    (nessun link interno da provare)");
+  for (const percorso of daProvare) {
+    await page.goto(`${BASE}/profilo`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1200);
+    try {
+      await page.locator(`a[href="${percorso}"]`).first().click();
+      await page.waitForTimeout(2500);
+      const dove = page.url().replace(BASE, "");
+      const bloccato = dove.includes("/profilo");
+      console.log(
+        `    clic ${percorso.padEnd(22)} -> ${dove} | ${bloccato ? "bloccato" : "aperto"}` +
+          `${bloccato === caso.deveEntrare ? "  ✗ INATTESO" : "  ✓"}`,
+      );
+    } catch {
+      console.log(`    clic ${percorso.padEnd(22)} -> non cliccabile  ✓`);
+    }
+  }
   await page.close();
 }
 await browser.close();

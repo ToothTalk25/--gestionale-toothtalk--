@@ -22,10 +22,23 @@ import type { Profile } from "@/lib/types";
  */
 export const CONTROFIRMA_OBBLIGATORIA_DAL = new Date("2026-09-07T19:16:49+02:00").getTime();
 
+/**
+ * I campi del profilo che servono a decidere se l'accordo è completo: un
+ * sottoinsieme di Profile, così la stessa regola vale per il profilo intero
+ * (Server Component) e per la riga scarna letta dal middleware.
+ */
+export type ProfiloAccordo = Pick<
+  Profile,
+  | "accordo_path"
+  | "accordo_letto_confermato"
+  | "accordo_verificato"
+  | "accordo_approvato_admin_at"
+  | "accordo_controfirmato_path"
+  | "accordo_controfirma_confermata_at"
+>;
+
 /** True solo se la controfirma del Titolare non è mai stata richiesta a questo profilo. */
-export function controfirmaNonRichiesta(
-  profile: Pick<Profile, "accordo_approvato_admin_at" | "accordo_controfirmato_path">,
-): boolean {
+export function controfirmaNonRichiesta(profile: ProfiloAccordo): boolean {
   if (!profile.accordo_approvato_admin_at || profile.accordo_controfirmato_path) return false;
   return new Date(profile.accordo_approvato_admin_at).getTime() < CONTROFIRMA_OBBLIGATORIA_DAL;
 }
@@ -36,7 +49,7 @@ export function controfirmaNonRichiesta(
  * Titolare, controfirma caricata E confermata dal Collaboratore (o mai
  * richiesta, per chi era già approvato prima della 0118).
  */
-export function accordoCompleto(profile: Profile, isAdmin: boolean): boolean {
+export function accordoCompleto(profile: ProfiloAccordo, isAdmin: boolean): boolean {
   return (
     isAdmin ||
     (!!profile.accordo_path &&
@@ -45,4 +58,16 @@ export function accordoCompleto(profile: Profile, isAdmin: boolean): boolean {
       !!profile.accordo_approvato_admin_at &&
       (!!profile.accordo_controfirma_confermata_at || controfirmaNonRichiesta(profile)))
   );
+}
+
+/**
+ * L'Accordo (Art. 9.1) ha durata fissa di 6 mesi: la scadenza è "passata"
+ * quando è OGGI + 1 giorno — il giorno di scadenza appartiene ancora al
+ * periodo, la sospensione parte il giorno dopo. È qui (e non in auth.ts)
+ * perché la usa anche il middleware, che non può importare moduli server.
+ */
+export function accordoScaduto(scadenza: string | null, oggi = new Date()): boolean {
+  if (!scadenza) return false;
+  const fine = new Date(`${scadenza}T23:59:59`);
+  return oggi > fine;
 }

@@ -83,7 +83,7 @@ export async function requireAdmin(): Promise<SessionContext> {
   return ctx;
 }
 
-import { accordoCompleto } from "@/lib/accordo";
+import { accordoCompleto, accordoScaduto } from "@/lib/accordo";
 
 /**
  * Le cinque condizioni che sbloccano l'accesso ai progetti — la regola vive in
@@ -112,14 +112,8 @@ export function destinazioneIngresso(ctx: SessionContext): string {
 }
 
 /**
- * L'Accordo (Art. 9.1) ha durata fissa di 6 mesi: la scadenza (accordo_scadenza,
- * una data) è "passata" quando è OGGI + 1 giorno — il giorno di scadenza
- * appartiene ancora al periodo, la sospensione parte il giorno dopo. Stessa
- * funzione usata dal layout e dalla pagina /rinnovo, così il blocco e lo
- * sblocco non possono mai divergere.
+ * La scadenza dell'Accordo vive in src/lib/accordo.ts insieme alle altre
+ * regole dell'accordo: la usano il layout, la pagina /rinnovo e il middleware
+ * (che non può importare questo modulo, è solo server).
  */
-export function accordoScaduto(scadenza: string | null, oggi = new Date()): boolean {
-  if (!scadenza) return false;
-  const fine = new Date(`${scadenza}T23:59:59`);
-  return oggi > fine;
-}
+export { accordoScaduto };
