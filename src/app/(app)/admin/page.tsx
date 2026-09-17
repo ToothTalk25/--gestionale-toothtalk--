@@ -438,7 +438,7 @@ export default async function AdminPage() {
             etichetta: "Richieste di registrazione",
             promemoria: {
               cosa: "approvi o respingi le domande di chi si è appena registrato.",
-              attenzione: "\"Approva\" attiva subito l'account e spedisce l'accordo editoriale via PEC alla persona — controlla prima che il modello caricato in \"Modello accordo\" sia quello giusto. Respingere/eliminare una richiesta è definitivo, non recuperabile.",
+              attenzione: "\"Approva\" attiva subito l'account e spedisce l'accordo editoriale alla persona — per PEC se ne ha indicata una, altrimenti via email: la PEC è facoltativa e senza di essa la registrazione funziona lo stesso. Controlla prima che il modello caricato in \"Modello accordo\" sia quello giusto. Respingere/eliminare una richiesta è definitivo, non recuperabile.",
             },
             contenuto: <RichiesteRegistrazione richieste={richieste ?? []} />,
           },

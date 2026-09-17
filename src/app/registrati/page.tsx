@@ -80,8 +80,19 @@ export default function RegistratiPage() {
             è stata inviata.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            Un amministratore la verificherà: appena approvata riceverai
-            l&apos;accordo editoriale da firmare via PEC e potrai accedere.
+            Un amministratore la verificherà. Appena approvata ricevi l&apos;accordo
+            editoriale da firmare all&apos;indirizzo con cui ti sei registrato.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            Da lì: firmi l&apos;accordo e lo carichi dal tuo profilo, il Titolare lo
+            controfirma e tu confermi di aver ricevuto la copia firmata. Solo
+            allora si apre il tuo accesso ai progetti.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">
+            La PEC <strong>non è necessaria</strong>: senza PEC ricevi tutto via
+            email. Serve solo se vuoi anche tu la certificazione di consegna —
+            l&apos;accordo che carichi viene comunque spedito con data certa dal
+            gestionale, quindi la sua validità non dipende dalla tua PEC.
           </p>
           <Link
             href="/login"
