@@ -84,6 +84,12 @@ for (const caso of CASI) {
 }
 
 const browser = await chromium.launch();
+
+// Gli utenti appena creati via Admin API non sono autenticabili nell'istante
+// stesso: senza questo assestamento il login fallisce per gli ultimi creati e
+// la prova sembrerebbe dire "bloccato" quando invece non si è entrati affatto.
+await new Promise((r) => setTimeout(r, 6000));
+
 for (const caso of CASI) {
   // Un browser context NUOVO per ogni caso: i cookie di sessione sono
   // condivisi fra le pagine dello stesso context, e senza questo isolamento il
