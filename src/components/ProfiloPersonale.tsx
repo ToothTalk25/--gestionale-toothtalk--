@@ -271,6 +271,29 @@ export default function ProfiloPersonale({
     router.refresh();
   }
 
+  // La checklist qui sotto dice a che punto sei; questa riga dice cosa fare
+  // adesso (o se non devi fare nulla). Un passo per volta: quello davvero
+  // successivo, così chi si è appena registrato non deve indovinare.
+  const prossimoPasso = (() => {
+    if (!dataNascita || !luogoNascita || !codiceFiscale)
+      return "Completa l'anagrafica (data e luogo di nascita, codice fiscale): servono per l'accordo e per il Modulo di nomina.";
+    if (!profile.accordo_path)
+      return "Firma il modello dell'accordo e carica qui il PDF firmato — prima di caricare spunta «ho letto e compreso tutto».";
+    if (!profile.accordo_letto_confermato)
+      return "Ricarica l'accordo con la spunta «ho letto e compreso tutto»: senza quella conferma il caricamento non vale.";
+    if (verificaStato.esito === "errato")
+      return "L'accordo risulta non corretto: controlla di aver firmato tutte le pagine e ricarica il PDF.";
+    if (verificaStato.esito === "attenzione")
+      return "La verifica ha segnalato un dubbio: lo controlla a mano chi ha accesso globale. Per ora non devi ricaricare nulla.";
+    if (verificaStato.esito !== "ok")
+      return "Attendi l'esito della verifica automatica del documento: compare qui appena è pronta.";
+    if (!profile.accordo_approvato_admin_at)
+      return "Non devi fare nulla: ora serve la controfirma di chi ha accesso globale. Appena è pronta la trovi qui sotto, da confermare.";
+    if (profile.accordo_controfirmato_path && !controfirmaConfermata)
+      return "Scarica la controfirma qui sotto e conferma che è lo stesso documento che hai firmato: sblocca l'accesso e genera il Modulo di nomina.";
+    return "Tutto in ordine: il tuo accesso ai progetti è attivo.";
+  })();
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* -------------------------------------------------- anagrafica */}
@@ -513,9 +536,18 @@ export default function ProfiloPersonale({
           <section className="tt-card p-6">
             <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Accordo editoriale</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Carica il PDF firmato dell'accordo: verrà inviato automaticamente
+            Carica il PDF firmato dell&apos;accordo: verrà inviato automaticamente
             via PEC a chi ha accesso globale, con data certa e copia alla tua
             casella.
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            L&apos;accordo ti arriva <strong>già in allegato</strong> all&apos;email di
+            benvenuto (con il Protocollo Operativo): firmalo e caricalo qui. Se
+            non lo trovi più, è anche in{" "}
+            <Link href="/documenti" className="text-tt-blue underline">
+              Libreria documenti
+            </Link>
+            .
           </p>
           {accordoStato && (
             <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
@@ -633,6 +665,10 @@ export default function ProfiloPersonale({
                 completo su tutti questi punti.
               </p>
             )}
+            <p className="mt-3 rounded-lg bg-tt-blue-50 px-3 py-2 text-slate-700">
+              <span className="font-medium">Cosa fare adesso: </span>
+              {prossimoPasso}
+            </p>
           </div>
 
           {/* ---- Controfirma del Titolare: caricata ma non ancora confermata
