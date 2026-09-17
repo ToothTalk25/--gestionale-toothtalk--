@@ -28,6 +28,11 @@ const risorse: Risorsa[] = [
     descrizione: "Consigli operativi per chi vuole approfondire come si costruisce un format da zero.",
     facoltativo: true,
   },
+  {
+    titolo: "Script Video di Benvenuto Nuovi Team",
+    descrizione: "La guida di produzione per il video di Presentazione del team — il primo progetto assegnato a ogni gruppo.",
+    href: "/risorse/script-video-benvenuto-nuovi-team.pdf",
+  },
 ];
 
 export default async function RisorsePage() {
