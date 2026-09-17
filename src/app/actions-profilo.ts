@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
+import { inviaPushAdmin } from "@/lib/push";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession, getSessionContext } from "@/lib/auth";
 import { leggiConfigPec, spedisciPec } from "@/lib/pec";
@@ -1235,6 +1236,15 @@ export async function caricaAccordo(
       copiaConoscenza: profile.pec ? [profile.pec] : undefined,
     });
 
+    // Avviso immediato all'accesso globale: c'è un accordo da verificare.
+    // Best-effort (inviaPushAdmin non lancia mai): se il telefono non ha le
+    // notifiche attive, l'operazione resta valida come prima.
+    await inviaPushAdmin({
+      title: "Accordo da verificare — ToothTalk",
+      body: `${profile.full_name ?? profile.email} ha caricato l'accordo firmato.`,
+      url: "/admin",
+    });
+
     revalidatePath("/profilo");
     return { ok: true, dati: { messageId, verifica } };
   } catch (e) {
@@ -1315,6 +1325,13 @@ export async function caricaRinnovoAccordo(
   const membri = (membriPoli ?? []) as unknown as { poli: { nome: string } }[];
   const poliUtente = membri.map((m) => m.poli.nome);
   await ignora(archiviaAccordoSuDrive(buffer, nomeSuDrive, poliUtente, "rinnovi"));
+
+  // Avviso immediato: c'è un documento di rinnovo da approvare.
+  await inviaPushAdmin({
+    title: "Rinnovo da approvare — ToothTalk",
+    body: `${profile.full_name ?? profile.email} ha caricato il documento di rinnovo.`,
+    url: "/admin",
+  });
 
   revalidatePath("/rinnovo");
   revalidatePath("/profilo");
