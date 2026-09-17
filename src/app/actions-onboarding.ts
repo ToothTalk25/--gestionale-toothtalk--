@@ -32,7 +32,7 @@ per entrare nel Gestionale ToothTalk (gruppo ${gruppo}):
 1. Registrati qui: ${URL_APP}/registrati
    Nel campo "Codice del gruppo" scrivi: ${codice}
    (deve comparire "${gruppo}": vuol dire che il codice è giusto)
-2. La richiesta viene verificata: appena approvata ricevi per email'accordo
+2. La richiesta viene verificata: appena approvata ricevi per email l'accordo
    editoriale da firmare e poi accedi con l'email e la password che hai scelto.
 
 Quando sei dentro, ti conviene installare il Gestionale come app: si apre più
