@@ -74,7 +74,7 @@ export const KIND_LABEL: Record<DeliverableKind, string> = {
   video_grezzo: "Video in lavorazione",
   immagini_montaggio: "Immagini montaggio video",
   thumbnail: "Copertina di lavorazione",
-  liberatoria: "Liberatoria privacy/immagine",
+  liberatoria: "Liberatoria (persona esterna)",
   audio: "Audio",
   altro: "Altro",
   descrizione: "Descrizione di lavorazione",
