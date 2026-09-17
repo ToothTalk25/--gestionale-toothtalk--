@@ -29,9 +29,10 @@ const risorse: Risorsa[] = [
     facoltativo: true,
   },
   {
-    titolo: "Script Video di Benvenuto Nuovi Team",
+    titolo: "Guida facoltativa per video di presentazione team",
     descrizione: "La guida di produzione per il video di Presentazione del team — il primo progetto assegnato a ogni gruppo.",
-    href: "/risorse/script-video-benvenuto-nuovi-team.pdf",
+    facoltativo: true,
+    href: "/risorse/guida-facoltativa-video-presentazione-team.pdf",
   },
 ];
 
