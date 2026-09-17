@@ -29,8 +29,9 @@ function testoInvito(gruppo: string, codice: string, linkInstallazione: string):
 
 per entrare nel Gestionale ToothTalk (gruppo ${gruppo}):
 
-1. Registrati qui: ${URL_APP}/registrati
-   Nel campo "Codice del gruppo" scrivi: ${codice}
+1. Registrati qui: ${URL_APP}/registrati?codice=${codice}
+   Il codice è già dentro il link. Se preferisci scriverlo a mano, nel campo
+   "Codice del gruppo" va: ${codice}
    (deve comparire "${gruppo}": vuol dire che il codice è giusto)
 2. La richiesta viene verificata: appena approvata ricevi per email l'accordo
    editoriale da firmare e poi accedi con l'email e la password che hai scelto.
@@ -62,14 +63,16 @@ function htmlInvito(gruppo: string, codice: string, linkInstallazione: string): 
     `<p>Ciao,</p>` +
     `<p>Ecco come entrare nel Gestionale ToothTalk, gruppo <strong>${gruppo}</strong>.</p>` +
     `<p style="margin:24px 0 6px;font-weight:700;font-size:.95em">1 · Registrati</p>` +
-    `<p>Apri <a href="${URL_APP}/registrati">${URL_APP}/registrati</a> e nel campo "Codice del gruppo" scrivi:</p>` +
+    `<p style="margin:8px 0 0"><a href="${URL_APP}/registrati?codice=${codice}" style="display:inline-block;padding:12px 22px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Registrati ora</a></p>` +
+    `<p style="margin:14px 0 0">Il pulsante apre la registrazione <strong>con il codice già inserito</strong>. Se preferisci scriverlo a mano, il codice del gruppo è:</p>` +
     `<p style="font-family:ui-monospace,monospace;font-size:1.2em;font-weight:700;letter-spacing:.5px">${codice}</p>` +
-    `<p style="font-size:.9em;color:#64748b">Appena lo inserisci deve comparire "${gruppo}": vuol dire che il codice è giusto.</p>` +
+    `<p style="font-size:.9em;color:#64748b">Arrivando dal pulsante (o scrivendolo a mano) deve comparire "${gruppo}": vuol dire che il codice è giusto.</p>` +
     `<p style="margin:24px 0 6px;font-weight:700;font-size:.95em">2 · Attendi l'approvazione</p>` +
     `<p>La richiesta viene verificata: appena approvata ricevi l'accordo editoriale da firmare e poi accedi con l'email e la password che hai scelto.</p>` +
     `<p style="margin:24px 0 6px;font-weight:700;font-size:.95em">3 · Installalo come app</p>` +
     ISTRUZIONI_INSTALLAZIONE.map((p) => passiHTML(p.titolo, p.passi)).join("") +
-    `<p style="color:#64748b;font-size:.85em;margin-top:28px">Il link del Gestionale è valido 7 giorni: <a href="${linkInstallazione}">apri il Gestionale</a>.<br>— ToothTalk™</p>` +
+    `<p style="margin:26px 0 0"><a href="${linkInstallazione}" style="display:inline-block;padding:10px 20px;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:8px;font-weight:600">Installa il Gestionale</a></p>` +
+    `<p style="color:#64748b;font-size:.85em;margin-top:10px">Il link per installarlo è valido 7 giorni.<br>— ToothTalk™</p>` +
     `</div>`
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { registraConInvito, verificaCodice } from "@/app/actions-invito";
 import CampoPassword from "@/components/CampoPassword";
@@ -30,6 +30,18 @@ export default function RegistratiPage() {
     if (esito.ok) setGruppo(esito.dati.gruppo);
     else setErrore(esito.errore);
   }
+
+  // Il codice può arrivare già dentro il link dell'invito (?codice=SPAGNA-Z3VZ):
+  // chi si registra lo trova compilato e vede subito il gruppo, senza ricopiarlo
+  // a mano. Si legge da window.location e non con useSearchParams perché questa
+  // pagina è statica e useSearchParams richiederebbe un confine di Suspense.
+  useEffect(() => {
+    const dalLink = new URLSearchParams(window.location.search).get("codice")?.trim() ?? "";
+    if (!dalLink) return;
+    setCodice(dalLink.toUpperCase());
+    void controllaCodice(dalLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function registrati(e: React.FormEvent) {
     e.preventDefault();
