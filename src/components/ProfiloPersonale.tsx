@@ -19,6 +19,7 @@ import {
   preparaUploadAccordo,
 } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
+import { controfirmaNonRichiesta as controfirmaDaTitolareNonRichiesta } from "@/lib/accordo";
 import FotoProfilo from "@/components/FotoProfilo";
 import CaricaRinnovo from "@/components/CaricaRinnovo";
 import { useConferma } from "@/components/ConfermaAzione";
@@ -51,7 +52,7 @@ export default function ProfiloPersonale({
   // (accordo_controfirmato_path è null) — non fabbrichiamo una conferma mai
   // data, ma non li teniamo nemmeno bloccati per un requisito nato dopo la
   // loro approvazione (stessa logica del gate in layout.tsx).
-  const controfirmaNonRichiesta = !!profile.accordo_approvato_admin_at && !profile.accordo_controfirmato_path;
+  const controfirmaNonRichiesta = controfirmaDaTitolareNonRichiesta(profile);
   // Esito dedicato al salvataggio anagrafica: quello condiviso (messaggio/errore)
   // si vede solo in fondo alla pagina, dopo Foto/Consensi/Accordo — su mobile,
   // tutto impilato in colonna, era troppo lontano dal bottone per essere notato.
@@ -546,11 +547,8 @@ export default function ProfiloPersonale({
           <p className="mt-1 text-sm text-slate-500">
             L&apos;accordo ti arriva <strong>già in allegato</strong> all&apos;email di
             benvenuto (con il Protocollo Operativo): firmalo e caricalo qui. Se
-            non lo trovi più, è anche in{" "}
-            <Link href="/documenti" className="text-tt-blue underline">
-              Libreria documenti
-            </Link>
-            .
+            non lo trovi più, chiedilo a chi ti ha invitato: la Libreria
+            documenti si apre quando l&apos;accordo è completo.
           </p>
           {accordoStato && (
             <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">

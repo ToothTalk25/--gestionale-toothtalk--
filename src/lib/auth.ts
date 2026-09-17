@@ -83,26 +83,14 @@ export async function requireAdmin(): Promise<SessionContext> {
   return ctx;
 }
 
+import { accordoCompleto } from "@/lib/accordo";
+
 /**
- * Le cinque condizioni che sbloccano l'accesso ai progetti — stessa logica
- * usata dal layout del gruppo (app) per decidere il redirect verso
- * /profilo, estratta qui così anche il login (destinazioneIngresso sotto)
- * la applica senza duplicarla.
+ * Le cinque condizioni che sbloccano l'accesso ai progetti — la regola vive in
+ * src/lib/accordo.ts, in un solo posto, perché la stessa serve anche al
+ * profilo (checklist) senza passare da questo modulo, che è solo server.
  */
-export function accordoCompleto(profile: Profile, isAdmin: boolean): boolean {
-  // Franchigia per chi era già approvato PRIMA che la controfirma
-  // esistesse: vedi il commento gemello nel layout del gruppo (app).
-  const controfirmaNonRichiestaPerApprovazionePregressa =
-    !!profile.accordo_approvato_admin_at && !profile.accordo_controfirmato_path;
-  return (
-    isAdmin ||
-    (!!profile.accordo_path &&
-      profile.accordo_letto_confermato &&
-      profile.accordo_verificato === "ok" &&
-      !!profile.accordo_approvato_admin_at &&
-      (!!profile.accordo_controfirma_confermata_at || controfirmaNonRichiestaPerApprovazionePregressa))
-  );
-}
+export { accordoCompleto };
 
 /**
  * Dove deve atterrare un utente appena autenticato, applicando nello stesso
