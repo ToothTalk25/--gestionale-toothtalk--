@@ -25,8 +25,34 @@ export async function accedi(email: string, password: string): Promise<Esito<{ d
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, errore: "Credenziali non valide." };
   const ctx = await getSessionContext();
-  if (!ctx) return { ok: false, errore: "Accesso riuscito ma profilo non trovato. Contatta chi gestisce il Gestionale." };
-  return { ok: true, dati: { destinazione: destinazioneIngresso(ctx) } };
+  if (ctx) return { ok: true, dati: { destinazione: destinazioneIngresso(ctx) } };
+
+  // ctx è null in tre casi diversi (nessuna riga profiles, mai approvato,
+  // disattivato dopo l'approvazione) che getSessionContext non distingue: li
+  // separiamo qui per dare un messaggio vero, non il generico "profilo non
+  // trovato" — che altrimenti compare anche a chi è solo in attesa di
+  // approvazione, facendo pensare a un errore quando non c'è nessun errore.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profilo } = user
+    ? await supabase
+        .from("profiles")
+        .select("attivo, approvato_at")
+        .eq("id", user.id)
+        .maybeSingle<{ attivo: boolean; approvato_at: string | null }>()
+    : { data: null };
+
+  if (profilo && !profilo.attivo && !profilo.approvato_at) {
+    return {
+      ok: false,
+      errore: "La tua registrazione è stata ricevuta ma non ancora approvata: ti avviseremo appena sarà attiva.",
+    };
+  }
+  if (profilo && !profilo.attivo && profilo.approvato_at) {
+    return { ok: false, errore: "Il tuo account è stato disattivato. Contatta chi gestisce il Gestionale." };
+  }
+  return { ok: false, errore: "Accesso riuscito ma profilo non trovato. Contatta chi gestisce il Gestionale." };
 }
 
 /** Stesso motivo di accedi(): solo il server può ripulire un cookie HttpOnly. */
