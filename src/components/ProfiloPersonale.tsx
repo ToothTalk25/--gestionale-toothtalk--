@@ -275,10 +275,11 @@ export default function ProfiloPersonale({
   // adesso (o se non devi fare nulla). Un passo per volta: quello davvero
   // successivo, così chi si è appena registrato non deve indovinare.
   const prossimoPasso = (() => {
-    if (!dataNascita || !luogoNascita || !codiceFiscale)
-      return "Completa l'anagrafica (data e luogo di nascita, codice fiscale): servono per l'accordo e per il Modulo di nomina.";
+    const anagraficaIncompleta = !dataNascita || !luogoNascita || !codiceFiscale;
     if (!profile.accordo_path)
-      return "Firma il modello dell'accordo e carica qui il PDF firmato — prima di caricare spunta «ho letto e compreso tutto».";
+      return anagraficaIncompleta
+        ? "Completa l'anagrafica (data e luogo di nascita, codice fiscale) e poi firma il modello dell'accordo e caricalo qui: quei dati servono per il Modulo di nomina."
+        : "Firma il modello dell'accordo e carica qui il PDF firmato — prima di caricare spunta «ho letto e compreso tutto».";
     if (!profile.accordo_letto_confermato)
       return "Ricarica l'accordo con la spunta «ho letto e compreso tutto»: senza quella conferma il caricamento non vale.";
     if (verificaStato.esito === "errato")
@@ -291,6 +292,8 @@ export default function ProfiloPersonale({
       return "Non devi fare nulla: ora serve la controfirma di chi ha accesso globale. Appena è pronta la trovi qui sotto, da confermare.";
     if (profile.accordo_controfirmato_path && !controfirmaConfermata)
       return "Scarica la controfirma qui sotto e conferma che è lo stesso documento che hai firmato: sblocca l'accesso e genera il Modulo di nomina.";
+    if (anagraficaIncompleta)
+      return "Il tuo accesso è attivo. Completa l'anagrafica (data e luogo di nascita, codice fiscale): quei dati servono per il Modulo di nomina (Documento 4).";
     return "Tutto in ordine: il tuo accesso ai progetti è attivo.";
   })();
 
