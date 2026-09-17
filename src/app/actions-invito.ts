@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
+import { inviaPushAdmin } from "@/lib/push";
 import { COOKIE_VERSION, PRIVACY_VERSION } from "@/lib/types";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
@@ -148,6 +149,16 @@ export async function registraConInvito(input: {
     // Se la registrazione del consenso fallisce non blocchiamo l'account:
     // il banner chiederà il consenso al primo accesso.
   }
+
+  // Avviso immediato all'accesso globale: c'è una richiesta di registrazione
+  // da approvare. L'account nasce inattivo, quindi finché non si approva dal
+  // pannello quella persona non può entrare: senza questo avviso la richiesta
+  // resta invisibile finché non si apre /admin per caso.
+  await inviaPushAdmin({
+    title: "Nuova richiesta di registrazione — ToothTalk",
+    body: `${nome} chiede di entrare nel gruppo ${verifica.dati.gruppo}.`,
+    url: "/admin",
+  });
 
   return { ok: true, dati: { gruppo: verifica.dati.gruppo } };
 }
