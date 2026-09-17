@@ -175,6 +175,57 @@ export async function creaCodiceInvito(
   return { ok: true, dati: { codice: data as string } };
 }
 
+/**
+ * Cambia limite di utilizzi e scadenza del codice ATTIVO di un gruppo, senza
+ * rigenerarlo: il codice già mandato per email (o condiviso a voce) continua a
+ * valere, quindi chi lo ha ricevuto non resta con un codice disattivato.
+ *
+ * Serve perché il limite scritto nella sezione Inviti vale solo nel momento in
+ * cui il codice nasce: su un codice già in giro non si poteva più intervenire.
+ * Il numero di utilizzi già fatti resta: non si può scendere sotto quello.
+ */
+export async function aggiornaLimiteInvito(
+  invitoId: string,
+  opzioni: { maxUsi: number | null; scadeIl: string | null },
+): Promise<Esito<{ codice: string; usi: number; maxUsi: number | null }>> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return { ok: false, errore: "Operazione non disponibile da qui." };
+
+  if (opzioni.maxUsi !== null && (!Number.isInteger(opzioni.maxUsi) || opzioni.maxUsi < 1)) {
+    return {
+      ok: false,
+      errore: "Il limite deve essere un numero intero di almeno 1 — oppure vuoto, per utilizzi illimitati.",
+    };
+  }
+
+  const supabase = await supabaseServer();
+  const { data: invito } = await supabase
+    .from("inviti")
+    .select("id, codice, usi")
+    .eq("id", invitoId)
+    .maybeSingle<{ id: string; codice: string; usi: number }>();
+  if (!invito) return { ok: false, errore: "Codice non trovato." };
+  if (opzioni.maxUsi !== null && opzioni.maxUsi < invito.usi) {
+    return {
+      ok: false,
+      errore: `Il codice è già stato usato ${invito.usi} ${invito.usi === 1 ? "volta" : "volte"}: il limite non può essere più basso.`,
+    };
+  }
+
+  // La scadenza è "fine giornata" del giorno scelto: come per l'accordo, il
+  // giorno indicato è ancora valido.
+  const scade = opzioni.scadeIl ? new Date(`${opzioni.scadeIl}T23:59:59`).toISOString() : null;
+
+  const { error } = await supabase
+    .from("inviti")
+    .update({ max_usi: opzioni.maxUsi, scade_il: scade })
+    .eq("id", invitoId);
+  if (error) return { ok: false, errore: error.message };
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { codice: invito.codice, usi: invito.usi, maxUsi: opzioni.maxUsi } };
+}
+
 export async function disattivaCodiceInvito(invitoId: string): Promise<Esito> {
   const { isAdmin } = await requireSession();
   if (!isAdmin) return { ok: false, errore: "Operazione non disponibile da qui." };

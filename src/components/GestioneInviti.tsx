@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { creaCodiceInvito, disattivaCodiceInvito } from "@/app/actions-invito";
+import { aggiornaLimiteInvito, creaCodiceInvito, disattivaCodiceInvito } from "@/app/actions-invito";
 import { inviaInvitoGruppo } from "@/app/actions-onboarding";
 import type { Polo } from "@/lib/types";
 
@@ -201,6 +201,7 @@ export default function GestioneInviti({
                       {!i.utilizzabile && (
                         <span className="text-xs text-amber-700 md:mr-3">non più utilizzabile</span>
                       )}
+                      <ModificaLimite invito={i} />
                       <button
                         disabled={pending}
                         onClick={() =>
@@ -236,3 +237,89 @@ export default function GestioneInviti({
     </section>
   );
 }
+
+/**
+ * Limite di utilizzi e scadenza del codice attivo. Si cambiano SENZA
+ * rigenerare il codice: quello già mandato per email continua a valere (un
+ * codice nuovo lo invaliderebbe, e chi ha ricevuto il link resterebbe fuori).
+ * Il numero di utilizzi già fatti non si può abbassare.
+ */
+function ModificaLimite({ invito }: { invito: RigaInvito }) {
+  const router = useRouter();
+  const [aperto, setAperto] = useState(false);
+  const [maxUsi, setMaxUsi] = useState(invito.max_usi ? String(invito.max_usi) : "");
+  const [scadeIl, setScadeIl] = useState(invito.scade_il ? invito.scade_il.slice(0, 10) : "");
+  const [pending, start] = useTransition();
+  const [messaggio, setMessaggio] = useState<string | null>(null);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  if (!aperto) {
+    return (
+      <button
+        onClick={() => setAperto(true)}
+        className="text-xs text-slate-400 hover:text-tt-blue hover:underline md:mr-3"
+      >
+        Limite e scadenza
+      </button>
+    );
+  }
+
+  return (
+    <div className="w-full text-left">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-slate-500">
+          Limite utilizzi
+          <input
+            value={maxUsi}
+            onChange={(e) => setMaxUsi(e.target.value)}
+            inputMode="numeric"
+            placeholder="illimitati"
+            className="ml-1 w-20 rounded border border-slate-300 px-2 py-1 text-xs"
+          />
+        </label>
+        <label className="text-xs text-slate-500">
+          Scade il
+          <input
+            type="date"
+            value={scadeIl}
+            onChange={(e) => setScadeIl(e.target.value)}
+            className="ml-1 rounded border border-slate-300 px-2 py-1 text-xs"
+          />
+        </label>
+        <button
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              setErrore(null);
+              setMessaggio(null);
+              const esito = await aggiornaLimiteInvito(invito.id, {
+                maxUsi: maxUsi.trim() ? Number(maxUsi) : null,
+                scadeIl: scadeIl || null,
+              });
+              if (!esito.ok) {
+                setErrore(esito.errore);
+                return;
+              }
+              setMessaggio("Aggiornato.");
+              router.refresh();
+            })
+          }
+          className="tt-btn bg-tt-blue px-3 py-1.5 text-xs text-white disabled:opacity-50"
+        >
+          {pending ? "Salvo…" : "Salva"}
+        </button>
+        <button onClick={() => setAperto(false)} className="text-xs text-slate-400 hover:underline">
+          Chiudi
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-slate-400">
+        Il codice resta lo stesso: chi ha già ricevuto il link continua a usarlo.
+        {invito.usi > 0 && ` Già usato ${invito.usi} ${invito.usi === 1 ? "volta" : "volte"}.`}
+        {" "}Vuoto = utilizzi illimitati, senza scadenza.
+      </p>
+      {messaggio && <p className="mt-1 text-xs text-emerald-700">{messaggio}</p>}
+      {errore && <p className="mt-1 text-xs text-red-600">{errore}</p>}
+    </div>
+  );
+}
+
