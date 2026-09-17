@@ -24,11 +24,6 @@ const risorse: Risorsa[] = [
     descrizione: "Le uscite programmate e le scadenze del canale.",
   },
   {
-    titolo: "Guida facoltativa alla realizzazione di un format",
-    descrizione: "Consigli operativi per chi vuole approfondire come si costruisce un format da zero.",
-    facoltativo: true,
-  },
-  {
     titolo: "Guida facoltativa per video di presentazione team",
     descrizione: "La guida di produzione per il video di Presentazione del team — il primo progetto assegnato a ogni gruppo.",
     facoltativo: true,
