@@ -22,6 +22,7 @@ import AccordiDaApprovare, {
   type RigaAccordoDaApprovare,
   type RigaAccordoDaRivalutare,
 } from "@/components/AccordiDaApprovare";
+import SezioneIntegrita, { type RigaControlloIntegrita } from "@/components/SezioneIntegrita";
 import RinnoviDaApprovare, {
   type RigaRinnovoDaApprovare,
 } from "@/components/RinnoviDaApprovare";
@@ -84,6 +85,7 @@ export default async function AdminPage() {
     { data: richiesteRicarDich },
     { data: domande },
     { data: accordiDaRivalutare },
+    { data: controlliIntegrita },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -272,6 +274,17 @@ export default async function AdminPage() {
       .neq("role", "tecnico")
       .order("accordo_caricato_at", { ascending: true })
       .returns<RigaAccordoDaRivalutare[]>(),
+    // Esito dei controlli automatici di integrità (0138): catene di impronte,
+    // manifesti dei pacchetti sigillati, presenza dei file. Gli ultimi 10,
+    // dal più recente: il primo è quello che conta, gli altri sono la storia.
+    supabaseAdmin()
+      .from("controlli_integrita")
+      .select(
+        "id, eseguita_at, origine, esito, deliverable_controllate, versioni_controllate, catene_rotte, pacchetti_controllati, manifesti_rotti, file_mancanti, file_dimensione_diversa, problemi",
+      )
+      .order("eseguita_at", { ascending: false })
+      .limit(10)
+      .returns<RigaControlloIntegrita[]>(),
   ]);
 
   // Accordi mandati via Gmail perché la PEC (Aruba) era bloccata al momento
@@ -708,6 +721,17 @@ export default async function AdminPage() {
                 nomi={nomi}
               />
             ),
+          },
+          {
+            id: "integrita",
+            etichetta: "Integrità dei depositi",
+            badge:
+              (controlliIntegrita ?? [])[0]?.esito === "problemi" ? 1 : undefined,
+            promemoria: {
+              cosa: "controlli l'esito dei controlli automatici sull'integrità dei depositi: catene di impronte di ogni materiale, impronta dei manifesti dei pacchetti sigillati, presenza dei file. Il controllo gira da solo ogni notte; \"Controlla adesso\" lo esegue subito.",
+              attenzione: "Se compare \"problemi\", non è un guasto del gestionale: è un dato che non corrisponde alla propria impronta. Finché non è chiarito, quel materiale non va considerato certificato — e la riga è già stata segnalata via email e notifica una volta sola.",
+            },
+            contenuto: <SezioneIntegrita controlli={controlliIntegrita ?? []} />,
           },
         ]}
       />

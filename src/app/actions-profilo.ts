@@ -1646,6 +1646,42 @@ export async function inviaAccordoFirmatoPerEmail(
   return { ok: true, dati: { destinatario: profile.email } };
 }
 
+/** Esito di un controllo d'integrità, come lo racconta la funzione nel database. */
+export type EsitoControlloIntegrita = {
+  esito: string;
+  deliverable_controllate: number;
+  versioni_controllate: number;
+  catene_rotte: number;
+  pacchetti_controllati: number;
+  manifesti_rotti: number;
+  file_mancanti: number;
+  file_dimensione_diversa: number;
+};
+
+/**
+ * Lancia a mano il controllo d'integrità dei depositi.
+ *
+ * Il controllo gira da solo ogni notte (migrazione 0138, sveglia nel
+ * database): questo pulsante non lo sostituisce, serve a poterlo chiedere
+ * ADESSO — prima di pubblicare, o dopo una segnalazione. La funzione nel
+ * database scrive comunque l'esito nel proprio registro, con origine
+ * 'manuale', così resta traccia anche di chi l'ha chiesto e quando.
+ */
+export async function eseguiControlloIntegrita(): Promise<Esito<EsitoControlloIntegrita>> {
+  const { isAdmin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
+
+  // Col service_role: il registro dei controlli non ha policy di scrittura
+  // (lo scrive solo la funzione) e la funzione stessa è riservata.
+  const { data, error } = await supabaseAdmin().rpc("controlla_integrita", {
+    p_origine: "manuale",
+  });
+  if (error) return errore(error.message);
+
+  revalidatePath("/admin");
+  return { ok: true, dati: data as EsitoControlloIntegrita };
+}
+
 /**
  * Registra il documento di rinnovo dell'accordo editoriale (Art. 9.1):
  * il Collaboratore firma e carica il rinnovo con la stessa modalità del

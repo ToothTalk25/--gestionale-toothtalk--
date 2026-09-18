@@ -266,6 +266,18 @@ Aggiornato al 18 settembre 2026.
    accordo vero rivalutato ha risposto "documento incompleto (solo la prima
    pagina) e manca la firma" — il PDF caricato aveva una pagina sola, su nove.
 
+8. **Integrità dei depositi**: il controllo notturno (migrazione `0138`) gira
+   dentro il database (sveglia `pg_cron` alle 04:00) e ricontrolla la catena
+   delle impronte di ogni materiale, l'impronta del manifesto di ogni pacchetto
+   sigillato e la presenza dei file (esistenza e dimensione dichiarata). Se
+   trova qualcosa che non torna, il cron `/api/cron/integrita` avvisa email e
+   notifica una volta sola, e la scheda "Integrità dei depositi" nel Registro
+   lo mostra con il dettaglio. Il pulsante "Controlla adesso" esegue lo stesso
+   controllo su richiesta. Resta fuori da questo controllo — per scelta —
+   l'impronta del *contenuto* dei file grandi: ricalcolarla vorrebbe dire
+   riscaricare centinaia di MB ogni notte, e quella prova vive nella PEC e
+   nella copia di chi ha girato il video.
+
 ## 11. Il limite dichiarato
 
 Chi possiede le credenziali del progetto Supabase è proprietario delle tabelle e
