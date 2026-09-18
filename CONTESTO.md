@@ -192,7 +192,7 @@ nei byte.
 
 ## 9. Regole tecniche da rispettare
 
-**Migrazioni.** Da `0001` a `0137` sono già state applicate al database reale.
+**Migrazioni.** Da `0001` a `0138` sono già state applicate al database reale.
 **Non modificarle**: file e database divergerebbero. Per cambiare qualcosa si
 aggiunge un file nuovo (`0018_...sql`) e si lancia `npm run migra -- 0018`.
 
