@@ -10,6 +10,7 @@ import {
   preparaUploadControfirma,
   rivalutaAccordoConIA,
   verificaManualeAccordo,
+  chiediRicaricamentoAccordo,
 } from "@/app/actions-profilo";
 
 export type RigaAccordoDaApprovare = {
@@ -19,6 +20,9 @@ export type RigaAccordoDaApprovare = {
   accordo_caricato_at: string | null;
   accordo_verificato: string | null;
   accordo_verifica_note: string | null;
+  /** Se valorizzata, la ricarica è già stata chiesta (0140): quando e perché. */
+  accordo_ricarica_richiesta_at: string | null;
+  accordo_ricarica_motivo: string | null;
 };
 
 /**
@@ -60,6 +64,8 @@ export default function AccordiDaApprovare({
   const [messaggio, setMessaggio] = useState<string | null>(null);
   const [inVerificaManuale, setInVerificaManuale] = useState<string | null>(null);
   const [motivoVerifica, setMotivoVerifica] = useState("");
+  const [inRicarica, setInRicarica] = useState<string | null>(null);
+  const [motivoRicarica, setMotivoRicarica] = useState("");
 
   async function caricaControfirma(userId: string, file: File) {
     setInCorso(userId);
@@ -84,7 +90,7 @@ export default function AccordiDaApprovare({
       if (!esito.ok) throw new Error(esito.errore);
 
       setMessaggio(
-        "Controfirma caricata e inviata via PEC al collaboratore: l'accesso ai progetti resta bloccato finché non conferma, dal proprio profilo, che è lo stesso documento che ha firmato.",
+        "Controfirma caricata: la PEC con il documento controfirmato è in coda e partirà al prossimo invio dal computer (npm run pec -- --esegui). L'accesso ai progetti resta bloccato finché la persona non conferma, dal proprio profilo, che è lo stesso documento che ha firmato.",
       );
       router.refresh();
     } catch (e) {
@@ -149,6 +155,29 @@ export default function AccordiDaApprovare({
     setMotivoVerifica("");
     setMessaggio(
       "Verifica a mano registrata: l'accordo è ora in coda. Il motivo resta scritto nel Registro insieme al tuo nome.",
+    );
+    router.refresh();
+  }
+
+  /**
+   * Chiede alla persona di ricaricare l'accordo. Il motivo è obbligatorio: lo
+   * legge lei nel proprio profilo (e riceve un'email), e resta nel registro
+   * insieme al tuo nome. La richiesta si chiude da sola quando arriva un
+   * accordo nuovo.
+   */
+  async function chiediRicarica(userId: string) {
+    setInCorso(`ricarica:${userId}`);
+    setMessaggio(null);
+    const esito = await chiediRicaricamentoAccordo(userId, motivoRicarica);
+    setInCorso(null);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    setInRicarica(null);
+    setMotivoRicarica("");
+    setMessaggio(
+      "Richiesta inviata: la persona la trova nel proprio profilo e ha ricevuto un'email. Si chiude da sola quando carica un accordo nuovo.",
     );
     router.refresh();
   }
@@ -220,6 +249,13 @@ export default function AccordiDaApprovare({
                       <strong>IA: {a.accordo_verificato ?? "mai eseguita"}</strong>
                       {a.accordo_verifica_note ? ` — ${a.accordo_verifica_note}` : ""}
                     </p>
+                    {a.accordo_ricarica_richiesta_at && (
+                      <p className="mt-1 text-xs text-slate-600">
+                        Ricarica già chiesta il{" "}
+                        {new Date(a.accordo_ricarica_richiesta_at).toLocaleDateString("it-IT")}
+                        {a.accordo_ricarica_motivo ? ` — «${a.accordo_ricarica_motivo}»` : ""}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                     <button
@@ -245,6 +281,16 @@ export default function AccordiDaApprovare({
                       className="tt-btn border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 disabled:opacity-50"
                     >
                       Verifica tu, a mano
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInRicarica(a.id);
+                        setMotivoRicarica("");
+                      }}
+                      disabled={inCorso === `ricarica:${a.id}`}
+                      className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      Chiedi di ricaricare
                     </button>
                   </div>
                 </div>
@@ -279,6 +325,38 @@ export default function AccordiDaApprovare({
                     </div>
                   </div>
                 )}
+
+                {inRicarica === a.id && (
+                  <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                    <label className="text-xs font-medium text-slate-700">
+                      Che cosa deve correggere {a.full_name ?? a.email}? Il motivo le arriva per
+                      email e lo legge nel proprio profilo: scrivi che cosa manca nel documento,
+                      non un giudizio. Resta nel registro insieme al tuo nome.
+                    </label>
+                    <textarea
+                      value={motivoRicarica}
+                      onChange={(e) => setMotivoRicarica(e.target.value)}
+                      rows={2}
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      placeholder="es. il PDF ha una pagina sola su nove: serve la scansione completa, con la firma in fondo all'ultima pagina…"
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        onClick={() => setInRicarica(null)}
+                        className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        onClick={() => chiediRicarica(a.id)}
+                        disabled={inCorso === `ricarica:${a.id}`}
+                        className="tt-btn bg-slate-700 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
+                      >
+                        {inCorso === `ricarica:${a.id}` ? "Invio…" : "Chiedi il ricaricamento"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -308,6 +386,13 @@ export default function AccordiDaApprovare({
                   >
                     <strong>IA: {a.accordo_verificato}</strong>
                     {a.accordo_verifica_note ? ` — ${a.accordo_verifica_note}` : ""}
+                  </p>
+                )}
+                {a.accordo_ricarica_richiesta_at && (
+                  <p className="mt-1 text-xs text-slate-600">
+                    Ricarica già chiesta il{" "}
+                    {new Date(a.accordo_ricarica_richiesta_at).toLocaleDateString("it-IT")}
+                    {a.accordo_ricarica_motivo ? ` — «${a.accordo_ricarica_motivo}»` : ""}
                   </p>
                 )}
                 {a.accordo_verificato !== "ok" && (

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "utente": "node scripts/gestisci-utenti.mjs",
     "migra": "node scripts/migra.mjs",
-    "audit-rls": "node scripts/audit-rls.mjs"
+    "audit-rls": "node scripts/audit-rls.mjs",
+    "pec": "node scripts/invia-pec.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",

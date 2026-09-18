@@ -56,6 +56,16 @@ export async function GET(request: NextRequest) {
       return (data?.[0] as Controllo) ?? null;
     };
 
+    // PEC in coda da più di un giorno (0139): non è un guasto d'integrità, ma è
+    // un documento che non ha ancora data certa — e la coda non si svuota da
+    // sola. Vale un promemoria, anche quando i depositi sono a posto.
+    const { data: pecFerme } = await admin
+      .from("pec_da_inviare")
+      .select("id, oggetto, destinatari, creato_at")
+      .eq("stato", "in_coda")
+      .lt("creato_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .order("creato_at", { ascending: true });
+
     let controllo = await ultimo();
     let eseguitoOra = false;
 
@@ -78,6 +88,58 @@ export async function GET(request: NextRequest) {
     }
 
     if (controllo.esito !== "problemi") {
+      // Depositi a posto: se però ci sono PEC ferme in coda da più di un giorno,
+      // il promemoria parte lo stesso — è una promessa non ancora mantenuta,
+      // quei documenti non hanno data certa.
+      if (pecFerme?.length) {
+        const righePec = [
+          "Ci sono PEC preparate dal gestionale e non ancora spedite (da più di un giorno).",
+          "",
+          ...pecFerme
+            .slice(0, 15)
+            .map((p) => `  • ${p.oggetto} → ${(p.destinatari as string[]).join(", ")}`),
+          "",
+          "Si spediscono dal computer, dalla cartella del progetto:",
+          "  npm run pec -- --esegui",
+          "",
+          "Finché sono in coda, quei documenti non hanno data certa.",
+          "",
+          "Messaggio generato automaticamente dal gestionale ToothTalk.",
+          "",
+        ];
+
+        const { data: amministratoriPec } = await admin
+          .from("profiles")
+          .select("email")
+          .eq("role", "admin")
+          .eq("attivo", true);
+
+        let recapitoPec = false;
+        for (const a of amministratoriPec ?? []) {
+          if (!a.email) continue;
+          const inviata = await inviaEmailGmail({
+            destinatario: a.email,
+            oggetto: "[ToothTalk] PEC in coda da spedire",
+            testo: righePec.join("\n"),
+          });
+          recapitoPec = recapitoPec || inviata;
+        }
+
+        await inviaPushAdmin({
+          title: "PEC in coda",
+          body: `${pecFerme.length} PEC preparate e non ancora spedite.`,
+          url: "/admin",
+        });
+
+        return NextResponse.json({
+          ok: true,
+          eseguitoOra,
+          esito: controllo.esito,
+          avviso: recapitoPec,
+          pecFerme: pecFerme.length,
+        });
+      }
+
       return NextResponse.json({
         ok: true,
         eseguitoOra,
@@ -116,6 +178,14 @@ export async function GET(request: NextRequest) {
       "guasto del gestionale ma un dato che non corrisponde alla propria impronta:",
       "finché non è chiarito, non considerare quel materiale come certificato.",
       "",
+      ...(pecFerme?.length
+        ? [
+            `E ci sono ${pecFerme.length} PEC preparate e non ancora spedite (da più di un giorno):`,
+            "quei documenti non hanno ancora data certa. Si spediscono dal computer:",
+            "  npm run pec -- --esegui",
+            "",
+          ]
+        : []),
       "Messaggio generato automaticamente dal gestionale ToothTalk.",
       "",
     ];

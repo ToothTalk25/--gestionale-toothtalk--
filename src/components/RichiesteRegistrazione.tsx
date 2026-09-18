@@ -35,7 +35,7 @@ export default function RichiesteRegistrazione({
   daRicertificare = [],
 }: {
   richieste: RigaRichiestaRegistrazione[];
-  /** Accordi mandati via Gmail perché la PEC (Aruba) era bloccata: da rispedire via PEC vera appena risolve davvero. */
+  /** Chi ha ricevuto l'accordo solo per email: la PEC con data certa non è mai arrivata. */
   daRicertificare?: RigaDaRicertificare[];
 }) {
   const router = useRouter();
@@ -49,7 +49,13 @@ export default function RichiesteRegistrazione({
     setMessaggioRicertifica(null);
     const esito = await ricertificaAccordoPec(userId);
     setRicertificando(null);
-    setMessaggioRicertifica(esito.ok ? "Rispedito via PEC." : `Errore: ${esito.errore}`);
+    setMessaggioRicertifica(
+      !esito.ok
+        ? `Errore: ${esito.errore}`
+        : esito.dati.giaInCoda
+          ? "Era già in coda: la PEC parte al prossimo invio dal computer."
+          : "Messa in coda: partirà al prossimo invio dal computer (npm run pec -- --esegui).",
+    );
     if (esito.ok) router.refresh();
   }
 
@@ -68,9 +74,11 @@ export default function RichiesteRegistrazione({
       return;
     }
     setMessaggio(
-      esito.dati.viaGmail
-        ? "Registrazione approvata: la PEC non è partita (Aruba), l'accordo è stato mandato via email normale. Segnato per essere ricertificato via PEC appena Aruba risolve il blocco."
-        : "Registrazione approvata: la PEC con l'accordo è partita.",
+      esito.dati.inCoda
+        ? esito.dati.viaGmail
+          ? "Registrazione approvata: l'accordo è stato mandato via email e la PEC è in coda — partirà al prossimo invio dal computer (npm run pec -- --esegui), da lì avrà la data certa."
+          : "Registrazione approvata: la PEC con l'accordo è in coda. L'email all'indirizzo di accesso non è partita: avvisa la persona."
+        : "Registrazione approvata: l'accordo è stato mandato via email, ma la PEC non è entrata in coda. È segnato qui sotto fra quelli da ricertificare.",
     );
     router.refresh();
   }
@@ -79,10 +87,11 @@ export default function RichiesteRegistrazione({
     <>
       {daRicertificare.length > 0 && (
         <section className="tt-card mb-4 border border-amber-200 bg-amber-50/40 p-4 md:p-6">
-          <h2 className="text-[15px] font-semibold text-amber-900">Accordi da ricertificare via PEC</h2>
+          <h2 className="text-[15px] font-semibold text-amber-900">Accordi da certificare via PEC</h2>
           <p className="mt-1 text-xs text-amber-700">
-            Mandati via email normale perché la PEC (Aruba) era bloccata — rispedisci via PEC vera quando il
-            blocco è davvero risolto, non solo dichiarato tale: stesso documento, solo il canale cambia.
+            Hanno ricevuto l&apos;accordo solo per email: la PEC con data certa non è mai arrivata
+            (Aruba bloccava gli invii, oppure la coda non ha accettato la riga). Mettila in coda:
+            è lo stesso documento, cambia solo il canale. Poi spediscila con npm run pec -- --esegui.
           </p>
           {messaggioRicertifica && <p className="mt-2 text-sm text-slate-600">{messaggioRicertifica}</p>}
           <div className="mt-3 space-y-2">
@@ -97,7 +106,7 @@ export default function RichiesteRegistrazione({
                   disabled={ricertificando === r.id}
                   className="tt-btn bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
                 >
-                  {ricertificando === r.id ? "Rispedisco…" : "Ricertifica via PEC"}
+                  {ricertificando === r.id ? "Metto in coda…" : "Metti la PEC in coda"}
                 </button>
               </div>
             ))}
@@ -119,8 +128,8 @@ export default function RichiesteRegistrazione({
           <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Richieste di registrazione</h2>
           <p className="mt-1 text-xs text-slate-400">
             Account creati ma non ancora attivi. Conferma se la persona appare in video
-            (o no) e approva: l&apos;accordo editoriale parte via PEC al momento
-            dell&apos;approvazione.
+            (o no) e approva: l&apos;accordo parte subito per email e la PEC entra in coda
+            (la spedisce il computer, dall&apos;indirizzo di casa/ufficio).
           </p>
         </div>
         <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">

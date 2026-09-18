@@ -23,6 +23,7 @@ import AccordiDaApprovare, {
   type RigaAccordoDaRivalutare,
 } from "@/components/AccordiDaApprovare";
 import SezioneIntegrita, { type RigaControlloIntegrita } from "@/components/SezioneIntegrita";
+import SezionePecInCoda, { type RigaPecInCoda } from "@/components/SezionePecInCoda";
 import RinnoviDaApprovare, {
   type RigaRinnovoDaApprovare,
 } from "@/components/RinnoviDaApprovare";
@@ -86,6 +87,7 @@ export default async function AdminPage() {
     { data: domande },
     { data: accordiDaRivalutare },
     { data: controlliIntegrita },
+    { data: pecInCoda },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -183,7 +185,9 @@ export default async function AdminPage() {
     // MANUALE del Titolare (quarta condizione per sbloccare i progetti).
     supabase
       .from("profiles")
-      .select("id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note")
+      .select(
+        "id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_ricarica_richiesta_at, accordo_ricarica_motivo",
+      )
       .not("accordo_path", "is", null)
       .eq("accordo_letto_confermato", true)
       .eq("accordo_verificato", "ok")
@@ -261,10 +265,14 @@ export default async function AdminPage() {
     // Accordi caricati ma con esito IA diverso da 'ok' (o mai verificati,
     // perché la chiave dell'IA non era configurata sul server): non entrano
     // nella coda di approvazione, e da qui si rifà il controllo sul file già
-    // caricato — senza chiedere alla persona di ricaricarlo.
+    // caricato — senza chiedere subito alla persona di ricaricarlo. Se invece
+    // dal documento manca davvero qualcosa, da qui si chiede il ricaricamento
+    // (0140): email, avviso nel suo profilo e riga nel registro.
     supabase
       .from("profiles")
-      .select("id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note")
+      .select(
+        "id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_ricarica_richiesta_at, accordo_ricarica_motivo",
+      )
       .not("accordo_path", "is", null)
       .eq("accordo_letto_confermato", true)
       .eq("attivo", true)
@@ -285,6 +293,16 @@ export default async function AdminPage() {
       .order("eseguita_at", { ascending: false })
       .limit(10)
       .returns<RigaControlloIntegrita[]>(),
+    // PEC preparate dal gestionale e ancora da spedire (0139): da quando Aruba
+    // blocca gli invii da indirizzi esteri la spedizione la fa il computer.
+    // Si legge col service_role perché la coda contiene il testo dei messaggi;
+    // la policy di lettura è comunque riservata all'accesso globale.
+    supabaseAdmin()
+      .from("pec_da_inviare")
+      .select("id, creato_at, stato, oggetto, destinatari, copia_conoscenza, tentativi, ultimo_errore, inviata_at")
+      .order("creato_at", { ascending: false })
+      .limit(50)
+      .returns<RigaPecInCoda[]>(),
   ]);
 
   // Accordi mandati via Gmail perché la PEC (Aruba) era bloccata al momento
@@ -732,6 +750,17 @@ export default async function AdminPage() {
               attenzione: "Se compare \"problemi\", non è un guasto del gestionale: è un dato che non corrisponde alla propria impronta. Finché non è chiarito, quel materiale non va considerato certificato — e la riga è già stata segnalata via email e notifica una volta sola.",
             },
             contenuto: <SezioneIntegrita controlli={controlliIntegrita ?? []} />,
+          },
+          {
+            id: "pec-in-coda",
+            etichetta: "PEC da spedire",
+            badge: (pecInCoda ?? []).filter((r) => r.stato !== "inviata").length,
+            promemoria: {
+              cosa: "le PEC che il gestionale ha preparato e che aspettano di essere spedite. Nel Terminale, dalla cartella del progetto: npm run pec mostra cosa partirebbe e verifica i file, npm run pec -- --esegui le spedisce dall'indirizzo di casa/ufficio.",
+              attenzione:
+                "Finché una PEC è in coda, quel documento non ha ancora data certa. Aruba blocca gli invii automatici che escono da indirizzi esteri: per questo a spedire è il computer, non la piattaforma.",
+            },
+            contenuto: <SezionePecInCoda righe={pecInCoda ?? []} />,
           },
         ]}
       />

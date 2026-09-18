@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
-import { leggiConfigPec, spedisciPec } from "@/lib/pec";
+import { accodaPec, destinatariPecGlobali } from "@/lib/pec";
 
 /**
  * Server actions per la pagina admin del Collaboratore Tecnico (Documento
@@ -362,13 +362,6 @@ export async function approvaRinnovoTecnico(
   if (!target) return errore("Collaboratore Tecnico non trovato.");
   if (!target.rinnovo_path) return errore("Nessun documento di rinnovo caricato.");
 
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(e instanceof Error ? e.message : "PEC non configurata.");
-  }
-
   const { data: blob, error: eBlob } = await admin.storage.from("finali").download(target.rinnovo_path);
   if (eBlob || !blob) return errore("File di rinnovo non leggibile dallo storage.");
   const buffer = Buffer.from(await blob.arrayBuffer());
@@ -395,8 +388,7 @@ export async function approvaRinnovoTecnico(
   if (error) return errore(error.message);
 
   try {
-    await spedisciPec({
-      config,
+    await accodaPec({
       oggetto: `[ToothTalk] Rinnovo Accordo Collaboratore Tecnico approvato — ${target.nome}`,
       testo: [
         "",
@@ -424,13 +416,13 @@ export async function approvaRinnovoTecnico(
   <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
   <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
 </div>`,
-      allegati: [{ filename: nomeFile, content: buffer, contentType: blob.type || "application/pdf" }],
+      allegati: [{ nome: nomeFile, bucket: "finali", percorso: target.rinnovo_path, sha256 }],
       destinatari: [target.contatto],
-      copiaConoscenza: config.destinatari,
+      copiaConoscenza: destinatariPecGlobali(),
     });
   } catch (e) {
     return errore(
-      `Rinnovo approvato ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+      `Rinnovo approvato ma PEC non entrata in coda: ${e instanceof Error ? e.message : "errore di accodamento"}`,
     );
   }
 

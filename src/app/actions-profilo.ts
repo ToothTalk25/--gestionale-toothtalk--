@@ -8,7 +8,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { inviaPushAdmin } from "@/lib/push";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession, getSessionContext } from "@/lib/auth";
-import { leggiConfigPec, spedisciPec } from "@/lib/pec";
+import { accodaPec, destinatariPecGlobali } from "@/lib/pec";
 import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini";
 import { inviaEmailGmail } from "@/lib/mail";
 import { archiviaAccordoSuDrive } from "@/lib/google-doc";
@@ -1110,9 +1110,9 @@ async function inviaAccordoAgliAmministratori(opts: {
           "",
           ...(opts.avvisoDataCerta
             ? [
-                "ATTENZIONE: la PEC con data certa NON è partita (Aruba ha bloccato",
-                "l'invio): va rispedita quando Aruba tornerà a funzionare, per dare",
-                "al documento la sua data certa.",
+                "ATTENZIONE: la PEC con data certa NON è partita (o non è mai",
+                "entrata in coda): va rimessa in coda e spedita dal computer, per",
+                "dare al documento la sua data certa.",
                 "",
               ]
             : []),
@@ -1157,7 +1157,7 @@ export async function caricaAccordo(
   storagePath: string,
   _sha256Client: string,
   haLettoCompreso: boolean,
-): Promise<Esito<{ messageId: string; verifica: EsitoVerificaAccordo }>> {
+): Promise<Esito<{ inCoda: string; verifica: EsitoVerificaAccordo }>> {
   const { profile } = await requireSession();
   // Scrive col service_role: i campi accordo sono protetti dal trigger
   // fn_protect_profile (0103) — solo admin/service_role possono scriverli.
@@ -1214,18 +1214,9 @@ export async function caricaAccordo(
     );
   }
 
-  // --- PEC all'accesso globale -----------------------------------------
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(
-      e instanceof Error
-        ? `La PEC non è configurata: ${e.message}`
-        : "La PEC non è configurata.",
-    );
-  }
-
+  // Il PDF firmato si rilegge dallo storage (mai un file indicato dal client):
+  // serve per l'impronta vera e, se la coda non accettasse la riga, per il
+  // ripiego via email del progetto.
   const { data: blob, error: eBlob } = await supabase.storage
     .from("profili")
     .download(storagePath);
@@ -1250,6 +1241,11 @@ export async function caricaAccordo(
       accordo_sha256: sha256,
       accordo_caricato_at: new Date().toISOString(),
       accordo_letto_confermato: true,
+      // Un accordo nuovo È la risposta alla richiesta di ricaricarlo (0140):
+      // la richiesta ha esaurito il suo scopo e sparisce dallo schermo. La riga
+      // che la registrava resta nel registro, che non si cancella.
+      accordo_ricarica_richiesta_at: null,
+      accordo_ricarica_motivo: null,
     })
     .eq("id", profile.id);
   if (error) return errore(error.message);
@@ -1313,9 +1309,75 @@ export async function caricaAccordo(
     return errore(`Accordo salvato ma esito IA non registrato: ${eVerifica.message}`);
   }
 
+  // Conferma immediata alla persona: fino a ieri chi caricava l'accordo non
+  // riceveva niente — la PEC del deposito va all'accesso globale, non a lei, e
+  // l'unica traccia era il messaggio a schermo in quel momento. Questa email
+  // dice una cosa sola e vera: il documento è arrivato, e tocca a noi
+  // controllarlo. Best-effort: se non parte, nulla si blocca (inviaEmailGmail
+  // ritorna false invece di lanciare).
+  await inviaEmailGmail({
+    destinatario: profile.email,
+    oggetto: "[ToothTalk] Abbiamo ricevuto il tuo accordo firmato",
+    testo: [
+      "",
+      `Ciao ${nome},`,
+      "",
+      "il tuo accordo editoriale firmato è arrivato: l'abbiamo registrato e ne",
+      "conserviamo l'impronta, che trovi qui sotto.",
+      "",
+      "Che cosa succede adesso: lo controlliamo noi, poi l'accesso globale carica",
+      "la copia controfirmata e ti chiediamo di confermare che è lo stesso",
+      "documento che hai firmato. Da quel momento si sblocca l'accesso ai",
+      "progetti. La PEC con data certa arriverà sulla tua casella quando sarà",
+      "spedita.",
+      "",
+      "Se il documento non fosse leggibile o completo te lo scriviamo qui: non",
+      "serve che tu faccia nulla adesso. Lo trovi sempre nel tuo profilo,",
+      "sezione \"Accordo editoriale\".",
+      "",
+      "Impronta SHA-256 del file che abbiamo ricevuto:",
+      `  ${sha256}`,
+      "",
+      "— ToothTalk™",
+      "",
+    ].join("\n"),
+    html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <p style="font-size:13px;line-height:1.6">Ciao <strong>${esc(nome)}</strong>,</p>
+  <p style="font-size:13px;line-height:1.6">
+    il tuo accordo editoriale firmato <strong>è arrivato</strong>: l&apos;abbiamo registrato
+    e ne conserviamo l&apos;impronta, che trovi qui sotto.
+  </p>
+  <p style="font-size:13px;line-height:1.6">
+    Che cosa succede adesso: lo controlliamo noi, poi l&apos;accesso globale carica la
+    copia controfirmata e ti chiediamo di confermare che è lo stesso documento che hai
+    firmato. Da quel momento si sblocca l&apos;accesso ai progetti. La PEC con data
+    certa arriverà sulla tua casella quando sarà spedita.
+  </p>
+  <p style="font-size:12px;color:#666">
+    Se il documento non fosse leggibile o completo te lo scriviamo qui: non serve che
+    tu faccia nulla adesso.
+  </p>
+  <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
+  <p style="font-size:13px;line-height:1.6;margin-top:16px">— ToothTalk™</p>
+</div>`,
+  });
+
+  // La PEC non parte più da qui: entra in coda (0139) e la spedisce il
+  // computer, perché Aruba blocca gli invii automatici che escono da
+  // indirizzi esteri — e Vercel non ha regioni italiane. Se la coda non
+  // accetta la riga, il documento firmato deve comunque arrivare all'accesso
+  // globale: è il catch qui sotto.
   try {
-    const { messageId } = await spedisciPec({
-      config,
+    // Il "to" della PEC resta l'accesso globale: è lui che conserva la
+    // certificazione. La copia alla persona, invece, va SEMPRE — sulla sua PEC
+    // se l'ha indicata, altrimenti sulla sua email di accesso. Prima la
+    // riceveva solo chi aveva una PEC: chi non l'aveva restava senza il proprio
+    // documento certificato, ed era un buco, non una scelta (0140).
+    const destinatariGlobali = destinatariPecGlobali();
+    const copiaPersona = profile.pec ?? profile.email;
+
+    const { id: inCoda } = await accodaPec({
+      destinatari: destinatariGlobali,
       oggetto: `[ToothTalk] Accordo editoriale — ${nome}`,
       testo: [
         "",
@@ -1349,16 +1411,12 @@ export async function caricaAccordo(
   <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
 </div>`,
       allegati: [
-        {
-          filename: nomeFile,
-          content: buffer,
-          contentType: blob.type || "application/pdf",
-        },
+        // Riferimento, non byte: lo script rilegge il PDF dallo storage e
+        // verifica l'impronta PRIMA di spedire. Il bucket del caricamento
+        // dell'accordo è "profili".
+        { nome: nomeFile, bucket: "profili", percorso: storagePath, sha256 },
       ],
-      // La copia al partecipante viaggia sulla sua PEC/email se l'ha
-      // indicata; altrimenti resta solo la certificazione all'accesso
-      // globale. La PEC non è obbligatoria per partecipare.
-      copiaConoscenza: profile.pec ? [profile.pec] : undefined,
+      copiaConoscenza: destinatariGlobali.includes(copiaPersona) ? undefined : [copiaPersona],
     });
 
     // Avviso immediato all'accesso globale: c'è un accordo da verificare.
@@ -1371,16 +1429,16 @@ export async function caricaAccordo(
     });
 
     revalidatePath("/profilo");
-    return { ok: true, dati: { messageId, verifica } };
+    return { ok: true, dati: { inCoda, verifica } };
   } catch (e) {
-    // La PEC non è partita (Aruba blocca gli invii). Il documento firmato
-    // deve arrivare comunque all'accesso globale: altrimenti nessuno sa che
-    // c'è un accordo da verificare — è successo davvero, con due accordi
-    // caricati e nessun avviso. Il ripiego (PDF via Gmail del progetto e una
-    // riga nel registro) vive in inviaAccordoAgliAmministratori, perché è lo
-    // stesso messaggio della copia chiesta dall'admin; qui l'avviso sulla
-    // data certa ci va, perché la PEC è davvero caduta. La data certa resta
-    // da ottenere quando la PEC tornerà a funzionare.
+    // La coda non ha accettato la riga: la PEC non esiste da nessuna parte, e
+    // il documento firmato deve arrivare comunque all'accesso globale —
+    // altrimenti nessuno sa che c'è un accordo da verificare (è successo
+    // davvero, con due accordi caricati e nessun avviso). Il ripiego (PDF via
+    // email del progetto e una riga nel registro) vive in
+    // inviaAccordoAgliAmministratori, perché è lo stesso messaggio della copia
+    // chiesta dall'admin; qui l'avviso sulla data certa ci va, perché la PEC
+    // non esiste. La data certa resta da ottenere: va rimesso in coda.
     const recapito = await inviaAccordoAgliAmministratori({
       actorId: profile.id,
       actorRole: profile.role,
@@ -1391,12 +1449,12 @@ export async function caricaAccordo(
       nome,
       avvisoDataCerta: true,
       azione: "accordo_inviato_gmail_recupero",
-      motivo: "PEC non partita al caricamento dell'accordo",
+      motivo: "PEC non entrata in coda al caricamento dell'accordo",
     });
     return errore(
       recapito
-        ? `Accordo salvato e inviato per email, ma la PEC non è partita: ${e instanceof Error ? e.message : "errore di spedizione"}`
-        : `Accordo salvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+        ? `Accordo salvato e inviato per email, ma la PEC non è entrata in coda: ${e instanceof Error ? e.message : "errore di accodamento"}`
+        : `Accordo salvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di accodamento"}`,
     );
   }
   }
@@ -1810,14 +1868,17 @@ export async function caricaModelloAccordo(
  * L'Admin approva la registrazione di un collaboratore: attiva l'account,
  * conferma/corregge il flag on_screen (serve per la correttezza della
  * revoca GDPR, non per scegliere un accordo — l'accordo è unico per tutti)
- * e invia alla PEC del collaboratore il MODELLO dell'accordo da firmare,
- * con il Titolare in copia. Prima di approvare serve aver caricato il
- * modello (caricaModelloAccordo).
+ * e manda il MODELLO dell'accordo da firmare, con l'accesso globale in copia.
+ *
+ * Due canali, due scopi diversi: la PEC entra in coda e darà la data certa
+ * appena il computer la spedisce; l'email dalla casella del progetto parte
+ * subito, perché la persona deve poter firmare oggi — non fra un giorno.
+ * Prima di approvare serve aver caricato il modello (caricaModelloAccordo).
  */
 export async function approvaRegistrazione(
   userId: string,
   onScreenConfermato: boolean,
-): Promise<Esito<{ messageId: string; viaGmail: boolean }>> {
+): Promise<Esito<{ inCoda: string | null; viaGmail: boolean }>> {
   const { profile: admin } = await requireSession();
   if (admin.role !== "admin") return errore("Solo chi ha accesso globale può approvare registrazioni.");
 
@@ -1842,13 +1903,6 @@ export async function approvaRegistrazione(
   // La PEC è facoltativa: se assente, l'accordo va all'email di accesso
   // (il canale minimo garantito), senza la certificazione di consegna.
   if (!richiedente?.email) return errore("Questo utente non ha un contatto email valido.");
-
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(e instanceof Error ? e.message : "PEC non configurata.");
-  }
 
   const { data: blobModello, error: eBlob } = await supabase.storage
     .from("finali")
@@ -1949,27 +2003,52 @@ export async function approvaRegistrazione(
     { filename: "3-protocollo-operativo.pdf", content: protocolloPdf, contentType: "application/pdf" },
   ];
 
+  // Le impronte servono allo script per verificare, al momento della
+  // spedizione, che siano ancora questi due file: i documenti del progetto
+  // possono essere aggiornati nel frattempo, e certificare la versione nuova
+  // al posto di quella consegnata sarebbe un falso.
+  const shaModello = createHash("sha256").update(bufferModello).digest("hex");
+  const shaProtocollo = createHash("sha256").update(protocolloPdf).digest("hex");
+
   try {
-    const { messageId } = await spedisciPec({
-      config,
+    const { id: inCoda } = await accodaPec({
+      oggetto: oggettoAccordo,
+      testo: testoAccordo,
+      html: htmlAccordo,
+      allegati: [
+        { nome: nomeModello, bucket: "finali", percorso: modello.storage_path, sha256: shaModello },
+        { nome: "3-protocollo-operativo.pdf", file_pubblico: "3-protocollo-operativo.pdf", sha256: shaProtocollo },
+      ],
+      // "to": la persona — PEC se presente, altrimenti la sua email di
+      // accesso (la PEC non è più obbligatoria per partecipare).
+      destinatari: [richiedente.pec ?? richiedente.email],
+      copiaConoscenza: destinatariPecGlobali(), // "cc": accesso globale
+    });
+
+    // Il documento parte subito anche per email: una PEC in coda non è ancora
+    // una consegna, e senza il modello nessuno può firmare.
+    const inviataViaGmail = await inviaEmailGmail({
+      destinatario: richiedente.email,
       oggetto: oggettoAccordo,
       testo: testoAccordo,
       html: htmlAccordo,
       allegati: allegatiAccordo,
-      // "to": la persona — PEC se presente, altrimenti la sua email di
-      // accesso (la PEC non è più obbligatoria per partecipare).
-      destinatari: [richiedente.pec ?? richiedente.email],
-      copiaConoscenza: config.destinatari, // "cc": accesso globale
     });
+
     revalidatePath("/admin");
-    return { ok: true, dati: { messageId, viaGmail: false } };
+    return { ok: true, dati: { inCoda, viaGmail: inviataViaGmail } };
   } catch (e) {
-    // La PEC (Aruba) non è partita: stesso contenuto via Gmail, così la
-    // persona non resta bloccata in attesa di un documento che non arriva
-    // mai. Il profilo viene segnato (accordo_pec_fallita_at) per poterlo
-    // ritrovare e rispedire via PEC vera quando il blocco IP di Aruba
-    // (ticket 19039798A) sarà DAVVERO risolto — stesso documento, basta
-    // ricertificarne l'invio.
+    // La coda non ha accettato la riga: la PEC non esiste da nessuna parte.
+    // Il profilo viene segnato (accordo_pec_fallita_at) per poterlo ritrovare
+    // e rimettere in coda da "Accordi da certificare"; intanto lo stesso
+    // documento parte per email, così la persona non resta bloccata in attesa
+    // di un accordo che non arriva mai.
+    await ignora(
+      supabaseAdmin()
+        .from("profiles")
+        .update({ accordo_pec_fallita_at: new Date().toISOString() })
+        .eq("id", userId),
+    );
     const inviataViaGmail = await inviaEmailGmail({
       destinatario: richiedente.email,
       oggetto: oggettoAccordo,
@@ -1979,39 +2058,140 @@ export async function approvaRegistrazione(
     });
     if (!inviataViaGmail) {
       // Nessuno dei due canali è partito: l'account resta approvato (sopra) ma
-      // il documento non è arrivato a nessuno. Si segna comunque il profilo,
-      // così la persona compare fra quelle da ufficializzare: senza questa
-      // riga un accordo non consegnato passerebbe inosservato, perché la
-      // marcatura veniva messa solo quando il ripiego via Gmail riusciva.
-      await ignora(
-        supabaseAdmin()
-          .from("profiles")
-          .update({ accordo_pec_fallita_at: new Date().toISOString() })
-          .eq("id", userId),
-      );
+      // il documento non è arrivato a nessuno. Il profilo è già segnato qui
+      // sopra, quindi la persona compare fra quelle da certificare: senza
+      // quella riga un accordo non consegnato passerebbe inosservato.
       return errore(
-        `Account approvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+        `Account approvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di accodamento"}`,
       );
     }
-    await ignora(
-      supabaseAdmin()
-        .from("profiles")
-        .update({ accordo_pec_fallita_at: new Date().toISOString() })
-        .eq("id", userId),
-    );
     revalidatePath("/admin");
-    return { ok: true, dati: { messageId: "gmail-fallback", viaGmail: true } };
+    return { ok: true, dati: { inCoda: null, viaGmail: true } };
   }
 }
 
 /**
- * Rispedisce via PEC vera l'accordo di chi lo aveva ricevuto solo via Gmail
- * (accordo_pec_fallita_at valorizzato da approvaRegistrazione quando Aruba
- * era bloccata) — stesso documento, stesso modello attivo: basta a dare data
- * certa a un invio che prima non l'aveva. Da usare quando Aruba conferma
- * davvero risolto il blocco IP (ticket 19039798A), non solo dichiarato tale.
+ * Chiede alla persona di ricaricare l'accordo (solo accesso globale).
+ *
+ * Nasce da un caso vero: un accordo caricato con una pagina sola su nove,
+ * marcato "sembra non corretto" dal controllo automatico — e nessun modo di
+ * dirlo alla persona se non scrivendole fuori dal gestionale, senza che ne
+ * restasse traccia.
+ *
+ * Il motivo è obbligatorio: lo legge la persona nel proprio profilo e resta nel
+ * registro insieme a chi l'ha chiesto. La richiesta non blocca e non sblocca
+ * niente — sull'accordo la decisione è umana, e l'esito automatico non decide
+ * mai. Dice soltanto che quella persona è stata avvisata, e di che cosa. Si
+ * chiude da sola al primo accordo nuovo che arriva (caricaAccordo), perché il
+ * ricaricamento È la risposta.
  */
-export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ messageId: string }>> {
+export async function chiediRicaricamentoAccordo(
+  userId: string,
+  motivo: string,
+): Promise<Esito> {
+  const { isAdmin, profile: admin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
+
+  const pulito = motivo.trim();
+  if (pulito.length < 10) {
+    return errore(
+      "Scrivi che cosa deve correggere la persona (almeno una frase): lo legge lei, e resta nel registro.",
+    );
+  }
+
+  // Scrive col service_role: i campi accordo_* sono protetti dal trigger
+  // fn_protect_profile (0103/0140) — solo admin/service_role possono scriverli.
+  const adminDb = supabaseAdmin();
+  const { data: target } = await adminDb
+    .from("profiles")
+    .select("id, full_name, email, accordo_path")
+    .eq("id", userId)
+    .single<{ id: string; full_name: string | null; email: string; accordo_path: string | null }>();
+  if (!target) return errore("Profilo non trovato.");
+  if (!target.accordo_path) {
+    return errore("Questa persona non ha ancora caricato un accordo: non c'è niente da ricaricare.");
+  }
+
+  const ora = new Date().toISOString();
+  const { error } = await adminDb
+    .from("profiles")
+    .update({ accordo_ricarica_richiesta_at: ora, accordo_ricarica_motivo: pulito })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  const nome = target.full_name ?? target.email;
+  await inviaEmailGmail({
+    destinatario: target.email,
+    oggetto: "[ToothTalk] Il tuo accordo firmato va ricaricato",
+    testo: [
+      "",
+      `Ciao ${nome},`,
+      "",
+      "l'accordo editoriale firmato che ci hai mandato ha bisogno di essere",
+      "ricaricato:",
+      "",
+      `  ${pulito}`,
+      "",
+      "Puoi ricaricarlo dal tuo profilo, sezione \"Accordo editoriale\". Serve il",
+      "documento firmato e leggibile per intero: tutte le pagine, con la firma.",
+      "",
+      "Quando lo ricarichi, questa richiesta si chiude da sola e non devi fare",
+      "altro. Se hai dubbi, rispondi a questa email e te lo spieghiamo.",
+      "",
+      "— ToothTalk™",
+      "",
+    ].join("\n"),
+    html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <p style="font-size:13px;line-height:1.6">Ciao <strong>${esc(nome)}</strong>,</p>
+  <p style="font-size:13px;line-height:1.6">
+    l&apos;accordo editoriale firmato che ci hai mandato <strong>ha bisogno di essere
+    ricaricato</strong>:
+  </p>
+  <p style="margin:12px 0;padding:10px 12px;background:#f6f7f9;border-radius:10px;font-size:13px;line-height:1.6">
+    ${esc(pulito)}
+  </p>
+  <p style="font-size:13px;line-height:1.6">
+    Puoi ricaricarlo dal tuo profilo, sezione &quot;Accordo editoriale&quot;. Serve il
+    documento firmato e leggibile per intero: tutte le pagine, con la firma.
+  </p>
+  <p style="font-size:12px;color:#666">
+    Quando lo ricarichi, questa richiesta si chiude da sola. Se hai dubbi, rispondi a
+    questa email e te lo spieghiamo.
+  </p>
+  <p style="font-size:13px;line-height:1.6;margin-top:16px">— ToothTalk™</p>
+</div>`,
+  });
+
+  await ignora(
+    adminDb.from("audit_log").insert({
+      actor: admin.id,
+      actor_role: admin.role,
+      action: "richiesta_ricaricamento_accordo",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: { utente: target.full_name, motivo: pulito },
+    }),
+  );
+
+  revalidatePath("/admin");
+  revalidatePath("/profilo");
+  return { ok: true, dati: undefined };
+}
+
+/**
+ * Rimette in coda la PEC dell'accordo di chi lo ha ricevuto solo via email
+ * (accordo_pec_fallita_at valorizzato: la PEC non è mai arrivata a
+ * destinazione — o perché Aruba bloccava gli invii, o perché la coda non ha
+ * accettato la riga). Stesso documento, stesso modello attivo: serve a dare
+ * data certa a una consegna che non l'ha avuta.
+ *
+ * Idempotente: se la PEC di questa persona è già in coda non ne aggiunge una
+ * seconda — due PEC identiche sarebbero due certificazioni dello stesso
+ * documento, e la seconda non serve a nessuno.
+ */
+export async function ricertificaAccordoPec(
+  userId: string,
+): Promise<Esito<{ inCoda: string | null; giaInCoda: boolean }>> {
   const { profile: admin } = await requireSession();
   if (admin.role !== "admin") return errore("Solo chi ha accesso globale può ricertificare.");
 
@@ -2035,11 +2215,16 @@ export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ mes
     return errore("Questo profilo non ha nessuna PEC in sospeso da ricertificare.");
   }
 
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(e instanceof Error ? e.message : "PEC non configurata.");
+  // Se la PEC di questa persona è già in coda, non se ne accoda una seconda:
+  // la certificazione del documento è una sola.
+  const { data: codaEsistente } = await supabaseAdmin()
+    .from("pec_da_inviare")
+    .select("id")
+    .eq("stato", "in_coda")
+    .filter("contesto->>profile_id", "eq", userId)
+    .limit(1);
+  if (codaEsistente?.length) {
+    return { ok: true, dati: { inCoda: codaEsistente[0].id as string, giaInCoda: true } };
   }
 
   const { data: blobModello, error: eBlob } = await supabase.storage
@@ -2057,18 +2242,19 @@ export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ mes
     return errore("Impossibile allegare il Protocollo Operativo: file non leggibile dal server.");
   }
 
+  const shaModello = createHash("sha256").update(bufferModello).digest("hex");
+  const shaProtocollo = createHash("sha256").update(protocolloPdf).digest("hex");
+
   try {
-    const { messageId } = await spedisciPec({
-      config,
+    const { id: inCoda } = await accodaPec({
       oggetto: `[ToothTalk] Ricertificazione PEC — stesso accordo già ricevuto via email`,
       testo: [
         "",
         `Ciao ${nome},`,
         "",
-        "Ti avevamo già mandato l'accordo editoriale via email normale, perché",
-        "in quel momento la PEC non era disponibile. Ora che funziona di nuovo,",
-        "te lo rispediamo in allegato con data certa: è lo stesso identico",
-        "documento di prima.",
+        "Ti avevamo già mandato l'accordo editoriale via email normale. Te lo",
+        "rimandiamo in allegato con data certa: è lo stesso identico documento",
+        "di prima — con la PEC ha la data e l'ora della consegna.",
         "",
         "Se l'hai già firmato e ricaricato dal tuo profilo, non devi fare nulla.",
         "",
@@ -2077,10 +2263,9 @@ export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ mes
       html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
   <p style="font-size:13px;line-height:1.6">Ciao <strong>${esc(nome)}</strong>,</p>
   <p style="font-size:13px;line-height:1.6">
-    Ti avevamo già mandato l'accordo editoriale via email normale, perché in
-    quel momento la PEC non era disponibile. Ora che funziona di nuovo, te lo
-    rispediamo in allegato con <strong>data certa</strong>: è lo stesso
-    identico documento di prima.
+    Ti avevamo già mandato l'accordo editoriale via email normale. Te lo
+    rimandiamo in allegato con <strong>data certa</strong>: è lo stesso
+    identico documento di prima — con la PEC ha la data e l'ora della consegna.
   </p>
   <p style="font-size:12px;color:#666">
     Se l'hai già firmato e ricaricato dal tuo profilo, non devi fare nulla.
@@ -2088,18 +2273,21 @@ export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ mes
   <p style="font-size:13px;line-height:1.6;margin-top:16px">— ToothTalk™</p>
 </div>`,
       allegati: [
-        { filename: nomeModello, content: bufferModello, contentType: "application/pdf" },
-        { filename: "3-protocollo-operativo.pdf", content: protocolloPdf, contentType: "application/pdf" },
+        { nome: nomeModello, bucket: "finali", percorso: modello.storage_path, sha256: shaModello },
+        { nome: "3-protocollo-operativo.pdf", file_pubblico: "3-protocollo-operativo.pdf", sha256: shaProtocollo },
       ],
       destinatari: [richiedente.pec ?? richiedente.email],
-      copiaConoscenza: config.destinatari,
+      copiaConoscenza: destinatariPecGlobali(),
+      // La marcatura si toglie quando la PEC è DAVVERO partita, e lo fa lo
+      // script: finché è in coda la persona resta fra quelle da certificare,
+      // perché è ancora vero che quella consegna non ha data certa.
+      contesto: { tipo: "ricertificazione", profile_id: userId },
     });
 
-    await supabase.from("profiles").update({ accordo_pec_fallita_at: null }).eq("id", userId);
     revalidatePath("/admin");
-    return { ok: true, dati: { messageId } };
+    return { ok: true, dati: { inCoda, giaInCoda: false } };
   } catch (e) {
-    return errore(`PEC ancora non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`);
+    return errore(`PEC non entrata in coda: ${e instanceof Error ? e.message : "errore di accodamento"}`);
   }
 }
 
@@ -2421,15 +2609,8 @@ export async function caricaControfirmaAccordo(
     return errore("Percorso del file non valido.");
   }
 
-  // Fail fast: se la PEC non è configurata, meglio saperlo prima di
-  // scrivere qualunque cosa, non dopo aver già aggiornato il profilo.
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(e instanceof Error ? `La PEC non è configurata: ${e.message}` : "La PEC non è configurata.");
-  }
-
+  // Il file si rilegge dallo storage (mai quello indicato dal client) e se ne
+  // ricalcola l'impronta qui: è quella che andrà certificata via PEC.
   const { data: blob, error: eBlob } = await supabase.storage.from("finali").download(storagePath);
   if (eBlob || !blob) return errore("File non leggibile dallo storage.");
 
@@ -2508,10 +2689,10 @@ export async function caricaControfirmaAccordo(
 
   // PEC al Collaboratore con il documento controfirmato allegato, copia
   // all'accesso globale — stesso schema di caricaAccordo, mittente e
-  // destinatario invertiti.
+  // destinatario invertiti. Non parte da qui: entra in coda (0139) e la
+  // spedisce il computer, che esce da un indirizzo italiano.
   try {
-    await spedisciPec({
-      config,
+    await accodaPec({
       oggetto: `[ToothTalk] Accordo editoriale controfirmato — ${nome}`,
       testo: [
         "",
@@ -2546,15 +2727,15 @@ export async function caricaControfirmaAccordo(
   <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
   <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
 </div>`,
-      allegati: [{ filename: nomeFile, content: buffer, contentType: blob.type || "application/pdf" }],
+      allegati: [{ nome: nomeFile, bucket: "finali", percorso: storagePath, sha256 }],
       // "to": il collaboratore — PEC se presente, altrimenti la sua email di
       // accesso. "cc": l'accesso globale, come in caricaAccordo al contrario.
       destinatari: [target.pec ?? target.email],
-      copiaConoscenza: config.destinatari,
+      copiaConoscenza: destinatariPecGlobali(),
     });
   } catch (e) {
     return errore(
-      `Controfirma salvata ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+      `Controfirma salvata ma PEC non entrata in coda: ${e instanceof Error ? e.message : "errore di accodamento"}`,
     );
   }
 
@@ -2620,16 +2801,14 @@ export async function confermaControfirmaAccordo(): Promise<
     }),
   );
 
-  // Comunicazione al Titolare: un vero messaggio in arrivo via PEC
-  // all'accesso globale (destinatari omesso: spedisciPec usa config.destinatari
-  // di default), non solo una riga in una lista admin. Best-effort: la
-  // conferma resta comunque valida e tracciata in audit_log sopra.
+  // Comunicazione all'accesso globale: una PEC in arrivo (non solo una riga in
+  // una lista admin) che attesta la conferma. Entra in coda (0139): la
+  // spedisce il computer, con i destinatari di default (l'accesso globale).
+  // Best-effort: la conferma resta comunque valida e tracciata in audit_log.
   try {
-    const config = leggiConfigPec();
     const nomeConfermato = profile.full_name ?? profile.email;
     const oraIt = new Date(ora).toLocaleString("it-IT");
-    await spedisciPec({
-      config,
+    await accodaPec({
       oggetto: `[ToothTalk] Controfirma confermata — ${nomeConfermato}`,
       testo: [
         "",
@@ -2654,7 +2833,8 @@ export async function confermaControfirmaAccordo(): Promise<
       allegati: [],
     }).catch(() => {});
   } catch {
-    // PEC non configurata: la conferma resta comunque valida e tracciata.
+    // Coda non disponibile (o PEC_DESTINATARI mancante): la conferma resta
+    // comunque valida e tracciata in audit_log.
   }
 
   revalidatePath("/admin");

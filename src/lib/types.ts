@@ -125,6 +125,10 @@ export type Profile = {
   accordo_approvato_da: string | null;
   accordo_scadenza: string | null;
   accordo_pec_fallita_at: string | null;
+  /** Quando l'accesso globale ha chiesto di ricaricare l'accordo (0140). */
+  accordo_ricarica_richiesta_at: string | null;
+  /** Che cosa deve correggere: lo legge la persona nel proprio profilo. */
+  accordo_ricarica_motivo: string | null;
   accordo_controfirmato_path: string | null;
   accordo_controfirmato_sha256: string | null;
   accordo_controfirmato_caricato_at: string | null;

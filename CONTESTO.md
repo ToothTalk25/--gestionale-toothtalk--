@@ -219,8 +219,28 @@ policy di UPDATE, quindi un upsert verrebbe respinto.
 
 Aggiornato al 18 settembre 2026.
 
-1. **PEC**: credenziali presenti in `.env.local` (`PEC_USER`, `PEC_PASSWORD`,
-   `PEC_MITTENTE`, `PEC_DESTINATARI`), host e limite già impostati su Poste.
+1. **PEC**: la casella è `toothtalk@pec.it` (Aruba). Dal 15 settembre 2026 Aruba
+   rifiuta gli invii automatici del gestionale — `554 5.7.1 Indirizzo IP
+   bloccato temporaneamente per sospetto abuso` — perché partivano da Vercel,
+   che non ha regioni italiane e cambia indirizzo a ogni invio. Nel ticket
+   `19039798A` hanno risposto che **gli IP italiani, anche dinamici, non vengono
+   bloccati** e che per gli IP esteri (o per un numero elevato di indirizzi,
+   come fa un cloud) l'unico rimedio che offrono è aprire la casella a tutti gli
+   indirizzi — cioè rinunciare alla protezione anti-abuso su una casella che
+   firma documenti con valore legale.
+   Da lì la scelta: **il gestionale non spedisce più le PEC, le mette in coda**
+   (migrazione `0139`) e a spedirle è `scripts/invia-pec.mjs` eseguito sul
+   computer del progetto, che esce da un indirizzo italiano — quello che Aruba
+   non blocca. Comandi: `npm run pec` (simulazione, verifica anche le impronte
+   dei file), `npm run pec -- --esegui` (spedisce), `npm run pec -- --verifica`
+   (controlla casella, accesso e coda senza spedire).
+   Le credenziali della casella (`PEC_USER`, `PEC_PASSWORD`, `PEC_MITTENTE`,
+   `PEC_DESTINATARI`, `PEC_MAX_MESSAGGIO_MB`) vivono in `.env.local` su questa
+   postazione. Su Vercel servono ancora — per ora — perché il verbale dei
+   pacchetti sigillati e la richiesta di liberatoria al contatto esterno
+   passano ancora da lì: **finché restano fuori dalla coda, quei due invii sono
+   esposti allo stesso blocco.** Quando passeranno anche loro, le credenziali
+   si potranno togliere da Vercel del tutto (lì basta `PEC_DESTINATARI`).
 2. **Account dei partecipanti**: due strade — l'invito dal Registro globale
    (email con codice del gruppo e link di registrazione) oppure
    `npm run utente -- crea|assegna`. Le registrazioni si approvano dal Registro.
@@ -277,6 +297,49 @@ Aggiornato al 18 settembre 2026.
    l'impronta del *contenuto* dei file grandi: ricalcolarla vorrebbe dire
    riscaricare centinaia di MB ogni notte, e quella prova vive nella PEC e
    nella copia di chi ha girato il video.
+
+9. **PEC in coda** (migrazione `0139`): la coda è `pec_da_inviare`, la legge
+   solo l'accesso globale e la scrive solo il server; il Registro ha la scheda
+   "PEC da spedire" con il comando da eseguire, da quanto aspetta la più
+   vecchia e gli errori con il motivo (le righe in errore **non ripartono da
+   sole**: un errore va letto, e si riprova una per una con `--id`).
+   Due scelte che vale la pena conoscere. Primo: gli allegati in coda sono
+   **riferimenti con l'impronta**, non byte — e lo script verifica l'impronta
+   *prima* di spedire, perché certificare un file diverso da quello deciso
+   sarebbe un falso (i documenti del progetto possono essere aggiornati nel
+   frattempo, e in quel caso la PEC si ferma con un errore chiaro invece di
+   partire con l'allegato sbagliato). Secondo: le cose che l'applicazione non
+   può sapere in anticipo le completa lo script **dopo** che la PEC è partita —
+   svuotare `accordo_pec_fallita_at`, registrare l'esito del pacchetto
+   (`registra_esito_pec`, che è ciò che fa partire la copia su Drive) — perché
+   altrimenti l'app mostrerebbe come fatto qualcosa che non è ancora avvenuto.
+   Il controllo notturno dell'integrità avvisa anche quando una PEC aspetta da
+   più di un giorno: finché è in coda, quel documento non ha data certa.
+
+10. **Accordo: chiedere di ricaricare, e confermare che è arrivato**
+    (migrazione `0140`). Tre cose nate da un caso vero — un accordo caricato con
+    una pagina sola su nove, che nessuno poteva segnalare alla persona se non
+    scrivendole fuori dal gestionale, senza che ne restasse traccia:
+    — l'accesso globale può **chiedere di ricaricare l'accordo**, con motivo
+      obbligatorio: la persona lo legge nel proprio profilo, riceve un'email, e
+      la richiesta resta nel registro insieme a chi l'ha chiesta. Si chiude da
+      sola al primo accordo nuovo che arriva;
+    — chi carica l'accordo riceve una **conferma via email** ("lo abbiamo
+      ricevuto"): prima non riceveva niente, perché la PEC del deposito va
+      all'accesso globale, non a lei — l'unica traccia era un messaggio a
+      schermo in quel momento;
+    — la **copia della PEC del deposito va sempre** alla persona (sulla sua PEC
+      se l'ha indicata, altrimenti sulla sua email di accesso): prima la
+      riceveva solo chi aveva una PEC, e chi non l'aveva restava senza il
+      proprio documento certificato.
+    L'esito automatico resta un segnale, mai la decisione: queste colonne non
+    bloccano e non sbloccano niente, dicono soltanto che quella persona è stata
+    avvisata. La prova end-to-end vive in `scripts/_e2e_ricarica.mjs`.
+    Da sapere, perché è stato visto durante quella prova: la chiave esterna di
+    `consents_and_releases` verso `profiles` **non ha cascata**, quindi
+    l'eliminazione di un account che ha un accordo registrato fallisce in
+    silenzio. Nel gestionale non si nota (l'uscita di una persona anonimizza,
+    non elimina), ma vale per `npm run utente` e per l'Admin API.
 
 ## 11. Il limite dichiarato
 

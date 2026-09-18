@@ -220,13 +220,15 @@ export default function ProfiloPersonale({
       } else {
         const esito = await caricaAccordo(path, sha, accordoLetto);
         if (!esito.ok) {
-          setAccordoStato("Caricato, PEC non partita");
+          setAccordoStato("Caricato, PEC non in coda");
           throw new Error(esito.errore);
         }
         setAccordoStato(`Caricato il ${new Date().toLocaleString("it-IT")}`);
-        setPecStato(`PEC inviata (${esito.dati.messageId})`);
+        setPecStato("PEC in coda: partirà al prossimo invio dal computer");
         setVerificaStato({ esito: esito.dati.verifica.esito, note: esito.dati.verifica.note });
-        setMessaggio("Accordo caricato e inviato via PEC con data certa.");
+        setMessaggio(
+          "Accordo caricato: la PEC è in coda e verrà spedita con data certa al prossimo invio dal computer.",
+        );
         // Ogni nuovo caricamento richiede una nuova conferma esplicita.
         setAccordoLetto(false);
       }
@@ -539,6 +541,21 @@ export default function ProfiloPersonale({
         {!isAdmin && (
           <section className="tt-card p-6">
             <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Accordo editoriale</h2>
+            {/* La richiesta di ricaricare l'accordo (0140): resta qui finché non
+                arriva un documento nuovo, che è la risposta alla richiesta. */}
+            {profile.accordo_ricarica_richiesta_at && (
+              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                <p className="text-sm font-medium text-amber-900">
+                  Ci serve di nuovo il tuo accordo firmato
+                </p>
+                <p className="mt-1 text-xs text-amber-800">{profile.accordo_ricarica_motivo}</p>
+                <p className="mt-2 text-xs text-amber-700">
+                  Richiesto il{" "}
+                  {new Date(profile.accordo_ricarica_richiesta_at).toLocaleDateString("it-IT")}.
+                  Quando carichi il documento corretto, questa richiesta si chiude da sola.
+                </p>
+              </div>
+            )}
           <p className="mt-1 text-sm text-slate-500">
             Carica il PDF firmato dell&apos;accordo: verrà inviato automaticamente
             via PEC a chi ha accesso globale, con data certa e copia alla tua

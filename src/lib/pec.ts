@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ElementoManifesto, ManifestoPacchetto } from "@/lib/types";
 
 /**
@@ -15,6 +16,13 @@ import type { ElementoManifesto, ManifestoPacchetto } from "@/lib/types";
  * la PEC dà data certa al contenuto del video senza doverlo allegare. Gli
  * elementi leggeri (copertina, descrizione, script, manifesto) viaggiano
  * comunque come allegati, in chiaro.
+ *
+ * Da dove parte, dal 0139: NON da qui. Aruba blocca gli invii automatici che
+ * arrivano da indirizzi esteri e da troppi indirizzi diversi (Vercel non ha
+ * regioni italiane), e l'unico rimedio che offre è togliere la protezione
+ * anti-abuso dalla casella. Quindi il gestionale non spedisce più: ACCODA
+ * (accodaPec) e un comando eseguito su una postazione italiana spedisce
+ * (scripts/invia-pec.mjs). spedisciPec resta per ciò che passa ancora di qui.
  */
 
 export type ConfigPec = {
@@ -298,4 +306,92 @@ export async function spedisciPec(opts: {
     messageId: info.messageId,
     accettato: (info.accepted ?? []).map(String),
   };
+}
+
+// =====================================================================
+// La coda (0139): il gestionale prepara, il computer spedisce
+// =====================================================================
+
+/**
+ * Destinatari PEC dell'accesso globale (PEC_DESTINATARI), senza chiedere
+ * host, utente e password: dopo 0139 l'applicazione non spedisce più da sé,
+ * quindi le credenziali della casella non le servono — le ha solo la
+ * postazione che esegue lo script. Chiedere qui user/password significherebbe
+ * tenerle su Vercel senza che nessuno le usi.
+ */
+export function destinatariPecGlobali(): string[] {
+  const valore = process.env.PEC_DESTINATARI;
+  if (!valore) throw new Error("Configurazione PEC incompleta: manca PEC_DESTINATARI.");
+  return valore
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Un allegato in coda, come riferimento (i byte non entrano nel database).
+ *
+ * Le tre forme coprono i tre casi reali: un file nello storage, un documento
+ * del progetto servito da `public/documenti/`, un allegato generato al volo
+ * (il manifesto del pacchetto, le note in chiaro). Per le prime due l'impronta
+ * è OBBLIGATORIA: è la garanzia che a essere certificato sia il file deciso
+ * quando si è messo in coda il messaggio, non quello che c'è al momento della
+ * spedizione (i documenti del progetto possono essere aggiornati nel frattempo).
+ */
+export type AllegatoCoda =
+  | { nome: string; bucket: string; percorso: string; sha256: string }
+  | { nome: string; file_pubblico: string; sha256: string }
+  | { nome: string; testo: string };
+
+/**
+ * Lo stato che l'applicazione non può aggiornare al momento dell'invio, perché
+ * l'invio non è più suo. `tipo` è il campo che lo script legge.
+ */
+export type ContestoPec =
+  | { tipo: "ricertificazione"; profile_id: string }
+  | { tipo: "verbale"; pacchetto_id: string; note?: string | null };
+
+/**
+ * Mette una PEC in coda per la spedizione dal computer.
+ *
+ * Non spedisce niente e non restituisce un message_id: restituisce l'id della
+ * riga di coda. Chi chiama NON deve raccontare che il documento è partito —
+ * deve dire che è in coda (e la sezione "PEC da spedire" del Registro mostra
+ * cosa aspetta).
+ *
+ * Lancia se la coda non accetta la riga: è l'unico modo perché chi chiama
+ * possa mettere in atto il proprio ripiego, invece di credere che il messaggio
+ * sia al sicuro.
+ */
+export async function accodaPec(opts: {
+  oggetto: string;
+  testo: string;
+  html?: string;
+  /** "to": se assente, l'accesso globale (come faceva spedisciPec). */
+  destinatari?: string[];
+  /** "cc": chi partecipa al gruppo, o l'accesso globale quando il "to" è una persona. */
+  copiaConoscenza?: string[];
+  allegati?: AllegatoCoda[];
+  contesto?: ContestoPec;
+}): Promise<{ id: string }> {
+  const destinatari = opts.destinatari?.length ? opts.destinatari : destinatariPecGlobali();
+
+  const { data, error } = await supabaseAdmin()
+    .from("pec_da_inviare")
+    .insert({
+      oggetto: opts.oggetto,
+      testo: opts.testo,
+      html: opts.html ?? null,
+      destinatari,
+      copia_conoscenza: opts.copiaConoscenza?.length ? opts.copiaConoscenza : null,
+      allegati: opts.allegati ?? [],
+      contesto: opts.contesto ?? {},
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (error || !data) {
+    throw new Error(`PEC non entrata in coda: ${error?.message ?? "nessuna riga creata"}`);
+  }
+  return { id: data.id };
 }
