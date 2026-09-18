@@ -221,11 +221,12 @@ Aggiornato al 18 settembre 2026.
 
 7. **Verifica IA dell'accordo**: se il controllo automatico non riesce al
    caricamento (o la chiave non era configurata sul server), l'accordo resta
-   invisibile nella coda di approvazione. Non si chiede alla persona di
-   ricaricare un documento che è già nel gestionale: dal Registro, in "Accordi
-   da approvare", si rifà il controllo sul file già caricato ("Rivaluta con
-   l'IA") e ci si fa mandare il PDF firmato per email ("Mandami il PDF"),
-   perché la controfirma si fa a mano su carta.
+   invisibile nella coda di approvazione — e un accordo invisibile è
+   indistinguibile da un accordo mai caricato: è il modo in cui due accordi
+   veri sono rimasti fermi per un giorno senza che nessuno lo sapesse. Dal
+   Registro, in "Accordi da approvare", si rifà il controllo sul file già
+   caricato ("Rivaluta con l'IA") e ci si fa mandare il PDF firmato per email
+   ("Mandami il PDF"), perché la controfirma si fa a mano su carta.
    Il modello però è un servizio esterno: risponde 429/500/503 quando è
    sovraccarico e con due PDF al seguito può superare il tempo concesso alla
    funzione (504). Per questo la verifica non è mai l'unica via: l'accesso
@@ -233,6 +234,15 @@ Aggiornato al 18 settembre 2026.
    obbligatorio che resta nel registro (`verifica_manuale_accordo`). La
    decisione è umana per costruzione — l'informativa privacy lo dichiara già:
    l'esito automatico non è mai la decisione.
+   Due dettagli che sembrano tecnici e non lo sono: il modello è fissato a una
+   versione **stabile** (`gemini-3.5-flash`), mai all'alias `gemini-flash-latest`,
+   che segue i rilasci e punta quindi al modello appena uscito, cioè a quello
+   con più coda di tutti (è la causa del 503 del 18 settembre 2026, il giorno
+   dopo il rilascio di Gemini 3.8); e la verifica dichiara `maxDuration`
+   esplicito, perché due PDF letti e confrontati non entrano nei 60 secondi
+   iniziali. Il controllo dice anche cose scomode che è bene sapere: sul primo
+   accordo vero rivalutato ha risposto "documento incompleto (solo la prima
+   pagina) e manca la firma" — il PDF caricato aveva una pagina sola, su nove.
 
 ## 11. Il limite dichiarato
 

@@ -196,10 +196,12 @@ export default function AccordiDaApprovare({
           </p>
           <p className="mt-1 text-xs text-amber-800">
             Hanno caricato l&apos;accordo firmato, ma l&apos;esito del controllo automatico non
-            è &quot;ok&quot;: per questo non entrano nella coda qui sotto. Non serve
-            chiedere di ricaricare — il documento è già nel gestionale e integro, qui
-            si rifà il controllo. &quot;Mandami il PDF&quot; spedisce a te la copia firmata,
-            che serve per la controfirma a mano.
+            è &quot;ok&quot;: per questo non entrano nella coda qui sotto. Prima di chiedere di
+            ricaricare, guarda la nota: se il controllo è caduto per conto suo (servizio
+            sovraccarico, chiave non configurata) il documento è già qui e basta rifare il
+            controllo — se invece dice che il documento è incompleto, illeggibile o non
+            firmato, allora serve il documento giusto. &quot;Mandami il PDF&quot; spedisce a
+            te la copia firmata, che serve per la controfirma a mano.
           </p>
           <div className="mt-3 space-y-2">
             {daRivalutare.map((a) => (
