@@ -124,10 +124,12 @@ chiuderle impedirebbe a chi è fuori di rientrare. Le due soglie sono le stesse
 dell'app: la controfirma conta solo per chi è stato approvato dal 7 settembre
 2026 in poi, e il giorno di scadenza appartiene ancora al periodo.
 
-Verificato con prova reale (la 0137 applicata in transazione e poi annullata):
-accesso globale vede tutti i progetti, membro con Accordo completo vede solo
-quelli del suo gruppo, membro senza Accordo ne vede zero ma continua a
-leggere il proprio profilo — cioè può ancora caricare l'Accordo.
+Verificato in produzione con `scripts/_e2e_varco_accordo.mjs` (chiave anon e
+sessione utente, cioè la stessa richiesta che fa un browser): un membro senza
+Accordo vede 0 progetti e 0 materiali ma continua a leggere il proprio profilo
+(quindi può ancora caricare l'Accordo), un membro con Accordo completo vede il
+progetto del suo gruppo, con l'Accordo scaduto ieri ne vede 0, con l'Accordo
+che scade oggi ne vede ancora 1, e l'accesso globale li vede tutti.
 
 Chi ha `role = 'admin'` ha accesso trasversale a tutti i gruppi. Non compare
 nessuna etichetta accanto al nome: la differenza si vede solo dalle voci di menu
@@ -190,8 +192,7 @@ nei byte.
 
 ## 9. Regole tecniche da rispettare
 
-**Migrazioni.** Da `0001` a `0136` sono già state applicate al database reale
-(`0137` è scritta e si applica con `npm run migra -- 0137`).
+**Migrazioni.** Da `0001` a `0137` sono già state applicate al database reale.
 **Non modificarle**: file e database divergerebbero. Per cambiare qualcosa si
 aggiunge un file nuovo (`0018_...sql`) e si lancia `npm run migra -- 0018`.
 
