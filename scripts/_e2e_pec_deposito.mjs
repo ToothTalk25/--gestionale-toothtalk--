@@ -4,10 +4,15 @@
  * Serve per i depositi rimasti senza PEC (firma arrivata durante il blocco di
  * Aruba): il pulsante rimanda ESATTAMENTE il documento caricato dalla persona,
  * con la sua impronta, e pretende una frase di conferma che resta nel registro.
- * La prova controlla anche che un secondo clic non accodi una seconda PEC.
+ *
+ * Prova anche lo STATO della riga dopo il clic (difetto segnalato: "ho messo la
+ * PEC in coda ma il tasto spunta lo stesso"): con la PEC in coda o spedita il
+ * pulsante non c'è più e la riga lo dice; con la riga annullata o in errore la
+ * PEC non esiste, e il pulsante torna a disposizione (è il caso di Marianna, i
+ * cui tentativi sono righe annullate).
  *
  * La persona di prova punta all'accordo vero di Marianna (stesso file: nessun
- * documento inventato). Nessuna PEC parte da qui: la riga viene annullata alla
+ * documento inventato). Nessuna PEC parte da qui: la riga viene cancellata alla
  * fine, e i profili di prova cancellati.
  *
  *   BASE=http://localhost:3000 node scripts/_e2e_pec_deposito.mjs
@@ -158,7 +163,9 @@ try {
   const { data: coda } = await db
     .from("pec_da_inviare")
     .select("id, stato, oggetto, destinatari, copia_conoscenza, allegati, contesto")
-    .eq("stato", "in_coda");
+    // Solo le righe della persona di prova: se in coda c'è una PEC vera di
+    // qualcun altro (succede: la coda è di lavoro), questa pulizia non la tocca.
+    .filter("contesto->>profile_id", "eq", idPersona);
   const righe = coda ?? [];
   console.log(`\nrighe in coda: ${righe.length}`);
   for (const r of righe) {
@@ -181,30 +188,84 @@ try {
   const copiaAllaPersona = righe.some((r) => (r.copia_conoscenza ?? []).includes(EMAIL_PERSONA));
   console.log(`copia alla persona: ${copiaAllaPersona ? "sì ✓" : "NO ✗"}`);
 
-  // Secondo giro: lo stesso documento non si certifica due volte.
-  await riga.getByRole("button", { name: "Metti in coda la PEC del deposito" }).click();
-  await riga.locator("textarea").fill(CONFERMA);
-  await riga.getByRole("button", { name: "Metti la PEC in coda" }).click();
-  await pagina.waitForTimeout(5000);
-  const messaggio2 = await pagina
-    .getByText(/PEC messa in coda|già la sua PEC|Errore: /)
-    .first()
-    .innerText()
-    .catch(() => "(messaggio non letto)");
-  const { data: codaDopo } = await db.from("pec_da_inviare").select("id").eq("stato", "in_coda");
-  console.log(`\nsecondo clic — a schermo: ${messaggio2.replace(/\s+/g, " ").trim()}`);
-  console.log(`righe in coda dopo il secondo clic: ${codaDopo?.length} (attese: ${righe.length})`);
+  // Stato della riga dopo il clic: la PEC c'è, quindi il pulsante non deve più
+  // comparire — è il difetto segnalato ("ho messo la PEC in coda ma il tasto
+  // spunta lo stesso"). La riga deve invece dire che fine ha fatto.
+  const leggiRiga = async () => {
+    await pagina.reload({ waitUntil: "domcontentloaded" });
+    await pagina.waitForTimeout(3000);
+    await pagina.selectOption("#sezione-admin", "accordi-da-approvare");
+    await pagina.waitForTimeout(2500);
+    const r = pagina
+      .getByText(EMAIL_PERSONA, { exact: true })
+      .first()
+      .locator("xpath=ancestor::div[contains(@class,'border-slate-200')][1]");
+    return {
+      riga: r,
+      testo: (await r.innerText()).replace(/\s+/g, " ").trim(),
+      pulsante: await r.getByRole("button", { name: "Metti in coda la PEC del deposito" }).count(),
+    };
+  };
 
-  if (!righe.length || !allegatoGiusto || !copiaAllaPersona || !registro?.length || codaDopo?.length !== righe.length) {
+  const dopoClic = await leggiRiga();
+  console.log(`\ndopo il clic — pulsanti "Metti in coda la PEC del deposito": ${dopoClic.pulsante}`);
+  console.log(`dice: ${dopoClic.testo}`);
+
+  // Il computer spedisce davvero la PEC (è quello che fa il Mac ogni 15 minuti):
+  // la riga si aggiorna e il pulsante resta via.
+  const idRiga = righe[0]?.id;
+  if (idRiga) {
+    await db
+      .from("pec_da_inviare")
+      .update({ stato: "inviata", inviata_at: new Date().toISOString(), message_id: "prova-end-to-end" })
+      .eq("id", idRiga);
+  }
+  const dopoInvio = await leggiRiga();
+  console.log(`\ndopo l'invio — pulsanti: ${dopoInvio.pulsante}`);
+  console.log(`dice: ${dopoInvio.testo}`);
+
+  // Riga annullata (o in errore): la PEC NON c'è, e il pulsante deve tornare a
+  // disposizione — è il caso di Marianna, i cui tentativi sono tutti annullati.
+  if (idRiga) {
+    await db
+      .from("pec_da_inviare")
+      .update({ stato: "annullata", ultimo_errore: "riga di prova end-to-end" })
+      .eq("id", idRiga);
+  }
+  const dopoAnnullo = await leggiRiga();
+  console.log(`\ndopo l'annullo — pulsanti: ${dopoAnnullo.pulsante}`);
+  console.log(`dice: ${dopoAnnullo.testo}`);
+
+  const okStato =
+    dopoClic.pulsante === 0 &&
+    /PEC del deposito in coda/.test(dopoClic.testo) &&
+    dopoInvio.pulsante === 0 &&
+    /PEC del deposito spedita il/.test(dopoInvio.testo) &&
+    dopoAnnullo.pulsante === 1 &&
+    /annullato/.test(dopoAnnullo.testo);
+
+  if (!righe.length || !allegatoGiusto || !copiaAllaPersona || !registro?.length || !okStato) {
     uscita = 1;
     console.log("\n✗ Qualcosa non torna: leggi sopra.");
   } else {
-    console.log("\n✓ Pulsante ok: PEC in coda con il documento caricato, copia alla persona, riga di registro, e nessun doppione al secondo clic.");
+    console.log(
+      "\n✓ Pulsante ok: PEC in coda col documento caricato, copia alla persona, riga di registro." +
+        "\n✓ Stato ok: in coda e spedita il pulsante non c'è (lo dice la riga); annullata torna.",
+    );
   }
 
-  // Pulizia: la riga della prova non va spedita, il documento non è di questa persona.
+  // Pulizia: la riga della prova non è una PEC vera e non deve restare in coda.
+  // Si annulla (non si cancella: 0139 non concede il delete a nessuno, e la riga
+  // resta come traccia di quello che è stato fatto).
   for (const r of righe) {
-    await db.from("pec_da_inviare").update({ stato: "annullata", ultimo_errore: "riga di prova end-to-end", aggiornato_at: new Date().toISOString() }).eq("id", r.id);
+    await db
+      .from("pec_da_inviare")
+      .update({
+        stato: "annullata",
+        ultimo_errore: "riga di prova end-to-end",
+        aggiornato_at: new Date().toISOString(),
+      })
+      .eq("id", r.id);
   }
   console.log("righe di prova annullate (non vanno spedite)");
 } finally {

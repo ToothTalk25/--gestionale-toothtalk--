@@ -21,10 +21,116 @@ export type RigaAccordoDaApprovare = {
   accordo_caricato_at: string | null;
   accordo_verificato: string | null;
   accordo_verifica_note: string | null;
+  /** Impronta del documento caricato: è così che si riconosce la sua PEC. */
+  accordo_sha256: string | null;
   /** Se valorizzata, la ricarica è già stata chiesta (0140): quando e perché. */
   accordo_ricarica_richiesta_at: string | null;
   accordo_ricarica_motivo: string | null;
 };
+
+/**
+ * Una riga della coda PEC (0139) che riguarda un deposito di accordo: serve a
+ * sapere se quel documento ha già la sua PEC, così il pulsante per rimetterla
+ * in coda non compare quando non serve più.
+ */
+export type RigaPecDeposito = {
+  stato: string;
+  inviata_at: string | null;
+  ultimo_errore: string | null;
+  allegati: { sha256?: string }[] | null;
+};
+
+/**
+ * Le righe di coda che riguardano QUEL documento (stessa impronta SHA-256),
+ * dalla più recente: una persona può aver accodato la PEC più volte nella sua
+ * storia, e conta l'ultima cosa che è successo.
+ */
+function righeDelDocumento(righe: RigaPecDeposito[] | undefined, sha256: string | null) {
+  if (!sha256) return [];
+  return (righe ?? []).filter((r) => (r.allegati ?? []).some((a) => a.sha256 === sha256));
+}
+
+/**
+ * La PEC che conta davvero per quel documento: in coda (parte da sola) o già
+ * spedita. Una riga annullata NON è una PEC data, e nemmeno una in errore: in
+ * quei due casi il documento resta non certificato, e il pulsante deve restare
+ * a disposizione — è il caso di Marianna, i cui unici tentativi sono le righe
+ * annullate dei collaudi.
+ */
+function pecDelDocumento(righe: RigaPecDeposito[] | undefined, sha256: string | null) {
+  return (
+    righeDelDocumento(righe, sha256).find((r) => r.stato === "in_coda" || r.stato === "inviata") ??
+    null
+  );
+}
+
+/** L'ultimo tentativo andato a vuoto (in errore o annullato), se c'è. */
+function tentativoAmmortato(righe: RigaPecDeposito[] | undefined, sha256: string | null) {
+  return (
+    righeDelDocumento(righe, sha256).find((r) => r.stato !== "in_coda" && r.stato !== "inviata") ??
+    null
+  );
+}
+
+/**
+ * Il pulsante serve solo se per QUEL documento non c'è una PEC vera (in coda o
+ * spedita): se c'è, la riga lo dice e non chiede di rifarlo — un secondo clic
+ * non accoderebbe niente di più (l'azione lo impedisce) ma non deve nemmeno
+ * sembrare che serva.
+ */
+function servePulsanteDeposito(righe: RigaPecDeposito[] | undefined, sha256: string | null) {
+  return !pecDelDocumento(righe, sha256);
+}
+
+/**
+ * Che fine ha fatto la PEC del deposito di un documento: in coda, spedita (con
+ * la data), oppure l'ultimo tentativo andato a vuoto (in errore: col motivo;
+ * annullato: senza PEC, quindi si può rimettere in coda). Se non c'è niente da
+ * dire, non dice niente e resta il pulsante.
+ */
+function StatoPecDeposito({
+  deposito,
+  tentativo,
+}: {
+  deposito: RigaPecDeposito | null;
+  tentativo: RigaPecDeposito | null;
+}) {
+  if (deposito?.stato === "in_coda") {
+    return (
+      <p className="mt-1 text-xs text-emerald-700">
+        PEC del deposito in coda: parte da sola entro pochi minuti.
+      </p>
+    );
+  }
+  if (deposito?.stato === "inviata") {
+    return (
+      <p className="mt-1 text-xs text-emerald-700">
+        PEC del deposito spedita il{" "}
+        {deposito.inviata_at
+          ? new Date(deposito.inviata_at).toLocaleString("it-IT")
+          : "(data non registrata)"}
+        .
+      </p>
+    );
+  }
+  if (deposito) return null;
+  if (tentativo?.stato === "errore") {
+    return (
+      <p className="mt-1 text-xs text-red-700">
+        La PEC del deposito è ferma in errore: {tentativo.ultimo_errore ?? "motivo non registrato"}.
+        Il documento non risulta certificato: si può rimettere in coda da qui.
+      </p>
+    );
+  }
+  if (tentativo?.stato === "annullata") {
+    return (
+      <p className="mt-1 text-xs text-slate-500">
+        Un tentativo precedente è stato annullato: il documento non è certificato.
+      </p>
+    );
+  }
+  return null;
+}
 
 /**
  * Stessa riga della coda, ma per chi non ha (ancora) un esito IA 'ok': i
@@ -52,6 +158,22 @@ export type RigaAccordoDaRivalutare = RigaAccordoDaApprovare;
  * persona di ricaricare un documento che è già a posto — e ci si fa mandare
  * per email la copia firmata che serve per la controfirma a mano.
  */
+/** La nota sullo stato della PEC del deposito, per un documento (usata in entrambe le liste). */
+function NotaPecDeposito({
+  righe,
+  sha256,
+}: {
+  righe?: RigaPecDeposito[];
+  sha256: string | null;
+}) {
+  return (
+    <StatoPecDeposito
+      deposito={pecDelDocumento(righe, sha256)}
+      tentativo={tentativoAmmortato(righe, sha256)}
+    />
+  );
+}
+
 /**
  * La conferma prima di rimettere in coda la PEC di un deposito: la frase è
  * obbligatoria e resta nel registro, perché si certifica con data certa solo un
@@ -109,9 +231,12 @@ function PannelloConfermaDeposito({
 export default function AccordiDaApprovare({
   accordi,
   daRivalutare = [],
+  pecDeposito = [],
 }: {
   accordi: RigaAccordoDaApprovare[];
   daRivalutare?: RigaAccordoDaRivalutare[];
+  /** La coda PEC dei depositi: dice quali documenti hanno già la loro PEC. */
+  pecDeposito?: RigaPecDeposito[];
 }) {
   const router = useRouter();
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -350,6 +475,7 @@ export default function AccordiDaApprovare({
                         {a.accordo_ricarica_motivo ? ` — «${a.accordo_ricarica_motivo}»` : ""}
                       </p>
                     )}
+                    <NotaPecDeposito righe={pecDeposito} sha256={a.accordo_sha256} />
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
@@ -386,16 +512,18 @@ export default function AccordiDaApprovare({
                     >
                       Chiedi di ricaricare
                     </button>
-                    <button
-                      onClick={() => {
-                        setInDeposito(a.id);
-                        setConfermaDeposito("");
-                      }}
-                      disabled={inCorso === `deposito:${a.id}`}
-                      className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                    >
-                      Metti in coda la PEC del deposito
-                    </button>
+                    {servePulsanteDeposito(pecDeposito, a.accordo_sha256) && (
+                      <button
+                        onClick={() => {
+                          setInDeposito(a.id);
+                          setConfermaDeposito("");
+                        }}
+                        disabled={inCorso === `deposito:${a.id}`}
+                        className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        Metti in coda la PEC del deposito
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -517,6 +645,7 @@ export default function AccordiDaApprovare({
                     prima di caricare la controfirma.
                   </p>
                 )}
+                <NotaPecDeposito righe={pecDeposito} sha256={a.accordo_sha256} />
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <input
@@ -538,16 +667,18 @@ export default function AccordiDaApprovare({
                 >
                   {inCorso === `email:${a.id}` ? "Invio…" : "Mandami il PDF"}
                 </button>
-                <button
-                  onClick={() => {
-                    setInDeposito(a.id);
-                    setConfermaDeposito("");
-                  }}
-                  disabled={inCorso === `deposito:${a.id}`}
-                  className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Metti in coda la PEC del deposito
-                </button>
+                {servePulsanteDeposito(pecDeposito, a.accordo_sha256) && (
+                  <button
+                    onClick={() => {
+                      setInDeposito(a.id);
+                      setConfermaDeposito("");
+                    }}
+                    disabled={inCorso === `deposito:${a.id}`}
+                    className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Metti in coda la PEC del deposito
+                  </button>
+                )}
                 <button
                   onClick={() => inputRefs.current[a.id]?.click()}
                   disabled={inCorso === a.id}

@@ -24,6 +24,7 @@ import AccordiDaApprovare, {
 } from "@/components/AccordiDaApprovare";
 import SezioneIntegrita, { type RigaControlloIntegrita } from "@/components/SezioneIntegrita";
 import SezionePecInCoda, { type RigaPecInCoda } from "@/components/SezionePecInCoda";
+import type { RigaPecDeposito } from "@/components/AccordiDaApprovare";
 import RinnoviDaApprovare, {
   type RigaRinnovoDaApprovare,
 } from "@/components/RinnoviDaApprovare";
@@ -88,6 +89,7 @@ export default async function AdminPage() {
     { data: accordiDaRivalutare },
     { data: controlliIntegrita },
     { data: pecInCoda },
+    { data: pecDeposito },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -186,7 +188,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_ricarica_richiesta_at, accordo_ricarica_motivo",
+        "id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_sha256, accordo_ricarica_richiesta_at, accordo_ricarica_motivo",
       )
       .not("accordo_path", "is", null)
       .eq("accordo_letto_confermato", true)
@@ -271,7 +273,7 @@ export default async function AdminPage() {
     supabase
       .from("profiles")
       .select(
-        "id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_ricarica_richiesta_at, accordo_ricarica_motivo",
+        "id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note, accordo_sha256, accordo_ricarica_richiesta_at, accordo_ricarica_motivo",
       )
       .not("accordo_path", "is", null)
       .eq("accordo_letto_confermato", true)
@@ -303,6 +305,15 @@ export default async function AdminPage() {
       .order("creato_at", { ascending: false })
       .limit(50)
       .returns<RigaPecInCoda[]>(),
+    // La coda PEC che riguarda i depositi di accordo: serve a sapere, riga per
+    // riga, se QUEL documento ha già la sua PEC (così il pulsante per rimetterla
+    // in coda non compare quando non serve più, e se è ferma in errore si vede).
+    supabaseAdmin()
+      .from("pec_da_inviare")
+      .select("stato, inviata_at, ultimo_errore, allegati")
+      .filter("contesto->>tipo", "eq", "deposito")
+      .order("creato_at", { ascending: false })
+      .returns<RigaPecDeposito[]>(),
   ]);
 
   // Accordi mandati via Gmail perché la PEC (Aruba) era bloccata al momento
@@ -524,6 +535,7 @@ export default async function AdminPage() {
               <AccordiDaApprovare
                 accordi={accordiDaApprovare ?? []}
                 daRivalutare={accordiDaRivalutare ?? []}
+                pecDeposito={pecDeposito ?? []}
               />
             ),
           },
