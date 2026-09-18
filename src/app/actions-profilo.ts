@@ -1256,8 +1256,73 @@ export async function caricaAccordo(
     revalidatePath("/profilo");
     return { ok: true, dati: { messageId, verifica } };
   } catch (e) {
+    // La PEC non è partita (Aruba blocca gli invii). Il documento firmato deve
+    // arrivare comunque all'accesso globale: altrimenti nessuno sa che c'è un
+    // accordo da verificare — è successo davvero, con due accordi caricati e
+    // nessun avviso. Stesso ripiego usato all'approvazione: PDF allegato via
+    // Gmail del progetto e una riga nel registro. La data certa resta da
+    // ottenere quando la PEC tornerà a funzionare.
+    const nomeFileDaArchivio = storagePath.split("/").pop() ?? "accordo-firmato.pdf";
+    let recapito = false;
+    try {
+      const { data: fileDaArchivio } = await supabaseAdmin().storage
+        .from("profili")
+        .download(storagePath);
+      if (fileDaArchivio) {
+        const bytes = Buffer.from(await fileDaArchivio.arrayBuffer());
+        const { data: amministratori } = await supabaseAdmin()
+          .from("profiles")
+          .select("email")
+          .eq("role", "admin")
+          .eq("attivo", true);
+        for (const a of amministratori ?? []) {
+          if (!a.email) continue;
+          const inviata = await inviaEmailGmail({
+            destinatario: a.email,
+            oggetto: `[ToothTalk] Accordo firmato da verificare — ${nome}`,
+            testo: [
+              "",
+              `${nome} ha caricato il proprio accordo editoriale firmato.`,
+              "",
+              "In allegato il PDF firmato.",
+              "",
+              "ATTENZIONE: la PEC con data certa NON è partita (Aruba ha bloccato",
+              "l'invio): va rispedita quando Aruba tornerà a funzionare, per dare",
+              "al documento la sua data certa.",
+              "",
+              "Messaggio generato automaticamente dal gestionale ToothTalk.",
+              "",
+            ].join("\n"),
+            allegati: [
+              {
+                filename: nomeFileDaArchivio,
+                content: bytes,
+                contentType: fileDaArchivio.type || "application/pdf",
+              },
+            ],
+          });
+          recapito = recapito || inviata;
+        }
+      }
+    } catch {
+      // best-effort: se anche il ripiego fallisce resta il messaggio d'errore
+    }
+    if (recapito) {
+      await ignora(
+        supabaseAdmin().from("audit_log").insert({
+          actor: profile.id,
+          actor_role: profile.role,
+          action: "accordo_inviato_gmail_recupero",
+          entity_type: "profile",
+          entity_id: profile.id,
+          meta: { motivo: "PEC non partita al caricamento dell'accordo" },
+        }),
+      );
+    }
     return errore(
-      `Accordo salvato ma PEC non partita: ${e instanceof Error ? e.message : "errore di spedizione"}`,
+      recapito
+        ? `Accordo salvato e inviato per email, ma la PEC non è partita: ${e instanceof Error ? e.message : "errore di spedizione"}`
+        : `Accordo salvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di spedizione"}`,
     );
   }
   }
