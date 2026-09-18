@@ -2219,7 +2219,7 @@ export async function mettiInCodaPecDeposito(
 export async function chiediRicaricamentoAccordo(
   userId: string,
   motivo: string,
-): Promise<Esito> {
+): Promise<Esito<{ emailPartita: boolean }>> {
   const { isAdmin, profile: admin } = await requireSession();
   if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
 
@@ -2251,7 +2251,10 @@ export async function chiediRicaricamentoAccordo(
   if (error) return errore(error.message);
 
   const nome = target.full_name ?? target.email;
-  await inviaEmailGmail({
+  // L'esito dell'email si registra: se non parte, la persona non sa niente
+  // della richiesta e va avvisata in un altro modo. Senza questa traccia non
+  // c'era modo di saperlo ("è partita l'email?" era una domanda senza risposta).
+  const emailPartita = await inviaEmailGmail({
     destinatario: target.email,
     oggetto: "[ToothTalk] Il tuo accordo firmato va ricaricato",
     testo: [
@@ -2300,13 +2303,18 @@ export async function chiediRicaricamentoAccordo(
       action: "richiesta_ricaricamento_accordo",
       entity_type: "profile",
       entity_id: userId,
-      meta: { utente: target.full_name, motivo: pulito },
+      meta: {
+        utente: target.full_name,
+        motivo: pulito,
+        email: target.email,
+        email_partita: emailPartita,
+      },
     }),
   );
 
   revalidatePath("/admin");
   revalidatePath("/profilo");
-  return { ok: true, dati: undefined };
+  return { ok: true, dati: { emailPartita } };
 }
 
 /**

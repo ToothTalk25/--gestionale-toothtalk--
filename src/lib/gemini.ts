@@ -64,7 +64,7 @@ type GeminiPart = {
  * Sui veri errori (chiave non valida, richiesta rifiutata) si ferma subito:
  * ritentare non cambierebbe l'esito e farebbe perdere secondi utili.
  */
-async function genera(prompt: string, parts: GeminiPart[]): Promise<string> {
+async function genera(prompt: string, parts: GeminiPart[], opts: { json?: boolean } = {}): Promise<string> {
   const key = apiKey();
   if (!key) throw new Error("GEMINI_API_KEY non configurata.");
 
@@ -91,7 +91,18 @@ async function genera(prompt: string, parts: GeminiPart[]): Promise<string> {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ role: "user", parts: [{ text: prompt }, ...parts] }],
-              generationConfig: { temperature: 0, maxOutputTokens: 1024 },
+              generationConfig: {
+                temperature: 0,
+                // 1024 token bastavano quando il modello rispondeva e basta: con i
+                // modelli che "pensano" prima di rispondere, il ragionamento mangia
+                // lo stesso budget e la risposta visibile resta VUOTA (visto: due
+                // verifiche su un accordo vero finite in "risposta non
+                // interpretabile", cioè nessun JSON da leggere).
+                maxOutputTokens: 8192,
+                // Dove serve un JSON, lo si chiede come formato: così non dipende
+                // dal fatto che il modello decida di scriverlo.
+                ...(opts.json ? { responseMimeType: "application/json" } : {}),
+              },
             }),
           },
         );
@@ -182,9 +193,20 @@ export async function verificaAccordoFirmato(opts: {
         },
       });
     }
-    const risposta = await genera(prompt, parti);
+    const risposta = await genera(prompt, parti, { json: true });
     const jsonMatch = risposta.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { esito: "non_valutato", note: "Risposta IA non interpretabile." };
+    if (!jsonMatch) {
+      // La risposta si conserva nella nota: "non interpretabile" da solo non
+      // dice niente a chi legge, e senza sapere che cosa ha risposto il modello
+      // l'unica strada è ritentare alla cieca (è quello che è successo).
+      const vista = risposta.trim().replace(/\s+/g, " ").slice(0, 200);
+      return {
+        esito: "non_valutato",
+        note: vista
+          ? `Risposta IA non interpretabile. Il modello ha risposto: «${vista}»`
+          : "Risposta IA non interpretabile (il modello non ha scritto nulla: probabile risposta tagliata o bloccata).",
+      };
+    }
     const parsed = JSON.parse(jsonMatch[0]) as Partial<EsitoVerificaAccordo>;
     const esito =
       parsed.esito === "ok" || parsed.esito === "attenzione" || parsed.esito === "errato"
@@ -279,7 +301,7 @@ export async function classificaDomandaSupporto(domanda: string): Promise<EsitoD
   ].join("\n");
 
   try {
-    const risposta = await genera(prompt, []);
+    const risposta = await genera(prompt, [], { json: true });
     const jsonMatch = risposta.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { categoria: "altro", bozza: null };
     const parsed = JSON.parse(jsonMatch[0]) as Partial<EsitoDomandaSupporto>;

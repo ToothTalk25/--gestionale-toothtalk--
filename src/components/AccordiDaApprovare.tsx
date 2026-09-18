@@ -222,7 +222,7 @@ export default function AccordiDaApprovare({
    * insieme al tuo nome. La richiesta si chiude da sola quando arriva un
    * accordo nuovo.
    */
-  async function chiediRicarica(userId: string) {
+  async function chiediRicarica(userId: string, nome: string) {
     setInCorso(`ricarica:${userId}`);
     setMessaggio(null);
     const esito = await chiediRicaricamentoAccordo(userId, motivoRicarica);
@@ -234,7 +234,9 @@ export default function AccordiDaApprovare({
     setInRicarica(null);
     setMotivoRicarica("");
     setMessaggio(
-      "Richiesta inviata: la persona la trova nel proprio profilo e ha ricevuto un'email. Si chiude da sola quando carica un accordo nuovo.",
+      esito.dati.emailPartita
+        ? "Richiesta inviata: la persona la trova nel proprio profilo e ha ricevuto un'email. Si chiude da sola quando carica un accordo nuovo."
+        : `Richiesta registrata, ma l'EMAIL NON È PARTITA: ${nome} non sa ancora niente. Avvisala in un altro modo (o controlla la casella del progetto).`,
     );
     router.refresh();
   }
@@ -294,7 +296,11 @@ export default function AccordiDaApprovare({
         </span>
       </div>
 
-      {messaggio && <p className="mt-3 text-sm text-slate-600">{messaggio}</p>}
+      {messaggio && (
+        <p className="sticky top-2 z-20 mt-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-sm text-slate-700 shadow-sm backdrop-blur">
+          {messaggio}
+        </p>
+      )}
 
       {accordi.length === 0 && (
         <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
@@ -319,8 +325,8 @@ export default function AccordiDaApprovare({
           <div className="mt-3 space-y-2">
             {daRivalutare.map((a) => (
               <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="font-medium">{a.full_name ?? "—"}</p>
                     <p className="text-xs text-slate-500">{a.email}</p>
                     <p className="mt-1 text-xs text-slate-400">
@@ -341,7 +347,7 @@ export default function AccordiDaApprovare({
                       </p>
                     )}
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                  <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:shrink-0 sm:justify-end">
                     <button
                       onClick={() => inviaCopia(a.id)}
                       disabled={inCorso === `email:${a.id}`}
@@ -354,7 +360,7 @@ export default function AccordiDaApprovare({
                       disabled={inCorso === `ia:${a.id}`}
                       className="tt-btn bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
                     >
-                      {inCorso === `ia:${a.id}` ? "Controllo…" : "Rivaluta con l'IA"}
+                      {inCorso === `ia:${a.id}` ? "Controllo… (può richiedere un minuto)" : "Rivaluta con l'IA"}
                     </button>
                     <button
                       onClick={() => {
@@ -442,7 +448,7 @@ export default function AccordiDaApprovare({
                         Annulla
                       </button>
                       <button
-                        onClick={() => chiediRicarica(a.id)}
+                        onClick={() => chiediRicarica(a.id, a.full_name ?? a.email)}
                         disabled={inCorso === `ricarica:${a.id}`}
                         className="tt-btn bg-slate-700 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
                       >
@@ -471,8 +477,8 @@ export default function AccordiDaApprovare({
       <div className="mt-3 space-y-2">
         {accordi.map((a) => (
           <div key={a.id} className="rounded-lg border border-slate-200 p-3 text-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <p className="font-medium">{a.full_name ?? "—"}</p>
                 <p className="text-xs text-slate-500">{a.email}</p>
                 <p className="mt-1 text-xs text-slate-400">
@@ -507,7 +513,7 @@ export default function AccordiDaApprovare({
                   </p>
                 )}
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+              <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:shrink-0 sm:justify-end">
                 <input
                   ref={(el) => {
                     inputRefs.current[a.id] = el;
