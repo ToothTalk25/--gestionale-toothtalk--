@@ -109,6 +109,26 @@ Messina", quindi nessuna funzionalità futura può introdurre una gerarchia di
 soppiatto. Tutti i partecipanti di un gruppo hanno esattamente gli stessi
 poteri.
 
+**Il varco dell'Accordo è anche nel database** (migrazione `0137`). Fino a ieri
+la regola viveva solo nel proxy e nel layout: chi aveva una sessione ma
+l'Accordo incompleto poteva chiamare l'API direttamente (PostgREST con la
+chiave anon, che il browser ha) e leggere i progetti del proprio gruppo. Ora
+una funzione — `accesso_progetti()`, che rispecchia `accordoCompleto()` di
+`src/lib/accordo.ts` campo per campo — e una serie di policy **restrictive**
+(che si sommano a quelle esistenti, non le riscrivono: chi decide *chi* vede
+resta quello di prima) chiudono l'accesso a progetti, materiali, versioni,
+pacchetti, richieste di modifica, magazzino e ai quattro bucket dell'area
+progetti. Restano aperti profilo, consensi, inviti, domande di supporto e il
+bucket `profili`: sono le cose che servono per **completare** l'Accordo, e
+chiuderle impedirebbe a chi è fuori di rientrare. Le due soglie sono le stesse
+dell'app: la controfirma conta solo per chi è stato approvato dal 7 settembre
+2026 in poi, e il giorno di scadenza appartiene ancora al periodo.
+
+Verificato con prova reale (la 0137 applicata in transazione e poi annullata):
+accesso globale vede tutti i progetti, membro con Accordo completo vede solo
+quelli del suo gruppo, membro senza Accordo ne vede zero ma continua a
+leggere il proprio profilo — cioè può ancora caricare l'Accordo.
+
 Chi ha `role = 'admin'` ha accesso trasversale a tutti i gruppi. Non compare
 nessuna etichetta accanto al nome: la differenza si vede solo dalle voci di menu
 disponibili.
@@ -170,7 +190,8 @@ nei byte.
 
 ## 9. Regole tecniche da rispettare
 
-**Migrazioni.** Da `0001` a `0135` sono già state applicate al database reale.
+**Migrazioni.** Da `0001` a `0136` sono già state applicate al database reale
+(`0137` è scritta e si applica con `npm run migra -- 0137`).
 **Non modificarle**: file e database divergerebbero. Per cambiare qualcosa si
 aggiunge un file nuovo (`0018_...sql`) e si lancia `npm run migra -- 0018`.
 

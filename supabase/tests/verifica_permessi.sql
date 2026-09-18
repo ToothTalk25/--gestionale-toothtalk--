@@ -18,6 +18,26 @@ select set_config('app.admin',    '00000000-0000-0000-0000-000000000000', true);
 select set_config('app.membro_a', '00000000-0000-0000-0000-000000000000', true);  -- es. Insubria
 select set_config('app.membro_b', '00000000-0000-0000-0000-000000000000', true);  -- es. Genova
 
+-- Prima di tutto: il membro A viene portato in uno stato di Accordo COMPLETO,
+-- dentro la transazione (il rollback finale non lascia nulla). Dal 0137 le
+-- policy dell'area progetti pretendono l'Accordo completo: senza questa
+-- preparazione le prove 1-4 misurerebbero il varco invece delle regole che
+-- vogliono dimostrare. La prova 8 fa il contrario: toglie l'Accordo e
+-- verifica che il varco chiuda davvero.
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', current_setting('app.admin'), 'role', 'authenticated')::text,
+  true
+);
+update public.profiles set
+  accordo_path = coalesce(accordo_path, 'prova/accordo/placeholder.pdf'),
+  accordo_letto_confermato = true,
+  accordo_verificato = 'ok',
+  accordo_approvato_admin_at = coalesce(accordo_approvato_admin_at, now()),
+  accordo_controfirma_confermata_at = coalesce(accordo_controfirma_confermata_at, now()),
+  accordo_scadenza = null
+where id = current_setting('app.membro_a')::uuid;
+
 -- ------------------------------------------------- diventa il MEMBRO A
 select set_config(
   'request.jwt.claims',
@@ -165,5 +185,65 @@ begin
     raise notice 'FALLITO  % record con catena rotta', totale;
   end if;
 end $$;
+
+-- 8. Il varco dell'Accordo vale anche nel database (0137) --------------
+-- Si toglie l'Accordo al membro A e si controlla che da lì non veda più
+-- nulla dell'area progetti, pur restando membro del polo. È la prova che
+-- chiude il varco aggirabile: la regola non vive più solo nell'app, quindi
+-- non basta chiamare l'API direttamente per saltarla.
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', current_setting('app.admin'), 'role', 'authenticated')::text,
+  true
+);
+update public.profiles set
+  accordo_path = null,
+  accordo_letto_confermato = false,
+  accordo_verificato = null,
+  accordo_approvato_admin_at = null,
+  accordo_controfirmato_path = null,
+  accordo_controfirma_confermata_at = null,
+  accordo_scadenza = null
+where id = current_setting('app.membro_a')::uuid;
+
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', current_setting('app.membro_a'), 'role', 'authenticated')::text,
+  true
+);
+set local role authenticated;
+
+do $$
+declare n_progetti int; n_file int; n_storia int;
+begin
+  select count(*) into n_progetti from public.tasks;
+  select count(*) into n_storia from public.task_status_history;
+  select count(*) into n_file
+    from storage.objects
+   where bucket_id in ('originali', 'finali', 'revisioni', 'magazzino');
+
+  if n_progetti = 0 and n_storia = 0 and n_file = 0 then
+    raise notice 'PASS     senza Accordo completo non si vede nulla dell''area progetti';
+  else
+    raise notice 'FALLITO  senza Accordo si vedono ancora % progetti, % righe di storia e % file (GRAVE)',
+      n_progetti, n_storia, n_file;
+  end if;
+end $$;
+
+-- 9. ...ma il rimedio resta aperto --------------------------------------
+-- Chi non ha l'Accordo deve poterlo caricare: se il varco chiudesse anche il
+-- profilo e il bucket "profili", nessuno potrebbe più uscirne.
+do $$
+declare n_profilo int;
+begin
+  select count(*) into n_profilo from public.profiles where id = auth.uid();
+  if n_profilo = 1 then
+    raise notice 'PASS     il proprio profilo resta leggibile: l''Accordo si può ancora caricare';
+  else
+    raise notice 'FALLITO  il proprio profilo non è più leggibile senza Accordo (blocca il rimedio)';
+  end if;
+end $$;
+
+reset role;
 
 rollback;
