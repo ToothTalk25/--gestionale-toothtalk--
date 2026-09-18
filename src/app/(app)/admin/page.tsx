@@ -40,13 +40,14 @@ import type { RigaEliminazioneGrezzo } from "@/app/actions-profilo";
 import type { RigaRichiestaRimozione, RigaNotificaArt82 } from "@/app/actions-profilo";
 
 /**
- * La rivalutazione IA dell'accordo manda al modello due PDF da confrontare:
- * senza un tempo massimo dichiarato la funzione può essere interrotta a metà
- * (l'esito non verrebbe scritto). `maxDuration` si dichiara a livello di
- * pagina e vale per tutte le server action usate da quella pagina
- * (documentazione di Next, route segment config).
+ * La rivalutazione IA dell'accordo manda al modello due PDF da confrontare: è
+ * un lavoro che può durare decine di secondi. Con il limite precedente la
+ * funzione veniva tagliata a metà (504) e l'esito non veniva mai scritto.
+ * `maxDuration` si dichiara a livello di pagina e vale per tutte le server
+ * action usate da quella pagina (documentazione di Next, route segment
+ * config). 300 secondi è il massimo che il piano del progetto consente.
  */
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type Confronto = {
   deliverable_id: string;

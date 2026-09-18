@@ -5,15 +5,16 @@ import SezioneEliminazioneAccount from "@/components/SezioneEliminazioneAccount"
 import FotoProfilo from "@/components/FotoProfilo";
 
 /**
- * La verifica IA dell'accordo (caricaAccordo) manda al modello due PDF da
- * confrontare: senza un tempo massimo dichiarato, la funzione può essere
- * interrotta a metà — e allora l'accordo resta salvato ma non verificato,
- * cioè invisibile nella coda di approvazione, con l'aria di essere un
- * problema del documento. `maxDuration` si dichiara a livello di pagina e
- * vale per tutte le server action usate da quella pagina (documentazione di
- * Next, route segment config).
+ * La verifica IA dell'accordo manda al modello due PDF da confrontare: è un
+ * lavoro che può durare decine di secondi, e con il limite precedente la
+ * funzione veniva tagliata a metà — il 504 visto in produzione, con l'esito
+ * mai scritto. `maxDuration` si dichiara a livello di pagina e vale per tutte
+ * le server action usate da quella pagina (documentazione di Next, route
+ * segment config). 300 secondi è il massimo che il piano del progetto
+ * consente: i cron in vercel.json (quattro, con cadenza oraria/giornaliera)
+ * non esistono sul piano gratuito.
  */
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export default async function ProfiloPage() {
   const { profile, isAdmin } = await requireSession();
