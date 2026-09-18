@@ -56,15 +56,15 @@ export async function GET(request: NextRequest) {
       return (data?.[0] as Controllo) ?? null;
     };
 
-    // PEC in coda (0139): la coda non si svuota da sola — a spedire è un comando
-    // eseguito sul computer del progetto. Finché c'è qualcosa in coda c'è un
-    // documento senza data certa, quindi il promemoria vale ogni giorno, anche
-    // quando i depositi sono a posto (la notifica sul telefono arriva anche
-    // subito, quando la PEC entra in coda: questa è la rete di sicurezza).
+    // PEC in coda (0139): la coda non si svuota da sola — a spedire è il comando
+    // sul computer del progetto, che gira da solo ogni 15 minuti (attività
+    // it.toothtalk.pec). Si guardano anche le righe in ERRORE: quelle non
+    // ripartono da sole e non chiedono niente a nessuno, quindi senza questo
+    // controllo resterebbero ferme in silenzio.
     const { data: pecInCoda } = await admin
       .from("pec_da_inviare")
-      .select("id, oggetto, destinatari, creato_at")
-      .eq("stato", "in_coda")
+      .select("id, oggetto, destinatari, creato_at, stato, ultimo_errore")
+      .in("stato", ["in_coda", "errore"])
       .order("creato_at", { ascending: true });
 
     let controllo = await ultimo();
@@ -93,23 +93,45 @@ export async function GET(request: NextRequest) {
       // promemoria parte lo stesso — è una promessa non mantenuta, quei
       // documenti non hanno data certa.
       if (pecInCoda?.length) {
-        const attesaOre = Math.floor(
-          (Date.now() - new Date(pecInCoda[0].creato_at).getTime()) / 3_600_000,
-        );
+        const daSpedire = pecInCoda.filter((p) => p.stato === "in_coda");
+        const inErrore = pecInCoda.filter((p) => p.stato === "errore");
+        const attesaOre = daSpedire.length
+          ? Math.floor((Date.now() - new Date(daSpedire[0].creato_at).getTime()) / 3_600_000)
+          : 0;
+
         const righePec = [
-          pecInCoda.length === 1
-            ? "C'è una PEC preparata dal gestionale e non ancora spedita."
-            : `Ci sono ${pecInCoda.length} PEC preparate dal gestionale e non ancora spedite.`,
-          `La più vecchia aspetta da ${attesaOre} ore.`,
-          "",
-          ...pecInCoda
-            .slice(0, 15)
-            .map((p) => `  • ${p.oggetto} → ${(p.destinatari as string[]).join(", ")}`),
-          "",
-          "Si spediscono dal computer, dalla cartella del progetto:",
-          "  npm run pec -- --esegui",
-          "",
-          "Finché sono in coda, quei documenti non hanno data certa.",
+          ...(daSpedire.length
+            ? [
+                daSpedire.length === 1
+                  ? "C'è una PEC preparata dal gestionale e non ancora spedita."
+                  : `Ci sono ${daSpedire.length} PEC preparate dal gestionale e non ancora spedite.`,
+                `La più vecchia aspetta da ${attesaOre} ore.`,
+                "",
+                ...daSpedire
+                  .slice(0, 15)
+                  .map((p) => `  • ${p.oggetto} → ${(p.destinatari as string[]).join(", ")}`),
+                "",
+                "Le spedisce da sola l'attività sul computer (ogni 15 minuti). Se il computer è",
+                "spento da un po', questa è la ragione per cui la coda non si è svuotata: si",
+                "spedisce dal computer, dalla cartella del progetto, con",
+                "  npm run pec -- --esegui",
+                "",
+                "Finché sono in coda, quei documenti non hanno data certa.",
+              ]
+            : []),
+          ...(inErrore.length
+            ? [
+                "",
+                inErrore.length === 1
+                  ? "E c'è una PEC FERMA IN ERRORE (non riparte da sola): va letta."
+                  : `E ci sono ${inErrore.length} PEC FERME IN ERRORE (non ripartono da sole): vanno lette.`,
+                ...inErrore
+                  .slice(0, 10)
+                  .map((p) => `  • ${p.oggetto} — ${p.ultimo_errore ?? "motivo non registrato"}`),
+                "Per riprovarne una, dopo aver capito il motivo:",
+                "  npm run pec -- --esegui --id <id>",
+              ]
+            : []),
           "",
           "Messaggio generato automaticamente dal gestionale ToothTalk.",
           "",
@@ -126,15 +148,20 @@ export async function GET(request: NextRequest) {
           if (!a.email) continue;
           const inviata = await inviaEmailGmail({
             destinatario: a.email,
-            oggetto: "[ToothTalk] PEC in coda da spedire",
+            oggetto:
+              daSpedire.length > 0
+                ? "[ToothTalk] PEC in coda da spedire"
+                : "[ToothTalk] PEC ferma in errore",
             testo: righePec.join("\n"),
           });
           recapitoPec = recapitoPec || inviata;
         }
 
         await inviaPushAdmin({
-          title: "PEC in coda",
-          body: `${pecInCoda.length} da spedire, la più vecchia da ${attesaOre} ore.`,
+          title: inErrore.length ? "PEC in errore" : "PEC in coda",
+          body: inErrore.length
+            ? `${inErrore.length} PEC ferme in errore: vanno lette.`
+            : `${daSpedire.length} da spedire, la più vecchia da ${attesaOre} ore.`,
           url: "/admin",
         });
 
@@ -143,7 +170,8 @@ export async function GET(request: NextRequest) {
           eseguitoOra,
           esito: controllo.esito,
           avviso: recapitoPec,
-          pecInCoda: pecInCoda.length,
+          pecInCoda: daSpedire.length,
+          pecInErrore: inErrore.length,
         });
       }
 
@@ -187,10 +215,8 @@ export async function GET(request: NextRequest) {
       "",
       ...(pecInCoda?.length
         ? [
-            pecInCoda.length === 1
-              ? "E c'è una PEC preparata e non ancora spedita: quel documento non ha data certa."
-              : `E ci sono ${pecInCoda.length} PEC preparate e non ancora spedite: quei documenti non hanno data certa.`,
-            "Si spediscono dal computer:",
+            `E ci sono PEC che aspettano: ${pecInCoda.filter((p) => p.stato === "in_coda").length} da spedire, ${pecInCoda.filter((p) => p.stato === "errore").length} in errore.`,
+            "Quei documenti non hanno ancora data certa. Si spediscono dal computer:",
             "  npm run pec -- --esegui",
             "",
           ]
