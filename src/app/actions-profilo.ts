@@ -543,6 +543,14 @@ export async function revocaImmagineVoce(
     await ignora(admin.from("notifiche_dovute_art82").insert({ user_id: profile.id }));
   }
 
+  // Avviso immediato: c'è una revoca da gestire (il grezzo da eliminare e, se
+  // chiesto, la pratica di rimozione del pubblicato).
+  await inviaPushAdmin({
+    title: "Revoca consenso immagine/voce — ToothTalk",
+    body: `${profile.full_name ?? profile.email} ha revocato il consenso: c'è una richiesta da gestire.`,
+    url: "/admin",
+  });
+
   revalidatePath("/profilo");
   return { ok: true, dati: { richiestaGrezzoAperta, richiestaRimozioneAperta } };
 }
@@ -1550,6 +1558,17 @@ export async function approvaRegistrazione(
       allegati: allegatiAccordo,
     });
     if (!inviataViaGmail) {
+      // Nessuno dei due canali è partito: l'account resta approvato (sopra) ma
+      // il documento non è arrivato a nessuno. Si segna comunque il profilo,
+      // così la persona compare fra quelle da ufficializzare: senza questa
+      // riga un accordo non consegnato passerebbe inosservato, perché la
+      // marcatura veniva messa solo quando il ripiego via Gmail riusciva.
+      await ignora(
+        supabaseAdmin()
+          .from("profiles")
+          .update({ accordo_pec_fallita_at: new Date().toISOString() })
+          .eq("id", userId),
+      );
       return errore(
         `Account approvato ma né PEC né email sono partite: ${e instanceof Error ? e.message : "errore di spedizione"}`,
       );
