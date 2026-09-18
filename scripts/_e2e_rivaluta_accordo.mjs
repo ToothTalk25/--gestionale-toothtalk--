@@ -98,6 +98,14 @@ try {
   await page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);
 
+  // In /admin si vede UNA sola sezione, scelta dalla tendina "Vai a:": senza
+  // aprirla, la coda degli accordi non esiste proprio nel DOM (verificato:
+  // il primo giro di questa prova cercava il blocco in una pagina vuota).
+  const voci = await page.locator("#sezione-admin option").allTextContents();
+  console.log(`sezioni disponibili: ${voci.length}`);
+  await page.selectOption("#sezione-admin", "accordi-da-approvare");
+  await page.waitForTimeout(4000);
+
   const blocco = page.locator("div.border-amber-200").first();
   if ((await blocco.count()) === 0 || !(await blocco.innerText()).includes("Verifica IA non riuscita")) {
     console.log('Il blocco "Verifica IA non riuscita" non c\'è: nessun accordo da rivalutare. ✅');

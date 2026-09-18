@@ -22,6 +22,14 @@ import "server-only";
 const MODELLO = "gemini-flash-latest";
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
+/**
+ * Attese fra un tentativo e il successivo (ms), quando Gemini risponde che è
+ * sovraccarico. Non sono un backoff elegante: sono la misura del caso reale —
+ * il modello risponde "high demand, try again later" per pochi secondi, e la
+ * riprova dopo 2 e 5 secondi quasi sempre passa.
+ */
+const ATTESE_RIPROVA = [2000, 5000];
+
 function apiKey(): string | null {
   return process.env.GEMINI_API_KEY || null;
 }
@@ -36,32 +44,74 @@ type GeminiPart = {
   text?: string;
 };
 
+/**
+ * Chiama Gemini e ritorna il testo della risposta.
+ *
+ * Ritenta quando l'errore è TRANSITORIO (sovraccarico 429/500/503, oppure
+ * rete): il modello risponde "high demand, try again later" per pochi
+ * secondi, e senza riprova un accordo vero resterebbe 'non_valutato' —
+ * quindi invisibile nella coda di approvazione — per un guasto che si
+ * sarebbe risolto da solo (visto davvero: il primo tentativo della
+ * rivalutazione è caduto su un 503 di sovraccarico).
+ * Sui veri errori (chiave non valida, richiesta rifiutata) si ferma subito:
+ * ritentare non cambierebbe l'esito e farebbe perdere secondi utili.
+ */
 async function genera(prompt: string, parts: GeminiPart[]): Promise<string> {
   const key = apiKey();
   if (!key) throw new Error("GEMINI_API_KEY non configurata.");
 
-  const res = await fetch(
-    `${BASE_URL}/models/${MODELLO}:generateContent?key=${key}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }, ...parts] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 1024 },
-      }),
-    },
-  );
+  let ultimoErrore: Error | null = null;
 
-  const data = (await res.json()) as {
-    error?: { message?: string };
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
+  for (let tentativo = 0; tentativo <= ATTESE_RIPROVA.length; tentativo++) {
+    if (tentativo > 0) {
+      await new Promise((r) => setTimeout(r, ATTESE_RIPROVA[tentativo - 1]));
+    }
 
-  if (!res.ok) {
-    throw new Error(data?.error?.message ?? "Errore di chiamata a Gemini");
+    // Un guasto di rete e un errore HTTP si trattano allo stesso modo: anche
+    // il primo può essere transitorio, e per chi chiama non cambia nulla.
+    let esito: { ok: boolean; status: number; testo: string; errore: string | null };
+    try {
+      const res = await fetch(
+        `${BASE_URL}/models/${MODELLO}:generateContent?key=${key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }, ...parts] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 1024 },
+          }),
+        },
+      );
+
+      const data = (await res.json()) as {
+        error?: { message?: string };
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+
+      esito = {
+        ok: res.ok,
+        status: res.status,
+        testo: data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "",
+        errore: data?.error?.message ?? null,
+      };
+    } catch (e) {
+      esito = {
+        ok: false,
+        status: 0,
+        testo: "",
+        errore: e instanceof Error ? e.message : "Errore di rete verso Gemini",
+      };
+    }
+
+    if (esito.ok) return esito.testo;
+
+    ultimoErrore = new Error(esito.errore ?? "Errore di chiamata a Gemini");
+    const transitorio =
+      esito.status === 0 || esito.status === 429 || esito.status === 500 || esito.status === 503;
+    if (!transitorio) throw ultimoErrore;
   }
 
-  return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  throw ultimoErrore ?? new Error("Errore di chiamata a Gemini");
 }
 
 export type EsitoVerificaAccordo = {

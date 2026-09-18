@@ -4,6 +4,17 @@ import ProfiloAdmin from "@/components/ProfiloAdmin";
 import SezioneEliminazioneAccount from "@/components/SezioneEliminazioneAccount";
 import FotoProfilo from "@/components/FotoProfilo";
 
+/**
+ * La verifica IA dell'accordo (caricaAccordo) manda al modello due PDF da
+ * confrontare: senza un tempo massimo dichiarato, la funzione può essere
+ * interrotta a metà — e allora l'accordo resta salvato ma non verificato,
+ * cioè invisibile nella coda di approvazione, con l'aria di essere un
+ * problema del documento. `maxDuration` si dichiara a livello di pagina e
+ * vale per tutte le server action usate da quella pagina (documentazione di
+ * Next, route segment config).
+ */
+export const maxDuration = 60;
+
 export default async function ProfiloPage() {
   const { profile, isAdmin } = await requireSession();
 
