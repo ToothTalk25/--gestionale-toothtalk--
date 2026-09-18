@@ -246,6 +246,14 @@ try {
   console.log(`contatore: «${dopoAnnullo.badge}»`);
   console.log(`dice: ${dopoAnnullo.testo}`);
 
+  // Documento NON accettato (esito IA "errato", come Eugenia): il pulsante non
+  // c'è — con data certa si certifica solo un documento che si è deciso di
+  // accettare. La riga passa fra quelle "da rivalutare" e lo dice.
+  await db.from("profiles").update({ accordo_verificato: "errato" }).eq("id", idPersona);
+  const nonAccettato = await leggiRiga();
+  console.log(`\ndocumento non accettato — pulsanti: ${nonAccettato.pulsante}`);
+  console.log(`dice: ${nonAccettato.testo}`);
+
   const okStato =
     dopoClic.pulsante === 0 &&
     /PEC del deposito in coda/.test(dopoClic.testo) &&
@@ -253,6 +261,8 @@ try {
     /PEC del deposito spedita il/.test(dopoInvio.testo) &&
     dopoAnnullo.pulsante === 1 &&
     /annullato/.test(dopoAnnullo.testo) &&
+    nonAccettato.pulsante === 0 &&
+    /dopo l'accettazione/.test(nonAccettato.testo) &&
     // La riga in coda conta 1, poi non conta più: né da spedita, né da annullata.
     dopoClic.numeroBadge === dopoAnnullo.numeroBadge + 1 &&
     dopoInvio.numeroBadge === dopoAnnullo.numeroBadge;

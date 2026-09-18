@@ -73,12 +73,19 @@ function tentativoAmmortato(righe: RigaPecDeposito[] | undefined, sha256: string
 }
 
 /**
- * Il pulsante serve solo se per QUEL documento non c'è una PEC vera (in coda o
- * spedita): se c'è, la riga lo dice e non chiede di rifarlo — un secondo clic
- * non accoderebbe niente di più (l'azione lo impedisce) ma non deve nemmeno
- * sembrare che serva.
+ * Il pulsante serve solo per un documento ACCETTATO (esito "ok", anche quando
+ * l'accettazione è una verifica a mano) e senza una PEC vera: con data certa si
+ * certifica solo quello che si è deciso di accettare. Un documento che il
+ * controllo automatico ha scartato non entra in coda — prima si accetta o si
+ * chiede alla persona di ricaricarlo. Se una PEC c'è già (in coda o spedita) la
+ * riga lo dice, e il pulsante non deve sembrare che serva ancora.
  */
-function servePulsanteDeposito(righe: RigaPecDeposito[] | undefined, sha256: string | null) {
+function servePulsanteDeposito(
+  righe: RigaPecDeposito[] | undefined,
+  sha256: string | null,
+  verificato: string | null,
+) {
+  if (verificato !== "ok") return false;
   return !pecDelDocumento(righe, sha256);
 }
 
@@ -413,7 +420,8 @@ export default function AccordiDaApprovare({
             del collaboratore prima che l&apos;accesso si sblocchi davvero. Se la
             PEC del suo deposito non è mai partita (è successo durante il blocco di
             Aruba), qui c&apos;è anche &quot;Metti in coda la PEC del deposito&quot;: la
-            rimanda sullo stesso documento che ha caricato.
+            rimanda sullo stesso documento che ha caricato. Su un accordo non
+            ancora accettato quel pulsante non compare: prima si accetta.
           </p>
         </div>
         <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
@@ -476,6 +484,15 @@ export default function AccordiDaApprovare({
                       </p>
                     )}
                     <NotaPecDeposito righe={pecDeposito} sha256={a.accordo_sha256} />
+                    {/* Qui NON c'è "Metti in coda la PEC del deposito": si
+                        certifica con data certa solo un documento accettato, e
+                        questi non lo sono (esito IA non "ok"). Appena lo si
+                        accetta — anche a mano — la riga passa fra gli accordi da
+                        approvare, e il pulsante è là. */}
+                    <p className="mt-1 text-xs text-slate-400">
+                      La PEC del deposito si mette in coda dopo l&apos;accettazione: qui
+                      l&apos;accordo non è ancora accettato.
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
@@ -512,18 +529,6 @@ export default function AccordiDaApprovare({
                     >
                       Chiedi di ricaricare
                     </button>
-                    {servePulsanteDeposito(pecDeposito, a.accordo_sha256) && (
-                      <button
-                        onClick={() => {
-                          setInDeposito(a.id);
-                          setConfermaDeposito("");
-                        }}
-                        disabled={inCorso === `deposito:${a.id}`}
-                        className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                      >
-                        Metti in coda la PEC del deposito
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -667,7 +672,7 @@ export default function AccordiDaApprovare({
                 >
                   {inCorso === `email:${a.id}` ? "Invio…" : "Mandami il PDF"}
                 </button>
-                {servePulsanteDeposito(pecDeposito, a.accordo_sha256) && (
+                {servePulsanteDeposito(pecDeposito, a.accordo_sha256, a.accordo_verificato) && (
                   <button
                     onClick={() => {
                       setInDeposito(a.id);
