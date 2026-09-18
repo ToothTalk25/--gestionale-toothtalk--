@@ -29,7 +29,7 @@ export async function inviaEmailGmail(opts: {
   testo: string;
   /** Versione HTML opzionale (es. con un bottone); testo resta il fallback per i client che non la mostrano. */
   html?: string;
-  /** Ripiego di spedisciPec (stessi file, stesso formato) quando la PEC non parte. */
+  /** Ripiego via email normale (stessi file, stesso formato) quando la PEC non entra in coda. */
   allegati?: AllegatoEmail[];
 }): Promise<boolean> {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {

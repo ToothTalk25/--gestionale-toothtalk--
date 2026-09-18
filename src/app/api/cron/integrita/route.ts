@@ -56,14 +56,15 @@ export async function GET(request: NextRequest) {
       return (data?.[0] as Controllo) ?? null;
     };
 
-    // PEC in coda da più di un giorno (0139): non è un guasto d'integrità, ma è
-    // un documento che non ha ancora data certa — e la coda non si svuota da
-    // sola. Vale un promemoria, anche quando i depositi sono a posto.
-    const { data: pecFerme } = await admin
+    // PEC in coda (0139): la coda non si svuota da sola — a spedire è un comando
+    // eseguito sul computer del progetto. Finché c'è qualcosa in coda c'è un
+    // documento senza data certa, quindi il promemoria vale ogni giorno, anche
+    // quando i depositi sono a posto (la notifica sul telefono arriva anche
+    // subito, quando la PEC entra in coda: questa è la rete di sicurezza).
+    const { data: pecInCoda } = await admin
       .from("pec_da_inviare")
       .select("id, oggetto, destinatari, creato_at")
       .eq("stato", "in_coda")
-      .lt("creato_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order("creato_at", { ascending: true });
 
     let controllo = await ultimo();
@@ -88,14 +89,20 @@ export async function GET(request: NextRequest) {
     }
 
     if (controllo.esito !== "problemi") {
-      // Depositi a posto: se però ci sono PEC ferme in coda da più di un giorno,
-      // il promemoria parte lo stesso — è una promessa non ancora mantenuta,
-      // quei documenti non hanno data certa.
-      if (pecFerme?.length) {
+      // Depositi a posto: se però in coda ci sono PEC non ancora spedite, il
+      // promemoria parte lo stesso — è una promessa non mantenuta, quei
+      // documenti non hanno data certa.
+      if (pecInCoda?.length) {
+        const attesaOre = Math.floor(
+          (Date.now() - new Date(pecInCoda[0].creato_at).getTime()) / 3_600_000,
+        );
         const righePec = [
-          "Ci sono PEC preparate dal gestionale e non ancora spedite (da più di un giorno).",
+          pecInCoda.length === 1
+            ? "C'è una PEC preparata dal gestionale e non ancora spedita."
+            : `Ci sono ${pecInCoda.length} PEC preparate dal gestionale e non ancora spedite.`,
+          `La più vecchia aspetta da ${attesaOre} ore.`,
           "",
-          ...pecFerme
+          ...pecInCoda
             .slice(0, 15)
             .map((p) => `  • ${p.oggetto} → ${(p.destinatari as string[]).join(", ")}`),
           "",
@@ -127,7 +134,7 @@ export async function GET(request: NextRequest) {
 
         await inviaPushAdmin({
           title: "PEC in coda",
-          body: `${pecFerme.length} PEC preparate e non ancora spedite.`,
+          body: `${pecInCoda.length} da spedire, la più vecchia da ${attesaOre} ore.`,
           url: "/admin",
         });
 
@@ -136,7 +143,7 @@ export async function GET(request: NextRequest) {
           eseguitoOra,
           esito: controllo.esito,
           avviso: recapitoPec,
-          pecFerme: pecFerme.length,
+          pecInCoda: pecInCoda.length,
         });
       }
 
@@ -178,10 +185,12 @@ export async function GET(request: NextRequest) {
       "guasto del gestionale ma un dato che non corrisponde alla propria impronta:",
       "finché non è chiarito, non considerare quel materiale come certificato.",
       "",
-      ...(pecFerme?.length
+      ...(pecInCoda?.length
         ? [
-            `E ci sono ${pecFerme.length} PEC preparate e non ancora spedite (da più di un giorno):`,
-            "quei documenti non hanno ancora data certa. Si spediscono dal computer:",
+            pecInCoda.length === 1
+              ? "E c'è una PEC preparata e non ancora spedita: quel documento non ha data certa."
+              : `E ci sono ${pecInCoda.length} PEC preparate e non ancora spedite: quei documenti non hanno data certa.`,
+            "Si spediscono dal computer:",
             "  npm run pec -- --esegui",
             "",
           ]

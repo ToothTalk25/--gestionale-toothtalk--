@@ -234,13 +234,18 @@ Aggiornato al 18 settembre 2026.
    non blocca. Comandi: `npm run pec` (simulazione, verifica anche le impronte
    dei file), `npm run pec -- --esegui` (spedisce), `npm run pec -- --verifica`
    (controlla casella, accesso e coda senza spedire).
-   Le credenziali della casella (`PEC_USER`, `PEC_PASSWORD`, `PEC_MITTENTE`,
-   `PEC_DESTINATARI`, `PEC_MAX_MESSAGGIO_MB`) vivono in `.env.local` su questa
-   postazione. Su Vercel servono ancora — per ora — perché il verbale dei
-   pacchetti sigillati e la richiesta di liberatoria al contatto esterno
-   passano ancora da lì: **finché restano fuori dalla coda, quei due invii sono
-   esposti allo stesso blocco.** Quando passeranno anche loro, le credenziali
-   si potranno togliere da Vercel del tutto (lì basta `PEC_DESTINATARI`).
+   Le credenziali della casella (`PEC_USER`, `PEC_PASSWORD`, `PEC_MITTENTE`)
+   vivono in `.env.local` su questa postazione e **non servono più
+   all'applicazione**: non parte più nessun invio dalla piattaforma, nemmeno il
+   verbale dei pacchetti sigillati e la richiesta di liberatoria al contatto
+   esterno (prima passavano di lì e sarebbero state bloccate). Su Vercel restano
+   solo `PEC_DESTINATARI` (chi riceve in copia) e `PEC_MAX_MESSAGGIO_MB` (il
+   tetto che decide quanti allegati entrano): le tre credenziali si possono
+   togliere.
+   Due promemoria tengono viva la coda, perché non si svuota da sola: una
+   notifica sul telefono **appena una PEC entra in coda**, e il controllo
+   notturno che ogni notte, se la coda non è vuota, manda email e notifica con
+   il comando da eseguire e da quanto aspetta la PEC più vecchia.
 2. **Account dei partecipanti**: due strade — l'invito dal Registro globale
    (email con codice del gruppo e link di registrazione) oppure
    `npm run utente -- crea|assegna`. Le registrazioni si approvano dal Registro.
@@ -313,8 +318,10 @@ Aggiornato al 18 settembre 2026.
    svuotare `accordo_pec_fallita_at`, registrare l'esito del pacchetto
    (`registra_esito_pec`, che è ciò che fa partire la copia su Drive) — perché
    altrimenti l'app mostrerebbe come fatto qualcosa che non è ancora avvenuto.
-   Il controllo notturno dell'integrità avvisa anche quando una PEC aspetta da
-   più di un giorno: finché è in coda, quel documento non ha data certa.
+   Il controllo notturno dell'integrità avvisa ogni notte, se la coda non è
+   vuota: finché è in coda, quel documento non ha data certa. Dalla coda passano
+   ormai TUTTI gli invii certificati: accordi, rinnovi, verbali dei pacchetti
+   sigillati e richieste di liberatoria ai contatti esterni.
 
 10. **Accordo: chiedere di ricaricare, e confermare che è arrivato**
     (migrazione `0140`). Tre cose nate da un caso vero — un accordo caricato con

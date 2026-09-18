@@ -2831,6 +2831,9 @@ export async function confermaControfirmaAccordo(): Promise<
   <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
 </div>`,
       allegati: [],
+      // Nessun avviso sul telefono per questa: non c'è niente da fare, è la
+      // notizia che la conferma è arrivata (e arriva già nella casella PEC).
+      avvisa: false,
     }).catch(() => {});
   } catch {
     // Coda non disponibile (o PEC_DESTINATARI mancante): la conferma resta

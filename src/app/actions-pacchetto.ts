@@ -1,6 +1,5 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -9,13 +8,13 @@ import { normalizzaConDiff, messaggioDiff } from "@/lib/formato";
 import { salvaPacchettoSchema } from "@/lib/schemi";
 import { traduciErroreDb } from "@/lib/erroriDb";
 import {
-  budgetAllegati,
+  budgetAllegatiPec,
   corpoHtml,
   corpoTesto,
-  leggiConfigPec,
   oggettoVerbale,
-  spedisciPec,
-  type Allegato,
+  accodaPec,
+  destinatariPecGlobali,
+  type AllegatoCoda,
 } from "@/lib/pec";
 import type { ManifestoPacchetto, PacchettoVideoRow, RuoloElemento } from "@/lib/types";
 
@@ -633,7 +632,15 @@ export async function annullaPacchetto(
 // ------------------------------------------------------------------ PEC
 
 /**
- * Spedisce il verbale via PEC e registra l'esito.
+ * Mette il verbale in coda per la PEC: a spedirlo è il computer (0139), che
+ * esce da un indirizzo italiano — la piattaforma non ne ha, e Aruba blocca gli
+ * invii che arrivano dall'estero (ticket 19039798A).
+ *
+ * L'esito NON si registra qui: il pacchetto resta 'sigillato' finché la PEC non
+ * è partita davvero, e a registrarlo è lo script (contesto "verbale" in coda).
+ * È quella registrazione che porta il pacchetto a 'pec_inviata' e fa partire la
+ * copia su Drive. Se la coda non accetta la riga, invece, l'errore va scritto
+ * subito sul pacchetto: si vede dal gestionale e si può riprovare.
  *
  * Chiunque nel polo può lanciarla: la certificazione è la tutela del gruppo,
  * non un privilegio. Il mittente è però sempre la casella PEC configurata a
@@ -643,7 +650,7 @@ export async function annullaPacchetto(
 export async function inviaPecPacchetto(
   taskId: string,
   pacchettoId: string,
-): Promise<Esito<{ messageId: string; allegati: string[]; esclusi: string[] }>> {
+): Promise<Esito<{ inCoda: string; allegati: string[]; esclusi: string[] }>> {
   const { isAdmin } = await requireSession();
   if (!isAdmin)
     return errore("Solo chi ha accesso globale può spedire il verbale via PEC.");
@@ -672,12 +679,10 @@ export async function inviaPecPacchetto(
     manifest_hash: pacchetto.manifest_hash,
   };
 
-  let config;
-  try {
-    config = leggiConfigPec();
-  } catch (e) {
-    return errore(e instanceof Error ? e.message : "Configurazione PEC assente");
-  }
+  // Della configurazione PEC serve ormai solo il tetto del messaggio: a
+  // spedire è il computer, con le sue credenziali. Per questo l'applicazione
+  // non ha più bisogno di PEC_USER/PEC_PASSWORD/PEC_HOST.
+  const spazioTotale = budgetAllegatiPec();
 
   // --- allegati -------------------------------------------------------
   //
@@ -687,20 +692,15 @@ export async function inviaPecPacchetto(
   // video è troppo grosso. Del video escluso viaggia l'impronta, che lo
   // identifica in modo univoco: chi l'ha realizzato conserva il proprio file
   // e in qualsiasi momento può dimostrare che è quello.
-  const allegati: Allegato[] = [];
+  const allegati: AllegatoCoda[] = [];
   const esclusi: string[] = [];
 
-  let spazioResiduo = budgetAllegati(config);
+  let spazioResiduo = spazioTotale;
 
   for (const el of manifesto.elementi) {
     if (el.tipo === "testo") {
-      const content = Buffer.from(el.testo, "utf8");
-      spazioResiduo -= content.byteLength;
-      allegati.push({
-        filename: `${el.ruolo}.txt`,
-        content,
-        contentType: "text/plain; charset=utf-8",
-      });
+      spazioResiduo -= Buffer.byteLength(el.testo, "utf8");
+      allegati.push({ nome: `${el.ruolo}.txt`, testo: el.testo });
     }
   }
 
@@ -718,39 +718,21 @@ export async function inviaPecPacchetto(
       continue;
     }
 
-    const { data: blob, error } = await supabase.storage
-      .from(el.bucket)
-      .download(el.storage_path);
-
-    if (error || !blob) {
-      esclusi.push(`${el.file_name} (non scaricabile: ${error?.message ?? "assente"})`);
-      continue;
-    }
-
-    const buffer = Buffer.from(await blob.arrayBuffer());
-
-    // Il file allegato deve essere lo stesso registrato al momento del
-    // deposito: se le impronte divergono, meglio non spedire nulla.
-    const impronta = createHash("sha256").update(buffer).digest("hex");
-    if (impronta !== el.sha256) {
-      return errore(
-        `Il file "${el.file_name}" nello storage non corrisponde all'impronta registrata. Spedizione interrotta.`,
-      );
-    }
-
-    spazioResiduo -= buffer.byteLength;
+    // Il file non si scarica qui: in coda va il RIFERIMENTO con l'impronta
+    // registrata al momento del deposito, e a verificarla è lo script prima di
+    // spedire. La garanzia è la stessa — se il file nello storage non
+    // corrisponde all'impronta, la PEC non parte e la riga va in errore con il
+    // motivo scritto — ma non si scaricano decine di MB dentro la funzione.
+    spazioResiduo -= el.size_bytes ?? 0;
     allegati.push({
-      filename: el.file_name,
-      content: buffer,
-      contentType: el.mime_type ?? undefined,
+      nome: el.file_name,
+      bucket: el.bucket,
+      percorso: el.storage_path,
+      sha256: el.sha256,
     });
   }
 
-  allegati.push({
-    filename: "manifesto.json",
-    content: Buffer.from(JSON.stringify(manifesto, null, 2), "utf8"),
-    contentType: "application/json",
-  });
+  allegati.push({ nome: "manifesto.json", testo: JSON.stringify(manifesto, null, 2) });
 
   // --- copia ai membri del polo ---------------------------------------
   const { data: task } = await supabase
@@ -767,12 +749,7 @@ export async function inviaPecPacchetto(
     .eq("id", task?.polo_id ?? "")
     .single<{ pec_destinatari: string[] | null }>();
 
-  const destinatari =
-    polo?.pec_destinatari?.length
-      ? polo.pec_destinatari
-      : config.destinatari;
-
-  const configPolo = { ...config, destinatari };
+  const destinatari = polo?.pec_destinatari?.length ? polo.pec_destinatari : destinatariPecGlobali();
 
   const { data: membri } = await supabase
     .from("memberships")
@@ -797,50 +774,48 @@ export async function inviaPecPacchetto(
     cc.push(taskPec.contatto_esterno_pec);
   }
 
-  // --- spedizione -----------------------------------------------------
-  const nomiAllegati = allegati.map((a) => a.filename);
+  // --- in coda per la spedizione --------------------------------------
+  const nomiAllegati = allegati.map((a) => a.nome);
   const admin = supabaseAdmin();
 
   try {
-    const { messageId } = await spedisciPec({
-      config: configPolo,
+    const { id: inCoda } = await accodaPec({
       oggetto: oggettoVerbale(manifesto),
       testo: corpoTesto(manifesto, nomiAllegati),
       html: corpoHtml(manifesto, nomiAllegati),
       allegati,
+      destinatari,
       copiaConoscenza: cc,
+      // L'esito del pacchetto lo registra lo script quando la PEC è partita
+      // davvero: è quello che porta il pacchetto a 'pec_inviata' e fa partire
+      // la copia su Drive. Da qui non si può, perché la PEC non è ancora
+      // partita, e scriverlo adesso sarebbe una bugia nel verbale.
+      contesto: {
+        tipo: "verbale",
+        pacchetto_id: pacchettoId,
+        note: esclusi.length ? `Non allegati: ${esclusi.join("; ")}` : null,
+      },
     });
-
-    await admin.rpc("registra_esito_pec", {
-      p_pacchetto: pacchettoId,
-      p_stato: "pec_inviata",
-      p_message_id: messageId,
-      p_destinatari: configPolo.destinatari,
-      p_errore: null,
-      p_note: esclusi.length ? `Non allegati: ${esclusi.join("; ")}` : null,
-    });
-
-    // La copia su Drive NON parte più da qui: il trigger del database ha
-    // appena messo la riga esportazioni_drive a 'da_fare' (dentro
-    // registra_esito_pec) e la Edge Function fa il resto in background.
 
     revalidatePath(`/task/${taskId}`);
     return {
       ok: true,
-      dati: { messageId, allegati: nomiAllegati, esclusi },
+      dati: { inCoda, allegati: nomiAllegati, esclusi },
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Errore di spedizione";
+    // La coda non ha accettato la riga: il pacchetto resta 'sigillato' ma con
+    // l'errore scritto addosso, così si vede dal gestionale e si può riprovare.
+    const msg = e instanceof Error ? e.message : "Errore di accodamento";
     await admin.rpc("registra_esito_pec", {
       p_pacchetto: pacchettoId,
       p_stato: "pec_errore",
       p_message_id: null,
-      p_destinatari: configPolo.destinatari,
+      p_destinatari: destinatari,
       p_errore: msg,
       p_note: null,
     });
     revalidatePath(`/task/${taskId}`);
-    return errore(`PEC non spedita: ${msg}`);
+    return errore(`PEC non entrata in coda: ${msg}`);
   }
 }
 

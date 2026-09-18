@@ -1,14 +1,14 @@
 import "server-only";
-import nodemailer from "nodemailer";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { inviaPushAdmin } from "@/lib/push";
 import type { ElementoManifesto, ManifestoPacchetto } from "@/lib/types";
 
 /**
- * Spedizione del verbale via PEC.
+ * La PEC: che cosa dà, che cosa non può fare, e da dove parte.
  *
- * Cosa dà davvero la PEC: DATA CERTA e integrità del messaggio. Il gestore
- * genera una ricevuta di accettazione e una di avvenuta consegna, entrambe
- * firmate, che attestano che quel contenuto esisteva in quel momento.
+ * Cosa dà davvero: DATA CERTA e integrità del messaggio. Il gestore genera una
+ * ricevuta di accettazione e una di avvenuta consegna, entrambe firmate, che
+ * attestano che quel contenuto esisteva in quel momento.
  *
  * Cosa NON può fare: trasportare un video da 2 GB. I gestori italiani si
  * fermano fra i 30 e i 100 MB per messaggio. Per questo il verbale certifica
@@ -20,55 +20,23 @@ import type { ElementoManifesto, ManifestoPacchetto } from "@/lib/types";
  * Da dove parte, dal 0139: NON da qui. Aruba blocca gli invii automatici che
  * arrivano da indirizzi esteri e da troppi indirizzi diversi (Vercel non ha
  * regioni italiane), e l'unico rimedio che offre è togliere la protezione
- * anti-abuso dalla casella. Quindi il gestionale non spedisce più: ACCODA
- * (accodaPec) e un comando eseguito su una postazione italiana spedisce
- * (scripts/invia-pec.mjs). spedisciPec resta per ciò che passa ancora di qui.
+ * anti-abuso dalla casella. Quindi questa applicazione non spedisce più:
+ * ACCODA (accodaPec), e a spedire è `npm run pec -- --esegui`, eseguito su una
+ * postazione italiana. Della configurazione le serve ormai solo il tetto del
+ * messaggio: le credenziali della casella non le servono, e non le ha.
  */
 
-export type ConfigPec = {
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-  mittente: string;
-  destinatari: string[];
-  /** Tetto del gestore per l'intero messaggio (Poste: di norma 100 MB). */
-  maxMessaggioByte: number;
-};
-
 /**
- * Quanti byte di file "veri" stanno in un messaggio.
+ * Quanti byte di file "veri" stanno in un messaggio PEC.
  *
  * Gli allegati viaggiano codificati in base64, che li gonfia di un terzo
  * (3 byte diventano 4). A questo si aggiungono intestazioni e corpo del
  * messaggio. Il 70% del tetto è il margine prudente: su 100 MB di limite
  * restano circa 70 MB di file effettivi.
  */
-export function budgetAllegati(config: ConfigPec): number {
-  return Math.floor(config.maxMessaggioByte * 0.7);
-}
-
-export function leggiConfigPec(): ConfigPec {
-  const mancanti = ["PEC_HOST", "PEC_USER", "PEC_PASSWORD", "PEC_DESTINATARI"].filter(
-    (k) => !process.env[k],
-  );
-  if (mancanti.length) {
-    throw new Error(`Configurazione PEC incompleta: manca ${mancanti.join(", ")}`);
-  }
-
-  return {
-    host: process.env.PEC_HOST!,
-    port: Number(process.env.PEC_PORT ?? 465),
-    user: process.env.PEC_USER!,
-    password: process.env.PEC_PASSWORD!,
-    mittente: process.env.PEC_MITTENTE ?? process.env.PEC_USER!,
-    destinatari: process.env
-      .PEC_DESTINATARI!.split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-    maxMessaggioByte:
-      Number(process.env.PEC_MAX_MESSAGGIO_MB ?? 100) * 1024 * 1024,
-  };
+export function budgetAllegatiPec(): number {
+  const tetto = Number(process.env.PEC_MAX_MESSAGGIO_MB ?? 100) * 1024 * 1024;
+  return Math.floor(tetto * 0.7);
 }
 
 const etichetta: Record<string, string> = {
@@ -259,55 +227,6 @@ ${blocchi}
 </div>`;
 }
 
-export type Allegato = { filename: string; content: Buffer; contentType?: string };
-
-export async function spedisciPec(opts: {
-  config: ConfigPec;
-  oggetto: string;
-  testo: string;
-  html: string;
-  allegati: Allegato[];
-  /**
-   * Se presente, sovrascrive config.destinatari come "to" del messaggio.
-   * Serve quando il destinatario PRINCIPALE non è l'accesso globale ma una
-   * singola persona (es. la PEC del collaboratore da approvare): il
-   * Titolare resta comunque raggiungibile via copiaConoscenza.
-   */
-  destinatari?: string[];
-  copiaConoscenza?: string[];
-}): Promise<{ messageId: string; accettato: string[] }> {
-  const { config } = opts;
-
-  const transporter = nodemailer.createTransport({
-    host: config.host,
-    port: config.port,
-    secure: config.port === 465,
-    // Su 25/587 la connessione parte in chiaro e si alza a TLS con STARTTLS:
-    // per una PEC il canale deve essere cifrato per forza.
-    requireTLS: config.port !== 465,
-    auth: { user: config.user, pass: config.password },
-  });
-
-  const info = await transporter.sendMail({
-    from: config.mittente,
-    // Il "to" di default è l'accesso globale; chi ha bisogno di un
-    // destinatario diverso lo passa esplicitamente (retrocompatibile).
-    to: opts.destinatari?.length ? opts.destinatari : config.destinatari,
-    // Chi partecipa al gruppo riceve la stessa copia sulla casella ordinaria:
-    // così la prova non sta solo in un'unica cassetta.
-    cc: opts.copiaConoscenza?.length ? opts.copiaConoscenza : undefined,
-    subject: opts.oggetto,
-    text: opts.testo,
-    html: opts.html,
-    attachments: opts.allegati,
-  });
-
-  return {
-    messageId: info.messageId,
-    accettato: (info.accepted ?? []).map(String),
-  };
-}
-
 // =====================================================================
 // La coda (0139): il gestionale prepara, il computer spedisce
 // =====================================================================
@@ -367,12 +286,19 @@ export async function accodaPec(opts: {
   oggetto: string;
   testo: string;
   html?: string;
-  /** "to": se assente, l'accesso globale (come faceva spedisciPec). */
+  /** "to": se assente, l'accesso globale (i destinatari di PEC_DESTINATARI). */
   destinatari?: string[];
   /** "cc": chi partecipa al gruppo, o l'accesso globale quando il "to" è una persona. */
   copiaConoscenza?: string[];
   allegati?: AllegatoCoda[];
   contesto?: ContestoPec;
+  /**
+   * Avvisa l'accesso globale sul telefono appena la PEC entra in coda (default:
+   * sì). Si spegne solo per i messaggi che non chiedono niente — per esempio
+   * l'avviso "controfirma confermata", che è già una notizia per chi lo legge
+   * nella casella PEC.
+   */
+  avvisa?: boolean;
 }): Promise<{ id: string }> {
   const destinatari = opts.destinatari?.length ? opts.destinatari : destinatariPecGlobali();
 
@@ -393,5 +319,18 @@ export async function accodaPec(opts: {
   if (error || !data) {
     throw new Error(`PEC non entrata in coda: ${error?.message ?? "nessuna riga creata"}`);
   }
+
+  // Promemoria immediato: una PEC in coda è un documento che non ha ancora data
+  // certa, e la coda non si svuota da sola — va eseguito un comando sul computer
+  // del progetto. Meglio saperlo subito che scoprirlo dal controllo notturno.
+  // Best-effort: la coda è già registrata, una notifica mancata non cambia nulla.
+  if (opts.avvisa !== false) {
+    await inviaPushAdmin({
+      title: "PEC da spedire",
+      body: opts.oggetto.length > 90 ? `${opts.oggetto.slice(0, 87)}…` : opts.oggetto,
+      url: "/admin",
+    });
+  }
+
   return { id: data.id };
 }

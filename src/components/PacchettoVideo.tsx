@@ -989,11 +989,11 @@ function DettaglioSigillo({
                 if (!esito.ok) setErrore(esito.errore);
                 else
                   setMessaggio(
-                    `PEC spedita (${esito.dati.messageId}). Allegati: ${esito.dati.allegati.join(", ")}.` +
+                    `PEC in coda (${esito.dati.inCoda}). Allegati: ${esito.dati.allegati.join(", ")}.` +
                       (esito.dati.esclusi.length
                         ? ` Non allegati per dimensione: ${esito.dati.esclusi.join("; ")} — certificati tramite impronta.`
                         : "") +
-                      ` La copia su Drive parte in automatico: l'esito compare nel badge qui sotto.`,
+                      ` Si spedisce dal computer: npm run pec -- --esegui. Finché è in coda il pacchetto resta sigillato (non ancora certificato); poi la copia su Drive parte in automatico.`,
                   );
               })
             }

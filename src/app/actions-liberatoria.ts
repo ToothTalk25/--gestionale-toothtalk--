@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth";
 import { nettizzaDestinatario, validaEmail } from "@/lib/mail";
+import { accodaPec } from "@/lib/pec";
 import { renderDocumentoHTML } from "@/lib/liberatoria-documento2";
 
 function errore(msg: string): { ok: false; errore: string } {
@@ -62,7 +63,7 @@ async function registraNelRegistroConsensi(params: {
 // ------------------------------------------------------------------ email
 
 type EsitoInvioLink =
-  | { ok: true; via: "pec" | "email"; destinatario: string }
+  | { ok: true; via: "pec" | "email"; destinatario: string; /** id della riga di coda, se è partita per la coda */ inCoda?: string }
   | { ok: false; via: "pec" | "email"; destinatario: string; errore: string };
 
 /**
@@ -70,6 +71,11 @@ type EsitoInvioLink =
  * fallimento: credenziali assenti, SMTP che rifiuta (es. 535 EAUTH), rete
  * giù — tutto torna come { ok:false, errore } (e viene loggato), così il
  * chiamante può mostrarlo all'admin e ripiegare sul canale alternativo.
+ *
+ * La via PEC non spedisce: mette in coda (0139). Aruba blocca gli invii
+ * automatici che escono dagli indirizzi esteri della piattaforma, quindi a
+ * spedire è il computer del progetto — e "ok" qui significa "accettata in
+ * coda", non "consegnata".
  */
 async function inviaLink(
   destinatario: string,
@@ -95,26 +101,20 @@ async function inviaLink(
     const nodemailer = await import("nodemailer");
 
     if (via === "pec") {
-      // Via PEC: mittente toothtalk@pec.it, SMTP Aruba
-      if (!process.env.PEC_USER || !process.env.PEC_PASSWORD) {
-        return { ok: false, via, destinatario: to, errore: "PEC non configurata sul server (PEC_USER/PEC_PASSWORD)." };
-      }
-      const transporter = nodemailer.createTransport({
-        host: process.env.PEC_HOST || "smtps.pec.aruba.it",
-        port: Number(process.env.PEC_PORT || 465),
-        secure: true,
-        auth: { user: process.env.PEC_USER, pass: process.env.PEC_PASSWORD },
-      });
-      await transporter.sendMail({
-        from: `"ToothTalk™" <${process.env.PEC_MITTENTE || process.env.PEC_USER}>`,
-        to,
-        subject: "Liberatoria — ToothTalk™",
-        text: `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
+      // Via PEC: mittente toothtalk@pec.it — ma la spedizione non avviene qui,
+      // entra in coda (0139) e la fa il computer. Il link vale 7 giorni: c'è
+      // tempo perché la coda venga svuotata, e il promemoria della coda lo
+      // ricorda ogni notte finché non è partita.
+      const { id } = await accodaPec({
+        oggetto: "Liberatoria — ToothTalk™",
+        testo:
+          `Salve,\n\nLei compare in un video del progetto ToothTalk. ` +
           `Può compilare e firmare la liberatoria a questo link:\n\n${link}\n\n` +
           `Il link è valido 7 giorni. Grazie.\n\n— ToothTalk™`,
         html,
+        destinatari: [to],
       });
-      return { ok: true, via, destinatario: to };
+      return { ok: true, via, destinatario: to, inCoda: id };
     }
 
     // Via Gmail
@@ -205,7 +205,17 @@ async function creaEInviaRichiesta(
   if (pec) {
     const esitoPec = await inviaLink(pec, data.token, "pec");
     if (esitoPec.ok) {
-      return { ok: true, token: data.token, inviatoVia: "pec", destinatario: pec };
+      return {
+        ok: true,
+        token: data.token,
+        inviatoVia: "pec",
+        destinatario: pec,
+        // "Ok" qui significa accettata in coda, non consegnata: la PEC parte
+        // dal computer del progetto. Il link della liberatoria vale 7 giorni.
+        avviso: esitoPec.inCoda
+          ? "La PEC è in coda: partirà al prossimo invio dal computer (npm run pec -- --esegui). Il link resta valido 7 giorni."
+          : undefined,
+      };
     }
 
     // Fallback sull'email del contatto, se è un recapito distinto e valido.

@@ -146,7 +146,7 @@ export default function SezionePecInCoda({ righe }: { righe: RigaPecInCoda[] }) 
       {!daSpedire.length && !inErrore.length && !spedite.length && (
         <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
           Niente in coda. Quando il gestionale prepara una PEC (un accordo, un rinnovo, un
-          verbale) la trovi qui, con quello che manca per spedirla.
+          verbale, una liberatoria) la trovi qui, con quello che manca per spedirla.
         </p>
       )}
     </section>
