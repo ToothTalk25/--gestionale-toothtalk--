@@ -4,7 +4,12 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { sha256File } from "@/lib/hash";
-import { caricaControfirmaAccordo, preparaUploadControfirma } from "@/app/actions-profilo";
+import {
+  caricaControfirmaAccordo,
+  inviaAccordoFirmatoPerEmail,
+  preparaUploadControfirma,
+  rivalutaAccordoConIA,
+} from "@/app/actions-profilo";
 
 export type RigaAccordoDaApprovare = {
   id: string;
@@ -14,6 +19,13 @@ export type RigaAccordoDaApprovare = {
   accordo_verificato: string | null;
   accordo_verifica_note: string | null;
 };
+
+/**
+ * Stessa riga della coda, ma per chi non ha (ancora) un esito IA 'ok': i
+ * campi letti dallo schermo sono identici, cambia solo cosa si può fare —
+ * rifare la verifica, o farsi mandare il PDF per la controfirma a mano.
+ */
+export type RigaAccordoDaRivalutare = RigaAccordoDaApprovare;
 
 /**
  * Sezione admin "Accordi da approvare": coda dei collaboratori che hanno
@@ -27,8 +39,20 @@ export type RigaAccordoDaApprovare = {
  * Attenzione: se l'esito IA è 'attenzione'/'errato' il profilo non appare
  * qui (la coda filtra solo esito='ok') — ma per sicurezza mostriamo la
  * nota e un avviso se per qualsiasi motivo l'esito non è ok.
+ *
+ * Sotto la coda c'è il blocco di chi ha caricato ma non ha un esito 'ok' (il
+ * caso vero: verifica mai eseguita perché la chiave dell'IA non era
+ * configurata sul server). Da lì si rifà la verifica — senza chiedere alla
+ * persona di ricaricare un documento che è già a posto — e ci si fa mandare
+ * per email la copia firmata che serve per la controfirma a mano.
  */
-export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDaApprovare[] }) {
+export default function AccordiDaApprovare({
+  accordi,
+  daRivalutare = [],
+}: {
+  accordi: RigaAccordoDaApprovare[];
+  daRivalutare?: RigaAccordoDaRivalutare[];
+}) {
   const router = useRouter();
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [inCorso, setInCorso] = useState<string | null>(null);
@@ -69,12 +93,48 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
     }
   }
 
-  if (accordi.length === 0) {
+  /** Rifa la verifica IA sul documento già caricato: nessun nuovo upload. */
+  async function rivaluta(userId: string) {
+    setInCorso(`ia:${userId}`);
+    setMessaggio(null);
+    const esito = await rivalutaAccordoConIA(userId);
+    setInCorso(null);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    setMessaggio(
+      `Verifica rifatta, esito: ${esito.dati.esito}` +
+        (esito.dati.note ? ` — ${esito.dati.note}` : "") +
+        (esito.dati.esito === "ok"
+          ? ". L'accordo è ora in coda: carica la copia controfirmata a mano."
+          : ". Un accordo entra in coda solo con esito ok: controlla il documento o il modello caricato."),
+    );
+    router.refresh();
+  }
+
+  /** Manda al Titolare che chiede la copia firmata, per la controfirma a mano. */
+  async function inviaCopia(userId: string) {
+    setInCorso(`email:${userId}`);
+    setMessaggio(null);
+    const esito = await inviaAccordoFirmatoPerEmail(userId);
+    setInCorso(null);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    setMessaggio(
+      `Accordo firmato inviato a ${esito.dati.destinatario}: in allegato c'è il PDF da stampare, firmare e scansionare.`,
+    );
+    router.refresh();
+  }
+
+  if (accordi.length === 0 && daRivalutare.length === 0) {
     return (
       <section className="tt-card p-4 md:p-6">
         <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Accordi da approvare</h2>
         <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          Nessun accordo in attesa di approvazione manuale. ✅
+          Nessun accordo in attesa di approvazione e nessuna verifica da rifare. ✅
         </p>
       </section>
     );
@@ -98,6 +158,65 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
       </div>
 
       {messaggio && <p className="mt-3 text-sm text-slate-600">{messaggio}</p>}
+
+      {accordi.length === 0 && (
+        <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-500">
+          Nessun accordo con verifica superata in attesa di controfirma.
+        </p>
+      )}
+
+      {daRivalutare.length > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+          <p className="text-[13px] font-semibold text-amber-900">
+            Verifica IA non riuscita ({daRivalutare.length})
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Hanno caricato l&apos;accordo firmato, ma l&apos;esito del controllo automatico non
+            è &quot;ok&quot;: per questo non entrano nella coda qui sotto. Non serve
+            chiedere di ricaricare — il documento è già nel gestionale e integro, qui
+            si rifà il controllo. &quot;Mandami il PDF&quot; spedisce a te la copia firmata,
+            che serve per la controfirma a mano.
+          </p>
+          <div className="mt-3 space-y-2">
+            {daRivalutare.map((a) => (
+              <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{a.full_name ?? "—"}</p>
+                    <p className="text-xs text-slate-500">{a.email}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Caricato il{" "}
+                      {a.accordo_caricato_at
+                        ? new Date(a.accordo_caricato_at).toLocaleDateString("it-IT")
+                        : "—"}
+                    </p>
+                    <p className="mt-1 text-xs text-amber-800">
+                      <strong>IA: {a.accordo_verificato ?? "mai eseguita"}</strong>
+                      {a.accordo_verifica_note ? ` — ${a.accordo_verifica_note}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                    <button
+                      onClick={() => inviaCopia(a.id)}
+                      disabled={inCorso === `email:${a.id}`}
+                      className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      {inCorso === `email:${a.id}` ? "Invio…" : "Mandami il PDF"}
+                    </button>
+                    <button
+                      onClick={() => rivaluta(a.id)}
+                      disabled={inCorso === `ia:${a.id}`}
+                      className="tt-btn bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      {inCorso === `ia:${a.id}` ? "Controllo…" : "Rivaluta con l'IA"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 space-y-2">
         {accordi.map((a) => (
@@ -131,7 +250,7 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
                   </p>
                 )}
               </div>
-              <div>
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                 <input
                   ref={(el) => {
                     inputRefs.current[a.id] = el;
@@ -144,6 +263,13 @@ export default function AccordiDaApprovare({ accordi }: { accordi: RigaAccordoDa
                     if (file) void caricaControfirma(a.id, file);
                   }}
                 />
+                <button
+                  onClick={() => inviaCopia(a.id)}
+                  disabled={inCorso === `email:${a.id}`}
+                  className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {inCorso === `email:${a.id}` ? "Invio…" : "Mandami il PDF"}
+                </button>
                 <button
                   onClick={() => inputRefs.current[a.id]?.click()}
                   disabled={inCorso === a.id}

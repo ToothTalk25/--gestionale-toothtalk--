@@ -195,7 +195,7 @@ policy di UPDATE, quindi un upsert verrebbe respinto.
 
 ## 10. Stato e cose aperte
 
-Aggiornato al 16 settembre 2026.
+Aggiornato al 18 settembre 2026.
 
 1. **PEC**: credenziali presenti in `.env.local` (`PEC_USER`, `PEC_PASSWORD`,
    `PEC_MITTENTE`, `PEC_DESTINATARI`), host e limite già impostati su Poste.
@@ -218,6 +218,14 @@ Aggiornato al 16 settembre 2026.
    contratto. Password provvisoria consegnata a parte, non scritta qui: per
    rieseguire la prova `node scripts/_e2e_tecnico.mjs` la vuole in `.env.local`
    come `TECNICO_PASSWORD` (file escluso da git).
+
+7. **Verifica IA dell'accordo**: se il controllo automatico non riesce al
+   caricamento (o la chiave non era configurata sul server), l'accordo resta
+   invisibile nella coda di approvazione. Non si chiede alla persona di
+   ricaricare un documento che è già nel gestionale: dal Registro, in "Accordi
+   da approvare", si rifà il controllo sul file già caricato ("Rivaluta con
+   l'IA") e ci si fa mandare il PDF firmato per email ("Mandami il PDF"),
+   perché la controfirma si fa a mano su carta.
 
 ## 11. Il limite dichiarato
 

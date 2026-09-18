@@ -20,6 +20,7 @@ import SezioneLiberatorie, { type RigaLiberatoria } from "@/components/SezioneLi
 import CaricaModelloAccordo, { type RigaModelloAccordo } from "@/components/CaricaModelloAccordo";
 import AccordiDaApprovare, {
   type RigaAccordoDaApprovare,
+  type RigaAccordoDaRivalutare,
 } from "@/components/AccordiDaApprovare";
 import RinnoviDaApprovare, {
   type RigaRinnovoDaApprovare,
@@ -72,6 +73,7 @@ export default async function AdminPage() {
     { data: candidatiGrezzo },
     { data: richiesteRicarDich },
     { data: domande },
+    { data: accordiDaRivalutare },
   ] = await Promise.all([
     supabase
       .from("audit_log")
@@ -244,6 +246,22 @@ export default async function AdminPage() {
       )
       .order("creato_at", { ascending: false })
       .returns<RigaDomandaSupporto[]>(),
+    // Accordi caricati ma con esito IA diverso da 'ok' (o mai verificati,
+    // perché la chiave dell'IA non era configurata sul server): non entrano
+    // nella coda di approvazione, e da qui si rifà il controllo sul file già
+    // caricato — senza chiedere alla persona di ricaricarlo.
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, accordo_caricato_at, accordo_verificato, accordo_verifica_note")
+      .not("accordo_path", "is", null)
+      .eq("accordo_letto_confermato", true)
+      .eq("attivo", true)
+      .is("accordo_approvato_admin_at", null)
+      .or("accordo_verificato.is.null,accordo_verificato.neq.ok")
+      .neq("role", "admin")
+      .neq("role", "tecnico")
+      .order("accordo_caricato_at", { ascending: true })
+      .returns<RigaAccordoDaRivalutare[]>(),
   ]);
 
   // Accordi mandati via Gmail perché la PEC (Aruba) era bloccata al momento
@@ -458,10 +476,15 @@ export default async function AdminPage() {
             id: "accordi-da-approvare",
             etichetta: "Accordi da approvare",
             promemoria: {
-              cosa: "approvi MANUALMENTE l'accordo di chi l'ha già caricato, confermato la lettura e superato la verifica IA — è l'ultimo passaggio che sblocca l'accesso ai progetti.",
-              attenzione: "L'approvazione è irreversibile e vale come tua firma sul controllo. Se l'esito IA non è 'ok' il profilo non compare qui; se per qualsiasi motivo compare con esito diverso, controllalo con particolare attenzione prima di approvare.",
+              cosa: "approvi MANUALMENTE l'accordo di chi l'ha già caricato, confermato la lettura e superato la verifica IA — è l'ultimo passaggio che sblocca l'accesso ai progetti. Qui sotto trovi anche chi ha caricato ma non ha un esito IA \"ok\": da lì rifai il controllo sul documento già ricevuto (\"Rivaluta con l'IA\") oppure ti fai mandare per email il PDF firmato, che serve per la controfirma a mano.",
+              attenzione: "L'approvazione è irreversibile e vale come tua firma sul controllo. Se l'esito IA non è 'ok' il profilo non compare nella coda, ma solo nel blocco qui sotto: non si approva da lì. Chi è nel blocco non si sblocca finché il controllo non dà esito ok — e non serve chiedergli di ricaricare: il file è già nel gestionale.",
             },
-            contenuto: <AccordiDaApprovare accordi={accordiDaApprovare ?? []} />,
+            contenuto: (
+              <AccordiDaApprovare
+                accordi={accordiDaApprovare ?? []}
+                daRivalutare={accordiDaRivalutare ?? []}
+              />
+            ),
           },
           {
             id: "rinnovi-accordi",

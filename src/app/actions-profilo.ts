@@ -1012,6 +1012,127 @@ export async function revocaConsenso(tipo: "privacy" | "cookie"): Promise<Esito>
 }
 
 /**
+ * Il modello dell'accordo attivo è l'ULTIMA riga di modello_accordo: è il
+ * documento che i Collaboratori ricevono e firmano, quindi il termine di
+ * confronto della verifica IA. Ritorna null (senza lanciare) se non c'è o
+ * non è leggibile: chi chiama prosegue lo stesso e l'esito sarà
+ * 'non_valutato' con una nota esplicita — meglio un esito incerto che
+ * impedire il salvataggio di un accordo firmato.
+ */
+async function caricaModelloAttivo(): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const admin = supabaseAdmin();
+    const { data: modello } = await admin
+      .from("modello_accordo")
+      .select("storage_path")
+      .order("caricato_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ storage_path: string }>();
+    if (!modello) return null;
+
+    const { data: blob, error } = await admin.storage.from("finali").download(modello.storage_path);
+    if (error || !blob) return null;
+
+    return {
+      base64: Buffer.from(await blob.arrayBuffer()).toString("base64"),
+      mimeType: blob.type || "application/pdf",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Manda all'accesso globale il PDF di un accordo firmato, dalla casella del
+ * progetto, e ne lascia traccia nel registro. Una sola formulazione per
+ * tutti i casi in cui il documento viaggia per email invece che per PEC: il
+ * ripiego automatico quando la PEC non parte al caricamento (caricaAccordo)
+ * e la copia chiesta dal Titolare per la controfirma
+ * (inviaAccordoFirmatoPerEmail). Così quello che arriva è sempre lo stesso
+ * messaggio, non una variante che nessuno ha riletto.
+ *
+ * Best-effort per costruzione: non lancia mai e ritorna false se nessun
+ * amministratore è stato raggiunto, così chi chiama non deve proteggersi.
+ */
+async function inviaAccordoAgliAmministratori(opts: {
+  /** Chi figura come autore nel registro: il Collaboratore nel ripiego, il Titolare su richiesta. */
+  actorId: string;
+  actorRole: string;
+  /** Il profilo del Collaboratore a cui l'accordo appartiene. */
+  entityId: string;
+  buffer: Buffer;
+  nomeFile: string;
+  contentType?: string;
+  nome: string;
+  /**
+   * true SOLO quando la PEC con data certa è davvero caduta: l'avviso in
+   * fondo al messaggio lo dichiara, e dichiararlo quando non è vero
+   * screditerebbe il registro. La copia chiesta dall'admin non lo include.
+   */
+  avvisoDataCerta: boolean;
+  /** Riga di registro: distingue il ripiego automatico dalla copia richiesta. */
+  azione: string;
+  motivo: string;
+}): Promise<boolean> {
+  let recapito = false;
+  try {
+    const { data: amministratori } = await supabaseAdmin()
+      .from("profiles")
+      .select("email")
+      .eq("role", "admin")
+      .eq("attivo", true);
+    for (const a of amministratori ?? []) {
+      if (!a.email) continue;
+      const inviata = await inviaEmailGmail({
+        destinatario: a.email,
+        oggetto: `[ToothTalk] Accordo firmato da verificare — ${opts.nome}`,
+        testo: [
+          "",
+          `${opts.nome} ha caricato il proprio accordo editoriale firmato.`,
+          "",
+          "In allegato il PDF firmato.",
+          "",
+          ...(opts.avvisoDataCerta
+            ? [
+                "ATTENZIONE: la PEC con data certa NON è partita (Aruba ha bloccato",
+                "l'invio): va rispedita quando Aruba tornerà a funzionare, per dare",
+                "al documento la sua data certa.",
+                "",
+              ]
+            : []),
+          "Messaggio generato automaticamente dal gestionale ToothTalk.",
+          "",
+        ].join("\n"),
+        allegati: [
+          {
+            filename: opts.nomeFile,
+            content: opts.buffer,
+            contentType: opts.contentType || "application/pdf",
+          },
+        ],
+      });
+      recapito = recapito || inviata;
+    }
+  } catch {
+    // best-effort: se anche il ripiego fallisce resta il messaggio d'errore
+  }
+
+  if (recapito) {
+    await ignora(
+      supabaseAdmin().from("audit_log").insert({
+        actor: opts.actorId,
+        actor_role: opts.actorRole,
+        action: opts.azione,
+        entity_type: "profile",
+        entity_id: opts.entityId,
+        meta: { motivo: opts.motivo, utente: opts.nome },
+      }),
+    );
+  }
+  return recapito;
+}
+
+/**
  * Registra l'accordo editoriale caricato e lo spedisce subito via PEC a chi
  * ha accesso globale, con copia al partecipante sulla sua casella. È il
  * meccanismo che costruisce il registro dei partecipanti per sede.
@@ -1148,39 +1269,19 @@ export async function caricaAccordo(
   // La verifica confronta il documento col MODELLO attivo (ultima riga di
   // modello_accordo): senza un modello di riferimento l'IA non può fare il
   // confronto e restituisce 'non_valutato'.
-  let modelloBase64: string | undefined;
-  let modelloMime: string | undefined;
-  try {
-    const { data: modello } = await supabase
-      .from("modello_accordo")
-      .select("storage_path")
-      .order("caricato_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ storage_path: string }>();
-    if (modello) {
-      const { data: blobModello, error: eMod } = await supabase.storage
-        .from("finali")
-        .download(modello.storage_path);
-      if (!eMod && blobModello) {
-        modelloBase64 = Buffer.from(await blobModello.arrayBuffer()).toString("base64");
-        modelloMime = blobModello.type || "application/pdf";
-      }
-    }
-  } catch {
-    // se il recupero del modello fallisce, si procede senza confronto
-  }
+  const modello = await caricaModelloAttivo();
 
   const verifica = await verificaAccordoFirmato({
     pdfBase64: buffer.toString("base64"),
     mimeType: blob.type || "application/pdf",
-    modelloBase64,
-    modelloMimeType: modelloMime,
+    modelloBase64: modello?.base64,
+    modelloMimeType: modello?.mimeType,
   });
 
   // Se non c'era un modello di riferimento, l'esito 'non_valutato' con nota
   // esplicita: l'admin vedrà che serve caricare il modello prima.
   const nota =
-    verifica.esito === "non_valutato" && !modelloBase64
+    verifica.esito === "non_valutato" && !modello
       ? "Nessun modello di riferimento caricato: carica prima il modello dell'accordo."
       : verifica.note;
 
@@ -1256,69 +1357,26 @@ export async function caricaAccordo(
     revalidatePath("/profilo");
     return { ok: true, dati: { messageId, verifica } };
   } catch (e) {
-    // La PEC non è partita (Aruba blocca gli invii). Il documento firmato deve
-    // arrivare comunque all'accesso globale: altrimenti nessuno sa che c'è un
-    // accordo da verificare — è successo davvero, con due accordi caricati e
-    // nessun avviso. Stesso ripiego usato all'approvazione: PDF allegato via
-    // Gmail del progetto e una riga nel registro. La data certa resta da
-    // ottenere quando la PEC tornerà a funzionare.
-    const nomeFileDaArchivio = storagePath.split("/").pop() ?? "accordo-firmato.pdf";
-    let recapito = false;
-    try {
-      const { data: fileDaArchivio } = await supabaseAdmin().storage
-        .from("profili")
-        .download(storagePath);
-      if (fileDaArchivio) {
-        const bytes = Buffer.from(await fileDaArchivio.arrayBuffer());
-        const { data: amministratori } = await supabaseAdmin()
-          .from("profiles")
-          .select("email")
-          .eq("role", "admin")
-          .eq("attivo", true);
-        for (const a of amministratori ?? []) {
-          if (!a.email) continue;
-          const inviata = await inviaEmailGmail({
-            destinatario: a.email,
-            oggetto: `[ToothTalk] Accordo firmato da verificare — ${nome}`,
-            testo: [
-              "",
-              `${nome} ha caricato il proprio accordo editoriale firmato.`,
-              "",
-              "In allegato il PDF firmato.",
-              "",
-              "ATTENZIONE: la PEC con data certa NON è partita (Aruba ha bloccato",
-              "l'invio): va rispedita quando Aruba tornerà a funzionare, per dare",
-              "al documento la sua data certa.",
-              "",
-              "Messaggio generato automaticamente dal gestionale ToothTalk.",
-              "",
-            ].join("\n"),
-            allegati: [
-              {
-                filename: nomeFileDaArchivio,
-                content: bytes,
-                contentType: fileDaArchivio.type || "application/pdf",
-              },
-            ],
-          });
-          recapito = recapito || inviata;
-        }
-      }
-    } catch {
-      // best-effort: se anche il ripiego fallisce resta il messaggio d'errore
-    }
-    if (recapito) {
-      await ignora(
-        supabaseAdmin().from("audit_log").insert({
-          actor: profile.id,
-          actor_role: profile.role,
-          action: "accordo_inviato_gmail_recupero",
-          entity_type: "profile",
-          entity_id: profile.id,
-          meta: { motivo: "PEC non partita al caricamento dell'accordo" },
-        }),
-      );
-    }
+    // La PEC non è partita (Aruba blocca gli invii). Il documento firmato
+    // deve arrivare comunque all'accesso globale: altrimenti nessuno sa che
+    // c'è un accordo da verificare — è successo davvero, con due accordi
+    // caricati e nessun avviso. Il ripiego (PDF via Gmail del progetto e una
+    // riga nel registro) vive in inviaAccordoAgliAmministratori, perché è lo
+    // stesso messaggio della copia chiesta dall'admin; qui l'avviso sulla
+    // data certa ci va, perché la PEC è davvero caduta. La data certa resta
+    // da ottenere quando la PEC tornerà a funzionare.
+    const recapito = await inviaAccordoAgliAmministratori({
+      actorId: profile.id,
+      actorRole: profile.role,
+      entityId: profile.id,
+      buffer,
+      nomeFile: storagePath.split("/").pop() ?? "accordo-firmato.pdf",
+      contentType: blob.type || "application/pdf",
+      nome,
+      avvisoDataCerta: true,
+      azione: "accordo_inviato_gmail_recupero",
+      motivo: "PEC non partita al caricamento dell'accordo",
+    });
     return errore(
       recapito
         ? `Accordo salvato e inviato per email, ma la PEC non è partita: ${e instanceof Error ? e.message : "errore di spedizione"}`
@@ -1326,6 +1384,162 @@ export async function caricaAccordo(
     );
   }
   }
+
+/**
+ * Rifa la verifica IA su un accordo GIÀ caricato (solo accesso globale).
+ *
+ * Esiste perché la verifica può non essere riuscita al momento del
+ * caricamento: è successo davvero, con la chiave dell'IA non configurata sul
+ * server — due accordi veri finiti in "non_valutato" e invisibili nella coda
+ * di approvazione. Il file però è già nello storage e integro: mancava solo
+ * il confronto col modello. Senza questa azione l'unica uscita sarebbe
+ * chiedere al Collaboratore di ricaricare un documento che è già a posto.
+ *
+ * Rilegge il PDF dallo storage (mai un file indicato dal client) e riscrive
+ * l'esito. Non approva nulla: un esito 'ok' fa solo comparire l'accordo in
+ * "Accordi da approvare", dove resta la controfirma manuale.
+ */
+export async function rivalutaAccordoConIA(
+  userId: string,
+): Promise<Esito<{ esito: string; note: string }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
+
+  // Scrive col service_role: i campi accordo_* sono protetti dal trigger
+  // fn_protect_profile (0103) — solo admin/service_role possono scriverli.
+  const supabase = supabaseAdmin();
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, accordo_path, accordo_verificato, accordo_approvato_admin_at")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      email: string;
+      accordo_path: string | null;
+      accordo_verificato: string | null;
+      accordo_approvato_admin_at: string | null;
+    }>();
+  if (!target) return errore("Utente non trovato.");
+  if (!target.accordo_path) return errore("Questo partecipante non ha ancora caricato l'accordo.");
+  if (target.accordo_approvato_admin_at) {
+    return errore("Accordo già approvato: la verifica non serve più.");
+  }
+
+  const { data: blob, error: eBlob } = await supabase.storage
+    .from("profili")
+    .download(target.accordo_path);
+  if (eBlob || !blob) return errore("File non leggibile dallo storage.");
+
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const nome = target.full_name ?? target.email;
+  const modello = await caricaModelloAttivo();
+
+  const verifica = await verificaAccordoFirmato({
+    pdfBase64: buffer.toString("base64"),
+    mimeType: blob.type || "application/pdf",
+    modelloBase64: modello?.base64,
+    modelloMimeType: modello?.mimeType,
+  });
+  const nota =
+    verifica.esito === "non_valutato" && !modello
+      ? "Nessun modello di riferimento caricato: carica prima il modello dell'accordo."
+      : verifica.note;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      accordo_verificato: verifica.esito,
+      accordo_verifica_note: nota || null,
+      accordo_verificato_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  // Traccia la rivalutazione: un esito riscritto senza riga nel registro
+  // sarebbe indistinguibile da un esito mai cambiato, proprio dove invece
+  // serve capire cosa è successo a quel documento.
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "rivalutazione_ia_accordo",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: {
+        utente: nome,
+        esito_precedente: target.accordo_verificato,
+        esito: verifica.esito,
+        note: nota,
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { esito: verifica.esito, note: nota } };
+}
+
+/**
+ * Manda al Titolare, sulla propria casella, la copia dell'accordo firmato da
+ * un Collaboratore: la stessa che parte da sola quando la PEC non riesce
+ * (condivide la formulazione, vedi inviaAccordoAgliAmministratori). Serve
+ * per la controfirma a mano — il PDF va stampato, firmato e scansionato — e
+ * senza questa copia l'unica via era chiedere di nuovo il file alla persona.
+ *
+ * Il destinatario è SEMPRE chi chiede, mai un indirizzo indicato dal client:
+ * questa azione non è un canale per spedire documenti altrui dove capita.
+ * Il messaggio non dichiara un guasto della PEC che non c'è: l'avviso sulla
+ * data certa resta nel solo ripiego automatico, dove la PEC è davvero
+ * caduta.
+ */
+export async function inviaAccordoFirmatoPerEmail(
+  userId: string,
+): Promise<Esito<{ destinatario: string }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
+
+  const supabase = supabaseAdmin();
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, accordo_path")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      email: string;
+      accordo_path: string | null;
+    }>();
+  if (!target) return errore("Utente non trovato.");
+  if (!target.accordo_path) return errore("Questo partecipante non ha ancora caricato l'accordo.");
+
+  const { data: blob, error: eBlob } = await supabase.storage
+    .from("profili")
+    .download(target.accordo_path);
+  if (eBlob || !blob) return errore("File non leggibile dallo storage.");
+
+  const nome = target.full_name ?? target.email;
+  const inviata = await inviaAccordoAgliAmministratori({
+    actorId: profile.id,
+    actorRole: profile.role,
+    entityId: target.id,
+    buffer: Buffer.from(await blob.arrayBuffer()),
+    nomeFile: target.accordo_path.split("/").pop() ?? "accordo-firmato.pdf",
+    contentType: blob.type || "application/pdf",
+    nome,
+    avvisoDataCerta: false,
+    azione: "accordo_inviato_per_email",
+    motivo: "copia richiesta dall'accesso globale per la controfirma",
+  });
+  if (!inviata) {
+    return errore(
+      "Invio non riuscito: sul server mancano o non funzionano le credenziali email (MAIL_USER/MAIL_PASS).",
+    );
+  }
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { destinatario: profile.email } };
+}
 
 /**
  * Registra il documento di rinnovo dell'accordo editoriale (Art. 9.1):
