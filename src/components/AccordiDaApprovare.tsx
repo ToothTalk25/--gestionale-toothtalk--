@@ -325,7 +325,11 @@ export default function AccordiDaApprovare({
           <div className="mt-3 space-y-2">
             {daRivalutare.map((a) => (
               <div key={a.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                {/* Informazione sopra, pulsanti sotto — sempre, per ogni riga:
+                    con cinque pulsanti affiancati il testo restava schiacciato in
+                    una striscia stretta a sinistra, e la loro posizione cambiava
+                    da riga a riga a seconda di quanto era lungo il testo. */}
+                <div className="space-y-3">
                   <div className="min-w-0">
                     <p className="font-medium">{a.full_name ?? "—"}</p>
                     <p className="text-xs text-slate-500">{a.email}</p>
@@ -347,7 +351,7 @@ export default function AccordiDaApprovare({
                       </p>
                     )}
                   </div>
-                  <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:shrink-0 sm:justify-end">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       onClick={() => inviaCopia(a.id)}
                       disabled={inCorso === `email:${a.id}`}
@@ -477,7 +481,8 @@ export default function AccordiDaApprovare({
       <div className="mt-3 space-y-2">
         {accordi.map((a) => (
           <div key={a.id} className="rounded-lg border border-slate-200 p-3 text-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            {/* Come sopra: informazione sopra, pulsanti sotto, per ogni riga. */}
+            <div className="space-y-3">
               <div className="min-w-0">
                 <p className="font-medium">{a.full_name ?? "—"}</p>
                 <p className="text-xs text-slate-500">{a.email}</p>
@@ -513,7 +518,7 @@ export default function AccordiDaApprovare({
                   </p>
                 )}
               </div>
-              <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:shrink-0 sm:justify-end">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <input
                   ref={(el) => {
                     inputRefs.current[a.id] = el;
