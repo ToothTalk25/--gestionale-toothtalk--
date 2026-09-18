@@ -848,6 +848,22 @@ function sanifica(nome: string): string {
   return nome.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
 }
 
+/**
+ * Nome leggibile di un file preso dallo storage.
+ *
+ * Lo storage antepone a ogni file un uuid per evitare le collisioni
+ * (`<uuid>__<nome originale>`): serve lì dentro, ma non deve arrivare a chi
+ * riceve il documento — il Collaboratore che apre
+ * "d25e5363-b74b-413c-a64b-8816866db5fb__1-accordo-editoriale.pdf" vede
+ * un'impronta al posto del titolo (segnalato dall'accesso globale, che se lo
+ * è trovato anche negli allegati). Nella cartella Drive, invece, il documento
+ * archiviato si chiama già "Nome Cognome.pdf".
+ */
+function nomeFileUmano(path: string): string {
+  const nome = path.split("/").pop() ?? "documento.pdf";
+  return nome.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}__/i, "");
+}
+
 type EsitoUpload = Esito<{ bucket: string; path: string; signedUrl: string; token: string }>;
 
 /**
@@ -1217,7 +1233,7 @@ export async function caricaAccordo(
     return errore("File non leggibile dallo storage.");
   }
 
-  const nomeFile = storagePath.split("/").pop() ?? "accordo.pdf";
+  const nomeFile = nomeFileUmano(storagePath);
   const buffer = Buffer.from(await blob.arrayBuffer());
   const nome = profile.full_name ?? profile.email;
 
@@ -1370,7 +1386,7 @@ export async function caricaAccordo(
       actorRole: profile.role,
       entityId: profile.id,
       buffer,
-      nomeFile: storagePath.split("/").pop() ?? "accordo-firmato.pdf",
+      nomeFile: nomeFileUmano(storagePath),
       contentType: blob.type || "application/pdf",
       nome,
       avvisoDataCerta: true,
@@ -1613,7 +1629,7 @@ export async function inviaAccordoFirmatoPerEmail(
     actorRole: profile.role,
     entityId: target.id,
     buffer: Buffer.from(await blob.arrayBuffer()),
-    nomeFile: target.accordo_path.split("/").pop() ?? "accordo-firmato.pdf",
+    nomeFile: nomeFileUmano(target.accordo_path),
     contentType: blob.type || "application/pdf",
     nome,
     avvisoDataCerta: false,
@@ -1803,7 +1819,7 @@ export async function approvaRegistrazione(
     .download(modello.storage_path);
   if (eBlob || !blobModello) return errore("Impossibile leggere il modello dell'accordo.");
   const bufferModello = Buffer.from(await blobModello.arrayBuffer());
-  const nomeModello = modello.storage_path.split("/").pop() ?? "accordo-editoriale.pdf";
+  const nomeModello = nomeFileUmano(modello.storage_path);
   const nome = richiedente.full_name ?? richiedente.email;
 
   // Il Protocollo Operativo viene allegato automaticamente all'email con
@@ -1995,7 +2011,7 @@ export async function ricertificaAccordoPec(userId: string): Promise<Esito<{ mes
     .download(modello.storage_path);
   if (eBlob || !blobModello) return errore("Impossibile leggere il modello dell'accordo.");
   const bufferModello = Buffer.from(await blobModello.arrayBuffer());
-  const nomeModello = modello.storage_path.split("/").pop() ?? "accordo-editoriale.pdf";
+  const nomeModello = nomeFileUmano(modello.storage_path);
   const nome = richiedente.full_name ?? richiedente.email;
 
   let protocolloPdf: Buffer;
@@ -2381,7 +2397,7 @@ export async function caricaControfirmaAccordo(
   const { data: blob, error: eBlob } = await supabase.storage.from("finali").download(storagePath);
   if (eBlob || !blob) return errore("File non leggibile dallo storage.");
 
-  const nomeFile = storagePath.split("/").pop() ?? "accordo-controfirmato.pdf";
+  const nomeFile = nomeFileUmano(storagePath);
   const buffer = Buffer.from(await blob.arrayBuffer());
   const nome = target.full_name ?? target.email;
 

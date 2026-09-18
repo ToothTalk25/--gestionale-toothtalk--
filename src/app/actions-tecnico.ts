@@ -32,6 +32,12 @@ function sanifica(nome: string): string {
   return nome.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+/** Toglie il prefisso uuid__ che lo storage antepone: è interno, non deve arrivare a chi riceve il documento. */
+function nomeFileUmano(path: string): string {
+  const nome = path.split("/").pop() ?? "documento.pdf";
+  return nome.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}__/i, "");
+}
+
 /** Stessa formula di scadenzaTraMesi in actions-profilo.ts (Art. 9 dell'Accordo). */
 function scadenzaTraMesi(mesi: number, adesso = new Date()): string {
   const giorno = adesso.getUTCDate();
@@ -369,7 +375,7 @@ export async function approvaRinnovoTecnico(
   // Impronta ricalcolata ORA sul file davvero in storage: mai fidarsi di
   // quella salvata al momento dell'upload (stesso principio di caricaAccordo).
   const sha256 = createHash("sha256").update(buffer).digest("hex");
-  const nomeFile = target.rinnovo_path.split("/").pop() ?? "rinnovo-tecnico.pdf";
+  const nomeFile = nomeFileUmano(target.rinnovo_path);
 
   const ora = new Date().toISOString();
   const nuovaScadenza = scadenzaTraMesi(6);
