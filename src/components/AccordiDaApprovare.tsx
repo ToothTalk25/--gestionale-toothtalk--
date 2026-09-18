@@ -9,6 +9,7 @@ import {
   inviaAccordoFirmatoPerEmail,
   preparaUploadControfirma,
   rivalutaAccordoConIA,
+  verificaManualeAccordo,
 } from "@/app/actions-profilo";
 
 export type RigaAccordoDaApprovare = {
@@ -57,6 +58,8 @@ export default function AccordiDaApprovare({
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [inCorso, setInCorso] = useState<string | null>(null);
   const [messaggio, setMessaggio] = useState<string | null>(null);
+  const [inVerificaManuale, setInVerificaManuale] = useState<string | null>(null);
+  const [motivoVerifica, setMotivoVerifica] = useState("");
 
   async function caricaControfirma(userId: string, file: File) {
     setInCorso(userId);
@@ -125,6 +128,27 @@ export default function AccordiDaApprovare({
     }
     setMessaggio(
       `Accordo firmato inviato a ${esito.dati.destinatario}: in allegato c'è il PDF da stampare, firmare e scansionare.`,
+    );
+    router.refresh();
+  }
+
+  /**
+   * Il controllo a mano dell'accesso globale, quando il controllo automatico
+   * non è disponibile: il motivo è obbligatorio e resta nel registro.
+   */
+  async function confermaVerificaManuale(userId: string) {
+    setInCorso(`mano:${userId}`);
+    setMessaggio(null);
+    const esito = await verificaManualeAccordo(userId, motivoVerifica);
+    setInCorso(null);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    setInVerificaManuale(null);
+    setMotivoVerifica("");
+    setMessaggio(
+      "Verifica a mano registrata: l'accordo è ora in coda. Il motivo resta scritto nel Registro insieme al tuo nome.",
     );
     router.refresh();
   }
@@ -210,8 +234,49 @@ export default function AccordiDaApprovare({
                     >
                       {inCorso === `ia:${a.id}` ? "Controllo…" : "Rivaluta con l'IA"}
                     </button>
+                    <button
+                      onClick={() => {
+                        setInVerificaManuale(a.id);
+                        setMotivoVerifica("");
+                      }}
+                      disabled={inCorso === `mano:${a.id}`}
+                      className="tt-btn border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-50 disabled:opacity-50"
+                    >
+                      Verifica tu, a mano
+                    </button>
                   </div>
                 </div>
+
+                {inVerificaManuale === a.id && (
+                  <div className="mt-3 rounded-lg bg-amber-50 p-3">
+                    <label className="text-xs font-medium text-amber-900">
+                      Che cosa hai controllato nel PDF di {a.full_name ?? a.email}? Resta nel
+                      Registro come tua firma sul controllo — non è un automatismo.
+                    </label>
+                    <textarea
+                      value={motivoVerifica}
+                      onChange={(e) => setMotivoVerifica(e.target.value)}
+                      rows={2}
+                      className="mt-1.5 w-full rounded-lg border border-amber-200 px-3 py-2 text-sm"
+                      placeholder="es. confrontato clausola per clausola col modello, firma manoscritta presente in fondo a pagina 4…"
+                    />
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        onClick={() => setInVerificaManuale(null)}
+                        className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        onClick={() => confermaVerificaManuale(a.id)}
+                        disabled={inCorso === `mano:${a.id}`}
+                        className="tt-btn bg-amber-700 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
+                      >
+                        {inCorso === `mano:${a.id}` ? "Registro…" : "Registra la mia verifica"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

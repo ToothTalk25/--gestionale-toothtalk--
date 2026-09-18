@@ -226,6 +226,13 @@ Aggiornato al 18 settembre 2026.
    da approvare", si rifà il controllo sul file già caricato ("Rivaluta con
    l'IA") e ci si fa mandare il PDF firmato per email ("Mandami il PDF"),
    perché la controfirma si fa a mano su carta.
+   Il modello però è un servizio esterno: risponde 429/500/503 quando è
+   sovraccarico e con due PDF al seguito può superare il tempo concesso alla
+   funzione (504). Per questo la verifica non è mai l'unica via: l'accesso
+   globale può registrare la **propria** verifica a mano, con il motivo
+   obbligatorio che resta nel registro (`verifica_manuale_accordo`). La
+   decisione è umana per costruzione — l'informativa privacy lo dichiara già:
+   l'esito automatico non è mai la decisione.
 
 ## 11. Il limite dichiarato
 

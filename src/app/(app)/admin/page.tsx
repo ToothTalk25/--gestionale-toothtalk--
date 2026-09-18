@@ -485,8 +485,8 @@ export default async function AdminPage() {
             id: "accordi-da-approvare",
             etichetta: "Accordi da approvare",
             promemoria: {
-              cosa: "approvi MANUALMENTE l'accordo di chi l'ha già caricato, confermato la lettura e superato la verifica IA — è l'ultimo passaggio che sblocca l'accesso ai progetti. Qui sotto trovi anche chi ha caricato ma non ha un esito IA \"ok\": da lì rifai il controllo sul documento già ricevuto (\"Rivaluta con l'IA\") oppure ti fai mandare per email il PDF firmato, che serve per la controfirma a mano.",
-              attenzione: "L'approvazione è irreversibile e vale come tua firma sul controllo. Se l'esito IA non è 'ok' il profilo non compare nella coda, ma solo nel blocco qui sotto: non si approva da lì. Chi è nel blocco non si sblocca finché il controllo non dà esito ok — e non serve chiedergli di ricaricare: il file è già nel gestionale.",
+              cosa: "approvi MANUALMENTE l'accordo di chi l'ha già caricato, confermato la lettura e superato la verifica IA — è l'ultimo passaggio che sblocca l'accesso ai progetti. Qui sotto trovi anche chi ha caricato ma non ha un esito IA \"ok\": da lì rifai il controllo sul documento già ricevuto (\"Rivaluta con l'IA\"), ti fai mandare per email il PDF firmato (serve per la controfirma a mano) oppure registri la tua verifica a mano, scrivendo che cosa hai controllato.",
+              attenzione: "L'approvazione è irreversibile e vale come tua firma sul controllo. Se l'esito IA non è 'ok' il profilo non compare nella coda, ma solo nel blocco qui sotto: non si approva da lì. La verifica a mano è un controllo TUO di persona, non un automatismo: il motivo lo scrivi sempre e resta nel Registro insieme al tuo nome. Non serve mai chiedere alla persona di ricaricare: il file è già nel gestionale.",
             },
             contenuto: (
               <AccordiDaApprovare

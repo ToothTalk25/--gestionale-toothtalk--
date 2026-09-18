@@ -1481,6 +1481,93 @@ export async function rivalutaAccordoConIA(
 }
 
 /**
+ * L'accesso globale registra la PROPRIA verifica dell'accordo, quando il
+ * controllo automatico non ha potuto valutarlo (modello sovraccarico, errore
+ * di rete, servizio non raggiungibile) o quando resta il dubbio.
+ *
+ * Perché esiste: l'esito dell'IA non è mai la decisione — lo dice la stessa
+ * informativa privacy — la decisione è umana, e la firma sul controllo è di
+ * chi ha accesso globale. Senza questa via, un servizio esterno sovraccarico
+ * bloccherebbe l'ingresso di persone vere con un documento già perfetto.
+ *
+ * Il motivo è OBBLIGATORIO e resta scritto, insieme all'esito automatico
+ * mancato: la nota deve spiegare da sola perché quella riga è "ok" senza
+ * essere passata dall'IA, altrimenti il primo che la legge più tardi pensa
+ * a un controllo automatico che non c'è stato.
+ */
+export async function verificaManualeAccordo(
+  userId: string,
+  motivoGrezzo: string,
+): Promise<Esito<{ esito: string; note: string }>> {
+  const { isAdmin, profile } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
+
+  const motivo = motivoGrezzo.trim();
+  if (motivo.length < 10) {
+    return errore(
+      "Scrivi che cosa hai controllato (almeno qualche parola): resta nel registro come tua firma sul controllo.",
+    );
+  }
+
+  // Scrive col service_role: i campi accordo_* sono protetti dal trigger
+  // fn_protect_profile (0103) — solo admin/service_role possono scriverli.
+  const supabase = supabaseAdmin();
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, accordo_path, accordo_verificato, accordo_approvato_admin_at")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      email: string;
+      accordo_path: string | null;
+      accordo_verificato: string | null;
+      accordo_approvato_admin_at: string | null;
+    }>();
+  if (!target) return errore("Utente non trovato.");
+  if (!target.accordo_path) return errore("Questo partecipante non ha ancora caricato l'accordo.");
+  if (target.accordo_approvato_admin_at) {
+    return errore("Accordo già approvato: la verifica non serve più.");
+  }
+
+  const nome = target.full_name ?? target.email;
+  const nota =
+    `Verifica a mano dell'accesso globale: ${motivo}. ` +
+    `(Controllo automatico non disponibile: ${target.accordo_verificato ?? "mai eseguito"}.)`;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      accordo_verificato: "ok",
+      accordo_verifica_note: nota,
+      accordo_verificato_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+  if (error) return errore(error.message);
+
+  // Questa riga è più importante di tutte le altre: dice che l'accesso
+  // globale ha controllato il documento di persona, e con quale motivo.
+  await ignora(
+    supabaseAdmin().from("audit_log").insert({
+      actor: profile.id,
+      actor_role: profile.role,
+      action: "verifica_manuale_accordo",
+      entity_type: "profile",
+      entity_id: userId,
+      meta: {
+        utente: nome,
+        motivo,
+        esito_automatico_mancato: target.accordo_verificato,
+      },
+    }),
+  );
+
+  revalidatePath("/admin");
+  return { ok: true, dati: { esito: "ok", note: nota } };
+}
+
+/**
  * Manda al Titolare, sulla propria casella, la copia dell'accordo firmato da
  * un Collaboratore: la stessa che parte da sola quando la PEC non riesce
  * (condivide la formulazione, vedi inviaAccordoAgliAmministratori). Serve
