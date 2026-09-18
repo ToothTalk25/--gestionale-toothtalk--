@@ -7,6 +7,13 @@
  * Mostra: tabelle public con RLS disattivato o senza policy (default deny),
  * il riepilogo delle policy per tabella, i bucket storage e le policy
  * critiche (profiles, audit_log, consensi, memberships, tasks, inviti).
+ *
+ * Dalla migrazione al piano Pro mostra anche lo SPAZIO usato (storage per
+ * bucket e dimensione del database), le chiavi esterne senza indice e le
+ * estensioni utili disponibili ma non attive: sono i tre numeri che dicono se
+ * c'è qualcosa da cambiare ora che i limiti del piano gratuito non
+ * costringono più.
+ *
  * Legge SUPABASE_DB_URL da .env.local. Solo lettura.
  */
 import pg from "pg";
@@ -75,6 +82,46 @@ for (const r of r6.rows) {
   if (r.qual) console.log(`  using: ${r.qual}`);
   if (r.check_ok) console.log(`  check: ${r.check_ok}`);
 }
+
+console.log("\n=== Spazio usato (storage per bucket, database) ===");
+const r7 = await db.query(
+  `select bucket_id, count(*)::int as oggetti,
+          pg_size_pretty(sum(coalesce((metadata->>'size')::bigint, 0))) as occupato
+     from storage.objects group by 1
+    order by sum(coalesce((metadata->>'size')::bigint, 0)) desc nulls last`,
+);
+if (r7.rows.length === 0) console.log("(nessun oggetto)");
+for (const r of r7.rows) console.log(`${r.bucket_id}: ${r.oggetti} oggetti, ${r.occupato}`);
+const r8 = await db.query(`select pg_size_pretty(pg_database_size(current_database())) as db`);
+console.log(`database: ${r8.rows[0].db}`);
+
+// Le chiavi esterne senza indice sono un'informazione di prestazione, non di
+// sicurezza: a queste dimensioni (database di pochi MB) non si sentono. Si
+// guardano quando una tabella cresce molto o una query diventa lenta.
+console.log("\n=== Chiavi esterne senza indice ===");
+const r9 = await db.query(
+  `select c.conrelid::regclass as tabella, a.attname as colonna
+     from pg_constraint c
+     join unnest(c.conkey) as k(attnum) on true
+     join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum
+    where c.contype = 'f' and c.connamespace = 'public'::regnamespace
+      and not exists (select 1 from pg_index i where i.indrelid = c.conrelid and k.attnum = any(i.indkey))
+    order by 1, 2`,
+);
+console.log(
+  r9.rows.length === 0
+    ? "(nessuna)"
+    : `${r9.rows.length}: ` + r9.rows.map((r) => `${r.tabella}.${r.colonna}`).join(", "),
+);
+
+console.log("\n=== Estensioni utili disponibili ma non attive ===");
+const r10 = await db.query(
+  `select name from pg_available_extensions
+    where name in ('pg_cron', 'pgaudit')
+      and not exists (select 1 from pg_extension e where e.extname = name)
+    order by 1`,
+);
+console.log(r10.rows.length === 0 ? "(nessuna)" : r10.rows.map((r) => r.name).join(", "));
 
 await db.end();
 
