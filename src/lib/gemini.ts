@@ -19,16 +19,24 @@ import "server-only";
  * la migrazione che ha rimosso il relativo blocco al sigillo.
  */
 
-const MODELLO = "gemini-flash-latest";
+/**
+ * Modelli usati, in ordine.
+ *
+ * Il primo è un modello STABILE, non l'alias "gemini-flash-latest": l'alias
+ * viene ricambiato a ogni rilascio e finisce per puntare a un modello appena
+ * uscito, cioè a quello con più coda di tutti. È la causa reale del "This
+ * model is currently experiencing high demand" visto in produzione il 18
+ * settembre 2026 — il giorno dopo il rilascio di Gemini 3.8, a cui l'alias
+ * era stato agganciato. Serve leggere due PDF e confrontare clausole: un
+ * modello flash recente è la scelta giusta, uno "lite" no (costerebbe meno ma
+ * questa non è una richiesta banale).
+ * Il secondo resta come ripiego se il primo rifiuta.
+ */
+const MODELLI = ["gemini-3.5-flash", "gemini-3.6-flash"];
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
-/**
- * Attese fra un tentativo e il successivo (ms), quando Gemini risponde che è
- * sovraccarico. Non sono un backoff elegante: sono la misura del caso reale —
- * il modello risponde "high demand, try again later" per pochi secondi, e la
- * riprova dopo 2 e 5 secondi quasi sempre passa.
- */
-const ATTESE_RIPROVA = [2000, 5000];
+/** Attesa prima di ritentare lo stesso modello (ms): il caso tipico è una coda di pochi secondi. */
+const ATTESE_RIPROVA = [2000];
 
 function apiKey(): string | null {
   return process.env.GEMINI_API_KEY || null;
@@ -62,53 +70,63 @@ async function genera(prompt: string, parts: GeminiPart[]): Promise<string> {
 
   let ultimoErrore: Error | null = null;
 
-  for (let tentativo = 0; tentativo <= ATTESE_RIPROVA.length; tentativo++) {
-    if (tentativo > 0) {
-      await new Promise((r) => setTimeout(r, ATTESE_RIPROVA[tentativo - 1]));
-    }
+  for (let i = 0; i < MODELLI.length; i++) {
+    const modello = MODELLI[i];
+    // Un tentativo per modello; sul primo anche una riprova ravvicinata.
+    const tentativi = i === 0 ? ATTESE_RIPROVA.length + 1 : 1;
 
-    // Un guasto di rete e un errore HTTP si trattano allo stesso modo: anche
-    // il primo può essere transitorio, e per chi chiama non cambia nulla.
-    let esito: { ok: boolean; status: number; testo: string; errore: string | null };
-    try {
-      const res = await fetch(
-        `${BASE_URL}/models/${MODELLO}:generateContent?key=${key}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }, ...parts] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 1024 },
-          }),
-        },
+    for (let tentativo = 0; tentativo < tentativi; tentativo++) {
+      if (tentativo > 0) {
+        await new Promise((r) => setTimeout(r, ATTESE_RIPROVA[tentativo - 1]));
+      }
+
+      // Un guasto di rete e un errore HTTP si trattano allo stesso modo: anche
+      // il primo può essere transitorio, e per chi chiama non cambia nulla.
+      let esito: { ok: boolean; status: number; testo: string; errore: string | null };
+      try {
+        const res = await fetch(
+          `${BASE_URL}/models/${modello}:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }, ...parts] }],
+              generationConfig: { temperature: 0, maxOutputTokens: 1024 },
+            }),
+          },
+        );
+
+        const data = (await res.json()) as {
+          error?: { message?: string };
+          candidates?: { content?: { parts?: { text?: string }[] } }[];
+        };
+
+        esito = {
+          ok: res.ok,
+          status: res.status,
+          testo: data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "",
+          errore: data?.error?.message ?? null,
+        };
+      } catch (e) {
+        esito = {
+          ok: false,
+          status: 0,
+          testo: "",
+          errore: e instanceof Error ? e.message : "Errore di rete verso Gemini",
+        };
+      }
+
+      if (esito.ok) return esito.testo;
+
+      // Il nome del modello entra nel messaggio: senza, la nota che l'admin
+      // legge nel pannello non direbbe quale modello ha rifiutato.
+      ultimoErrore = new Error(
+        `modello ${modello}: ${esito.errore ?? "errore di chiamata a Gemini"}`,
       );
-
-      const data = (await res.json()) as {
-        error?: { message?: string };
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
-      };
-
-      esito = {
-        ok: res.ok,
-        status: res.status,
-        testo: data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "",
-        errore: data?.error?.message ?? null,
-      };
-    } catch (e) {
-      esito = {
-        ok: false,
-        status: 0,
-        testo: "",
-        errore: e instanceof Error ? e.message : "Errore di rete verso Gemini",
-      };
+      const transitorio =
+        esito.status === 0 || esito.status === 429 || esito.status === 500 || esito.status === 503;
+      if (!transitorio) throw ultimoErrore;
     }
-
-    if (esito.ok) return esito.testo;
-
-    ultimoErrore = new Error(esito.errore ?? "Errore di chiamata a Gemini");
-    const transitorio =
-      esito.status === 0 || esito.status === 429 || esito.status === 500 || esito.status === 503;
-    if (!transitorio) throw ultimoErrore;
   }
 
   throw ultimoErrore ?? new Error("Errore di chiamata a Gemini");
