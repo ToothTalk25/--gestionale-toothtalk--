@@ -246,6 +246,15 @@ Aggiornato al 18 settembre 2026.
    notifica sul telefono **appena una PEC entra in coda**, e il controllo
    notturno che ogni notte, se la coda non è vuota, manda email e notifica con
    il comando da eseguire e da quanto aspetta la PEC più vecchia.
+   E la coda si svuota **da sola**: sul computer del progetto c'è un'attività
+   (`it.toothtalk.pec`, launchd, ogni 15 minuti e all'accesso) che esegue
+   `scripts/pec-automatico.sh`. Gira quando il computer è acceso e l'utente è
+   collegato: se è spento, le PEC aspettano il risveglio e il promemoria notturno
+   lo dice. Per fermarla: `launchctl bootout gui/$(id -u)/it.toothtalk.pec`.
+   Un deposito rimasto senza PEC si rimanda dal Registro ("Metti in coda la PEC
+   del deposito", con la frase di conferma obbligatoria, 0140): serve per le
+   firme arrivate durante il blocco, e non si può fare due volte sullo stesso
+   documento.
 2. **Account dei partecipanti**: due strade — l'invito dal Registro globale
    (email con codice del gruppo e link di registrazione) oppure
    `npm run utente -- crea|assegna`. Le registrazioni si approvano dal Registro.
@@ -281,6 +290,14 @@ Aggiornato al 18 settembre 2026.
    obbligatorio che resta nel registro (`verifica_manuale_accordo`). La
    decisione è umana per costruzione — l'informativa privacy lo dichiara già:
    l'esito automatico non è mai la decisione.
+   Un terzo modo di fallire, visto il 18 settembre 2026 su un accordo vero: la
+   risposta arrivava **tagliata**. La chiamata aveva un tetto di 1024 token, e i
+   modelli recenti ne consumano una parte "pensando" prima di rispondere: con un
+   documento che richiede più ragionamento il budget finisce e il testo visibile
+   resta vuoto — nessuna graffa, quindi "risposta non interpretabile", due volte
+   di fila, senza che si potesse sapere che cosa avesse detto il modello. Ora il
+   tetto è 8192, il formato JSON si chiede all'API invece di sperarlo, e quando
+   la risposta resta illeggibile la nota riporta che cosa ha scritto il modello.
    Due dettagli che sembrano tecnici e non lo sono: il modello è fissato a una
    versione **stabile** (`gemini-3.5-flash`), mai all'alias `gemini-flash-latest`,
    che segue i rilasci e punta quindi al modello appena uscito, cioè a quello
