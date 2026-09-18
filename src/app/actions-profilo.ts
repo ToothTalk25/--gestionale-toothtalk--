@@ -1532,8 +1532,10 @@ export async function verificaManualeAccordo(
   }
 
   const nome = target.full_name ?? target.email;
+  // Il punto finale del motivo viene tolto: la nota lo aggiunge da sé, e un
+  // "firma presente.." nel pannello si nota subito.
   const nota =
-    `Verifica a mano dell'accesso globale: ${motivo}. ` +
+    `Verifica a mano dell'accesso globale: ${motivo.replace(/\.+$/, "")}. ` +
     `(Controllo automatico non disponibile: ${target.accordo_verificato ?? "mai eseguito"}.)`;
 
   const { error } = await supabase

@@ -76,6 +76,14 @@ await db
 const browser = await chromium.launch();
 const contesto = await browser.newContext();
 const page = await contesto.newPage();
+// Gli errori del browser vanno visti: se la server action non esiste più (per
+// esempio perché un deploy è andato online mentre la pagina era già aperta),
+// il clic non produce NIENTE — né messaggio a schermo né riga nel database —
+// e senza questa riga la prova sembrerebbe dire che la funzione non funziona.
+page.on("console", (m) => {
+  if (m.type() === "error") console.log("  [console]", m.text().slice(0, 300));
+});
+page.on("pageerror", (e) => console.log("  [errore pagina]", e.message.slice(0, 300)));
 let uscita = 0;
 
 try {
