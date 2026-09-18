@@ -766,7 +766,12 @@ export default async function AdminPage() {
           {
             id: "pec-in-coda",
             etichetta: "PEC da spedire",
-            badge: (pecInCoda ?? []).filter((r) => r.stato !== "inviata").length,
+            // Solo quello che resta da fare (in coda) o che non è andato a buon
+            // fine (in errore): le righe annullate sono tracce di tentativi
+            // lasciati cadere, la sezione non le mostra, e contarle qui
+            // farebbe dire "8" a una coda vuota.
+            badge: (pecInCoda ?? []).filter((r) => r.stato === "in_coda" || r.stato === "errore")
+              .length,
             promemoria: {
               cosa: "le PEC che il gestionale ha preparato e che aspettano di essere spedite. Nel Terminale, dalla cartella del progetto: npm run pec mostra cosa partirebbe e verifica i file, npm run pec -- --esegui le spedisce dall'indirizzo di casa/ufficio.",
               attenzione:
