@@ -1149,6 +1149,50 @@ async function inviaAccordoAgliAmministratori(opts: {
 }
 
 /**
+ * Il messaggio con cui si deposita un accordo firmato (PEC all'accesso
+ * globale, copia alla persona). Sta qui e non dentro le due azioni che lo
+ * usano — il caricamento e la rimessa in coda di un deposito rimasto senza PEC
+ * — perché è un testo che finisce in una PEC con data certa: due versioni
+ * diverse dello stesso messaggio legale sarebbero un problema.
+ */
+function messaggioDepositoAccordo({ nome, sha256 }: { nome: string; sha256: string }) {
+  return {
+    oggetto: `[ToothTalk] Accordo editoriale — ${nome}`,
+    testo: [
+      "",
+      `Ciao!`,
+      "",
+      `${nome} ha caricato il proprio accordo editoriale ToothTalk e ha`,
+      "dichiarato, spuntando l'apposita casella prima del caricamento, di",
+      "aver letto e compreso integralmente il contenuto dell'accordo editoriale e del Protocollo Operativo ad esso allegato.",
+      "",
+      "Il PDF allegato è firmato e viene registrato con data certa: fa parte",
+      "del registro dei partecipanti.",
+      "",
+      "Impronta SHA-256 del file:",
+      `  ${sha256}`,
+      "",
+      "Messaggio generato automaticamente dal gestionale ToothTalk.",
+      "",
+    ].join("\n"),
+    html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
+  <h1 style="font-size:20px;margin:4px 0 12px">Accordo editoriale — ${nome}</h1>
+  <p style="font-size:13px;line-height:1.6">
+    <strong>${nome}</strong> ha caricato il proprio accordo editoriale ToothTalk e ha
+    dichiarato, spuntando l'apposita casella prima del caricamento, di aver letto e
+    compreso integralmente il contenuto dell'accordo editoriale e del Protocollo
+    Operativo ad esso allegato.
+    Il PDF allegato è firmato e viene registrato con data certa: fa parte del
+    registro dei partecipanti.
+  </p>
+  <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
+  <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
+</div>`,
+  };
+}
+
+/**
  * Registra l'accordo editoriale caricato e lo spedisce subito via PEC a chi
  * ha accesso globale, con copia al partecipante sulla sua casella. È il
  * meccanismo che costruisce il registro dei partecipanti per sede.
@@ -1378,38 +1422,7 @@ export async function caricaAccordo(
 
     const { id: inCoda } = await accodaPec({
       destinatari: destinatariGlobali,
-      oggetto: `[ToothTalk] Accordo editoriale — ${nome}`,
-      testo: [
-        "",
-        `Ciao!`,
-        "",
-        `${nome} ha caricato il proprio accordo editoriale ToothTalk e ha`,
-        "dichiarato, spuntando l'apposita casella prima del caricamento, di",
-        "aver letto e compreso integralmente il contenuto dell'accordo editoriale e del Protocollo Operativo ad esso allegato.",
-        "",
-        "Il PDF allegato è firmato e viene registrato con data certa: fa parte",
-        "del registro dei partecipanti.",
-        "",
-        "Impronta SHA-256 del file:",
-        `  ${sha256}`,
-        "",
-        "Messaggio generato automaticamente dal gestionale ToothTalk.",
-        "",
-      ].join("\n"),
-      html: `<div style="max-width:600px;font:14px/1.6 system-ui;color:#0d1b2a">
-  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#888;margin:0">ToothTalk™</p>
-  <h1 style="font-size:20px;margin:4px 0 12px">Accordo editoriale — ${nome}</h1>
-  <p style="font-size:13px;line-height:1.6">
-    <strong>${nome}</strong> ha caricato il proprio accordo editoriale ToothTalk e ha
-    dichiarato, spuntando l'apposita casella prima del caricamento, di aver letto e
-    compreso integralmente il contenuto dell'accordo editoriale e del Protocollo
-    Operativo ad esso allegato.
-    Il PDF allegato è firmato e viene registrato con data certa: fa parte del
-    registro dei partecipanti.
-  </p>
-  <p style="font-size:12px;color:#666">Impronta SHA-256: <span style="font-family:monospace">${sha256}</span></p>
-  <p style="font-size:11px;color:#999">Messaggio generato automaticamente dal gestionale ToothTalk.</p>
-</div>`,
+      ...messaggioDepositoAccordo({ nome, sha256 }),
       allegati: [
         // Riferimento, non byte: lo script rilegge il PDF dallo storage e
         // verifica l'impronta PRIMA di spedire. Il bucket del caricamento
@@ -1417,6 +1430,9 @@ export async function caricaAccordo(
         { nome: nomeFile, bucket: "profili", percorso: storagePath, sha256 },
       ],
       copiaConoscenza: destinatariGlobali.includes(copiaPersona) ? undefined : [copiaPersona],
+      // Marca il tipo e il documento: serve a non mettere in coda due volte la
+      // PEC dello stesso deposito (mettiInCodaPecDeposito cerca questa impronta).
+      contesto: { tipo: "deposito", profile_id: profile.id },
     });
 
     // Avviso immediato all'accesso globale: c'è un accordo da verificare.
@@ -2071,6 +2087,121 @@ export async function approvaRegistrazione(
 }
 
 /**
+ * Rimette in coda la PEC di un deposito rimasto senza: l'accordo firmato che la
+ * persona ha caricato, con la sua sola firma.
+ *
+ * Serve per i depositi che sono arrivati mentre Aruba bloccava gli invii (o
+ * mentre la coda non accettava la riga): la PEC che sarebbe partita al
+ * caricamento non è mai partita, e quindi la firma di quella persona non ha
+ * data certa. Il documento non si tocca: si rimanda ESATTAMENTE quello che ha
+ * caricato, con la sua impronta.
+ *
+ * La conferma è obbligatoria e resta nel registro: si certifica solo un
+ * documento che qualcuno ha guardato. L'esito automatico non è una decisione —
+ * per Eugenia diceva "una pagina su nove" e nessuno deve mandarla in coda.
+ *
+ * Idempotente: se quel documento ha già una PEC in coda o spedita, non ne
+ * accoda una seconda (due certificazioni dello stesso file non servono).
+ */
+export async function mettiInCodaPecDeposito(
+  userId: string,
+  conferma: string,
+): Promise<Esito<{ inCoda: string | null; giaFatta: boolean }>> {
+  const { isAdmin, profile: admin } = await requireSession();
+  if (!isAdmin) return errore("Operazione riservata all'accesso globale.");
+
+  const pulita = conferma.trim();
+  if (pulita.length < 10) {
+    return errore(
+      "Scrivi che cosa hai controllato nel documento (almeno una frase): resta nel registro insieme al tuo nome.",
+    );
+  }
+
+  const adminDb = supabaseAdmin();
+  const { data: target } = await adminDb
+    .from("profiles")
+    .select("id, full_name, email, pec, accordo_path, accordo_sha256, accordo_approvato_admin_at")
+    .eq("id", userId)
+    .single<{
+      id: string;
+      full_name: string | null;
+      email: string;
+      pec: string | null;
+      accordo_path: string | null;
+      accordo_sha256: string | null;
+      accordo_approvato_admin_at: string | null;
+    }>();
+  if (!target) return errore("Profilo non trovato.");
+  if (!target.accordo_path || !target.accordo_sha256) {
+    return errore(
+      "Questa persona non ha caricato nessun accordo: non c'è niente da certificare. Se l'aveva fatto, chiedile di caricarlo di nuovo.",
+    );
+  }
+
+  // Lo stesso documento non si certifica due volte: si cercano le PEC di
+  // QUESTA persona e si guarda se una porta già l'impronta del suo accordo. Il
+  // filtro sull'impronta non si fa in SQL (il confronto dentro il JSONB con la
+  // libreria produceva un filtro non valido, e l'errore finiva per sembrare
+  // "non c'è niente"): si leggono le righe della persona — poche — e si guarda
+  // qui. Se la lettura fallisce NON si tira dritto: meglio un errore chiaro che
+  // una seconda PEC sullo stesso documento.
+  const { data: pecDellaPersona, error: eControllo } = await adminDb
+    .from("pec_da_inviare")
+    .select("id, stato, allegati")
+    .in("stato", ["in_coda", "inviata"])
+    .filter("contesto->>profile_id", "eq", userId);
+  if (eControllo) {
+    return errore(
+      `Non sono riuscito a controllare se questo documento ha già la sua PEC: ${eControllo.message}. Riprova, o guarda la coda nel Registro.`,
+    );
+  }
+  const giaCertificato = (pecDellaPersona ?? []).find((r) =>
+    ((r.allegati ?? []) as { sha256?: string }[]).some((a) => a.sha256 === target.accordo_sha256),
+  );
+  if (giaCertificato) {
+    return { ok: true, dati: { inCoda: giaCertificato.id as string, giaFatta: true } };
+  }
+
+  const nome = target.full_name ?? target.email;
+  const nomeFile = nomeFileUmano(target.accordo_path);
+  const destinatariGlobali = destinatariPecGlobali();
+  const copiaPersona = target.pec ?? target.email;
+
+  try {
+    const { id: inCoda } = await accodaPec({
+      destinatari: destinatariGlobali,
+      ...messaggioDepositoAccordo({ nome, sha256: target.accordo_sha256 }),
+      allegati: [
+        { nome: nomeFile, bucket: "profili", percorso: target.accordo_path, sha256: target.accordo_sha256 },
+      ],
+      copiaConoscenza: destinatariGlobali.includes(copiaPersona) ? undefined : [copiaPersona],
+      contesto: { tipo: "deposito", profile_id: userId },
+    });
+
+    await ignora(
+      adminDb.from("audit_log").insert({
+        actor: admin.id,
+        actor_role: admin.role,
+        action: "pec_deposito_messa_in_coda",
+        entity_type: "profile",
+        entity_id: userId,
+        meta: {
+          utente: target.full_name,
+          conferma: pulita,
+          sha256: target.accordo_sha256,
+          accordo_approvato_admin_at: target.accordo_approvato_admin_at,
+        },
+      }),
+    );
+
+    revalidatePath("/admin");
+    return { ok: true, dati: { inCoda, giaFatta: false } };
+  } catch (e) {
+    return errore(`PEC non entrata in coda: ${e instanceof Error ? e.message : "errore di accodamento"}`);
+  }
+}
+
+/**
  * Chiede alla persona di ricaricare l'accordo (solo accesso globale).
  *
  * Nasce da un caso vero: un accordo caricato con una pagina sola su nove,
@@ -2216,13 +2347,17 @@ export async function ricertificaAccordoPec(
   }
 
   // Se la PEC di questa persona è già in coda, non se ne accoda una seconda:
-  // la certificazione del documento è una sola.
-  const { data: codaEsistente } = await supabaseAdmin()
+  // la certificazione del documento è una sola. Se il controllo non riesce si
+  // torna un errore: non si tira dritto sperando che vada bene.
+  const { data: codaEsistente, error: eCoda } = await supabaseAdmin()
     .from("pec_da_inviare")
     .select("id")
     .eq("stato", "in_coda")
     .filter("contesto->>profile_id", "eq", userId)
     .limit(1);
+  if (eCoda) {
+    return errore(`Non sono riuscito a controllare la coda: ${eCoda.message}. Riprova.`);
+  }
   if (codaEsistente?.length) {
     return { ok: true, dati: { inCoda: codaEsistente[0].id as string, giaInCoda: true } };
   }

@@ -11,6 +11,7 @@ import {
   rivalutaAccordoConIA,
   verificaManualeAccordo,
   chiediRicaricamentoAccordo,
+  mettiInCodaPecDeposito,
 } from "@/app/actions-profilo";
 
 export type RigaAccordoDaApprovare = {
@@ -51,6 +52,60 @@ export type RigaAccordoDaRivalutare = RigaAccordoDaApprovare;
  * persona di ricaricare un documento che è già a posto — e ci si fa mandare
  * per email la copia firmata che serve per la controfirma a mano.
  */
+/**
+ * La conferma prima di rimettere in coda la PEC di un deposito: la frase è
+ * obbligatoria e resta nel registro, perché si certifica con data certa solo un
+ * documento che qualcuno ha guardato. Sta qui e non dentro le due liste perché
+ * la cosa è identica in entrambe.
+ */
+function PannelloConfermaDeposito({
+  nome,
+  conferma,
+  setConferma,
+  onAnnulla,
+  onInvia,
+  inCorso,
+}: {
+  nome: string;
+  conferma: string;
+  setConferma: (v: string) => void;
+  onAnnulla: () => void;
+  onInvia: () => void;
+  inCorso: boolean;
+}) {
+  return (
+    <div className="mt-3 rounded-lg bg-slate-50 p-3">
+      <label className="text-xs font-medium text-slate-700">
+        Che cosa hai controllato nel documento di {nome}? La frase resta nel registro insieme al tuo
+        nome: la PEC dà data certa a quello che c&apos;è nel file, quindi si manda solo dopo averlo
+        guardato.
+      </label>
+      <textarea
+        value={conferma}
+        onChange={(e) => setConferma(e.target.value)}
+        rows={2}
+        className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        placeholder="es. guardato tutto il PDF: nove pagine, firma manoscritta in fondo, dati anagrafici presenti…"
+      />
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          onClick={onAnnulla}
+          className="tt-btn border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+        >
+          Annulla
+        </button>
+        <button
+          onClick={onInvia}
+          disabled={inCorso}
+          className="tt-btn bg-slate-700 px-3 py-1.5 text-xs text-white hover:brightness-95 disabled:opacity-50"
+        >
+          {inCorso ? "Accodo…" : "Metti la PEC in coda"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AccordiDaApprovare({
   accordi,
   daRivalutare = [],
@@ -66,6 +121,8 @@ export default function AccordiDaApprovare({
   const [motivoVerifica, setMotivoVerifica] = useState("");
   const [inRicarica, setInRicarica] = useState<string | null>(null);
   const [motivoRicarica, setMotivoRicarica] = useState("");
+  const [inDeposito, setInDeposito] = useState<string | null>(null);
+  const [confermaDeposito, setConfermaDeposito] = useState("");
 
   async function caricaControfirma(userId: string, file: File) {
     setInCorso(userId);
@@ -182,6 +239,30 @@ export default function AccordiDaApprovare({
     router.refresh();
   }
 
+  /**
+   * Rimette in coda la PEC del deposito (l'accordo firmato che la persona ha
+   * caricato): la firma di chi è passato durante il blocco di Aruba non ha data
+   * certa. La conferma è obbligatoria: si certifica solo un documento guardato.
+   */
+  async function mettiInCodaDeposito(userId: string) {
+    setInCorso(`deposito:${userId}`);
+    setMessaggio(null);
+    const esito = await mettiInCodaPecDeposito(userId, confermaDeposito);
+    setInCorso(null);
+    if (!esito.ok) {
+      setMessaggio(`Errore: ${esito.errore}`);
+      return;
+    }
+    setInDeposito(null);
+    setConfermaDeposito("");
+    setMessaggio(
+      esito.dati.giaFatta
+        ? "Quel documento ha già la sua PEC (in coda o spedita): non ne ho accodata un'altra."
+        : "PEC messa in coda: partirà da sola entro pochi minuti (la spedisce l'attività sul computer). La copia va alla persona.",
+    );
+    router.refresh();
+  }
+
   if (accordi.length === 0 && daRivalutare.length === 0) {
     return (
       <section className="tt-card p-4 md:p-6">
@@ -202,7 +283,10 @@ export default function AccordiDaApprovare({
             Collaboratori che hanno caricato l&apos;accordo, confermato la lettura e
             superato la verifica IA: carica qui la scansione della copia cartacea
             controfirmata a mano (entrambe le firme). Manca comunque la conferma
-            del collaboratore prima che l&apos;accesso si sblocchi davvero.
+            del collaboratore prima che l&apos;accesso si sblocchi davvero. Se la
+            PEC del suo deposito non è mai partita (è successo durante il blocco di
+            Aruba), qui c&apos;è anche &quot;Metti in coda la PEC del deposito&quot;: la
+            rimanda sullo stesso documento che ha caricato.
           </p>
         </div>
         <span className="rounded-full bg-[#fef3e2] px-[11px] py-[3px] text-xs font-semibold text-amber-700">
@@ -292,6 +376,16 @@ export default function AccordiDaApprovare({
                     >
                       Chiedi di ricaricare
                     </button>
+                    <button
+                      onClick={() => {
+                        setInDeposito(a.id);
+                        setConfermaDeposito("");
+                      }}
+                      disabled={inCorso === `deposito:${a.id}`}
+                      className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      Metti in coda la PEC del deposito
+                    </button>
                   </div>
                 </div>
 
@@ -356,6 +450,17 @@ export default function AccordiDaApprovare({
                       </button>
                     </div>
                   </div>
+                )}
+
+                {inDeposito === a.id && (
+                  <PannelloConfermaDeposito
+                    nome={a.full_name ?? a.email}
+                    conferma={confermaDeposito}
+                    setConferma={setConfermaDeposito}
+                    onAnnulla={() => setInDeposito(null)}
+                    onInvia={() => mettiInCodaDeposito(a.id)}
+                    inCorso={inCorso === `deposito:${a.id}`}
+                  />
                 )}
               </div>
             ))}
@@ -423,6 +528,16 @@ export default function AccordiDaApprovare({
                   {inCorso === `email:${a.id}` ? "Invio…" : "Mandami il PDF"}
                 </button>
                 <button
+                  onClick={() => {
+                    setInDeposito(a.id);
+                    setConfermaDeposito("");
+                  }}
+                  disabled={inCorso === `deposito:${a.id}`}
+                  className="tt-btn border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Metti in coda la PEC del deposito
+                </button>
+                <button
                   onClick={() => inputRefs.current[a.id]?.click()}
                   disabled={inCorso === a.id}
                   className="tt-btn bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-700 disabled:opacity-50"
@@ -431,6 +546,17 @@ export default function AccordiDaApprovare({
                 </button>
               </div>
             </div>
+
+            {inDeposito === a.id && (
+              <PannelloConfermaDeposito
+                nome={a.full_name ?? a.email}
+                conferma={confermaDeposito}
+                setConferma={setConfermaDeposito}
+                onAnnulla={() => setInDeposito(null)}
+                onInvia={() => mettiInCodaDeposito(a.id)}
+                inCorso={inCorso === `deposito:${a.id}`}
+              />
+            )}
           </div>
         ))}
       </div>

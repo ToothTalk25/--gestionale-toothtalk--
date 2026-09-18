@@ -267,6 +267,7 @@ export type AllegatoCoda =
  * l'invio non è più suo. `tipo` è il campo che lo script legge.
  */
 export type ContestoPec =
+  | { tipo: "deposito"; profile_id: string }
   | { tipo: "ricertificazione"; profile_id: string }
   | { tipo: "verbale"; pacchetto_id: string; note?: string | null };
 
