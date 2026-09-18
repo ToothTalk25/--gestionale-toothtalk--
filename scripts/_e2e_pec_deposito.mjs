@@ -200,8 +200,15 @@ try {
       .getByText(EMAIL_PERSONA, { exact: true })
       .first()
       .locator("xpath=ancestor::div[contains(@class,'border-slate-200')][1]");
+    // Il contatore accanto alla voce "PEC da spedire": deve contare solo quello
+    // che resta da spedire (in coda) o che è andato storto (errore), non le
+    // righe annullate — altrimenti direbbe "8" a coda vuota.
+    const voci = await pagina.locator("#sezione-admin option").allTextContents();
+    const badge = voci.find((t) => t.includes("PEC da spedire")) ?? "(voce non trovata)";
     return {
       riga: r,
+      badge,
+      numeroBadge: Number(badge.match(/\((\d+)\)/)?.[1] ?? 0),
       testo: (await r.innerText()).replace(/\s+/g, " ").trim(),
       pulsante: await r.getByRole("button", { name: "Metti in coda la PEC del deposito" }).count(),
     };
@@ -209,6 +216,7 @@ try {
 
   const dopoClic = await leggiRiga();
   console.log(`\ndopo il clic — pulsanti "Metti in coda la PEC del deposito": ${dopoClic.pulsante}`);
+  console.log(`contatore: «${dopoClic.badge}»`);
   console.log(`dice: ${dopoClic.testo}`);
 
   // Il computer spedisce davvero la PEC (è quello che fa il Mac ogni 15 minuti):
@@ -222,6 +230,7 @@ try {
   }
   const dopoInvio = await leggiRiga();
   console.log(`\ndopo l'invio — pulsanti: ${dopoInvio.pulsante}`);
+  console.log(`contatore: «${dopoInvio.badge}»`);
   console.log(`dice: ${dopoInvio.testo}`);
 
   // Riga annullata (o in errore): la PEC NON c'è, e il pulsante deve tornare a
@@ -234,6 +243,7 @@ try {
   }
   const dopoAnnullo = await leggiRiga();
   console.log(`\ndopo l'annullo — pulsanti: ${dopoAnnullo.pulsante}`);
+  console.log(`contatore: «${dopoAnnullo.badge}»`);
   console.log(`dice: ${dopoAnnullo.testo}`);
 
   const okStato =
@@ -242,7 +252,10 @@ try {
     dopoInvio.pulsante === 0 &&
     /PEC del deposito spedita il/.test(dopoInvio.testo) &&
     dopoAnnullo.pulsante === 1 &&
-    /annullato/.test(dopoAnnullo.testo);
+    /annullato/.test(dopoAnnullo.testo) &&
+    // La riga in coda conta 1, poi non conta più: né da spedita, né da annullata.
+    dopoClic.numeroBadge === dopoAnnullo.numeroBadge + 1 &&
+    dopoInvio.numeroBadge === dopoAnnullo.numeroBadge;
 
   if (!righe.length || !allegatoGiusto || !copiaAllaPersona || !registro?.length || !okStato) {
     uscita = 1;
