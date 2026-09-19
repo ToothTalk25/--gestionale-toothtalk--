@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { requireSession, accordoScaduto, accordoCompleto } from "@/lib/auth";
+import { supabaseServer } from "@/lib/supabase/server";
+import { COOKIE_VERSION, PRIVACY_VERSION } from "@/lib/types";
 import MenuUtente from "@/components/MenuUtente";
 import BannerConsenso from "@/components/BannerConsenso";
 import NavLink from "@/components/NavLink";
@@ -57,6 +59,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!isAdmin && accordoScaduto(profile.accordo_scadenza)) {
     redirect("/rinnovo");
   }
+
+  // --- Prese visioni (informativa privacy e cookie policy) ---------------
+  // Le calcola il server: i cookie di sessione sono HttpOnly, quindi dal
+  // browser il client Supabase non vede la sessione. Fino al 19/09/2026 il
+  // banner se lo verificava da solo lato client e, proprio per questo, non
+  // compariva mai: qui lo stato è certo, e il banner resta solo interfaccia.
+  const supabaseConsensi = await supabaseServer();
+  const { data: consensi } = await supabaseConsensi
+    .from("consensi")
+    .select("tipo, versione, revocato_at")
+    .eq("user_id", profile.id);
+  const listaConsensi = consensi ?? [];
+  const haConsenso = (tipo: "privacy" | "cookie", versione: string) =>
+    listaConsensi.some((c) => c.tipo === tipo && c.versione === versione && !c.revocato_at);
+  const consensiMancanti = {
+    privacy: !haConsenso("privacy", PRIVACY_VERSION),
+    cookie: !haConsenso("cookie", COOKIE_VERSION),
+  };
 
   return (
     <PoloAttivoProvider>
@@ -158,7 +178,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </footer>
 
-        <BannerConsenso />
+        <BannerConsenso
+          mancanti={consensiMancanti}
+          aggiornamento={listaConsensi.length > 0 && consensiMancanti.privacy}
+        />
         <ControlloRicordami />
         <PullToRefresh />
         {/* Solo per i collaboratori: l'admin ha già "Domande dei collaboratori" nel Registro. */}

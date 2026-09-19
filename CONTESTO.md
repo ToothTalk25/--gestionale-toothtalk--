@@ -588,6 +588,27 @@ Aggiornato al 19 settembre 2026.
     — l'informativa dichiara anche lo smistamento delle domande di supporto via
       Google e invita a non scriverci dati di salute o documenti.
 
+15. **Il banner del consenso non compariva mai** (19 settembre 2026). Difetto
+    trovato mentre si implementava l'avviso dell'informativa aggiornata (e
+    corretto): `BannerConsenso` decideva **da solo, lato browser**, se mostrarsi,
+    chiedendo a `supabaseBrowser()` chi fosse l'utente. Ma i cookie di sessione
+    sono **HttpOnly** per scelta — il token non deve essere leggibile da
+    JavaScript — quindi quel client non vede la sessione, riceveva `null` e il
+    banner si nascondeva da solo, sempre. Nessun iscritto nuovo lo vedeva.
+    I consensi presenti in tabella arrivavano perciò solo dai flussi automatici
+    di invito (`actions-invito.ts`), che li registrano alla creazione
+    dell'account: una presa visione che nessuno ha visto, e come prova vale
+    poco — **da valutare se togliere quell'inserimento automatico**, così la
+    presa visione la dà la persona.
+    Adesso lo stato lo calcola il **server** (`src/app/(app)/layout.tsx`: legge i
+    consensi dell'utente, decide cosa manca e lo passa al banner, che resta solo
+    interfaccia). Verificato dal vivo: chi ha una versione vecchia vede l'avviso
+    di aggiornamento, il click registra la versione nuova con la ricevuta
+    firmata, la cookie policy (invariata) non viene riscritta una seconda volta,
+    e chi è già aggiornato non vede nulla.
+    Alzare `PRIVACY_VERSION` (`src/lib/types.ts`) è ora il modo con cui il
+    progetto informa gli iscritti quando l'informativa cambia.
+
 ## 11. Il limite dichiarato
 
 Chi possiede le credenziali del progetto Supabase è proprietario delle tabelle e

@@ -5,8 +5,20 @@
  */
 export type UserRole = "admin" | "member" | "tecnico";
 
-/** Versione corrente dell'informativa privacy e della cookie policy. */
-export const PRIVACY_VERSION = "2026-08-27a";
+/**
+ * Versione corrente dell'informativa privacy e della cookie policy.
+ *
+ * 2026-09-19: l'informativa dichiara che le domande scritte nello spazio di
+ * supporto del gestionale sono ordinate da un sistema automatico (Google, API
+ * Gemini) e che la risposta è sempre scritta da una persona. Alzare questo
+ * valore fa riapparire il banner di presa visione a chi aveva accettato una
+ * versione precedente: è il modo con cui il progetto informa gli iscritti che
+ * l'informativa è cambiata, e ogni presa visione resta registrata (tabella
+ * `consensi` + ricevuta firmata su storage). La versione identifica il testo:
+ * quello esatto si ricostruisce dal file dell'informativa nella revisione
+ * corrispondente. Nessun accesso dipende da questo valore — non è un gate.
+ */
+export const PRIVACY_VERSION = "2026-09-19";
 export const COOKIE_VERSION = "2026-08-10";
 
 export type TipoConsenso = "privacy" | "cookie";
