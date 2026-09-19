@@ -123,5 +123,99 @@ const r10 = await db.query(
 );
 console.log(r10.rows.length === 0 ? "(nessuna)" : r10.rows.map((r) => r.name).join(", "));
 
+// ------------------------------------------------------------- PRESTAZIONI
+// Misure, non opinioni: dove il database spende tempo davvero, e quante
+// espressioni di policy vengono valutate riga per riga. Sono i due numeri che
+// dicono cosa ottimizzare e — rilanciando lo stesso comando dopo un intervento
+// — quanto si è guadagnato. Le query del controllo stesso sono escluse.
+console.log("\n=== Prestazioni: le query più pesanti (pg_stat_statements) ===");
+const { rows: ext } = await db.query(
+  `select 1 from pg_extension where extname = 'pg_stat_statements'`,
+);
+if (ext.length === 0) {
+  console.log("(pg_stat_statements non attiva — dashboard Supabase → Database → Extensions)");
+} else {
+  const r11 = await db.query(
+    `select left(regexp_replace(query, '\\s+', ' ', 'g'), 66) as query, calls,
+            round(total_exec_time::numeric, 1) as totale_ms,
+            round(mean_exec_time::numeric, 2) as media_ms
+       from pg_stat_statements
+      where query not ilike '%pg_stat_statements%'
+        and query not ilike '%pg_timezone%'
+      order by total_exec_time desc limit 8`,
+  );
+  for (const r of r11.rows) {
+    console.log(
+      `${String(r.calls).padStart(7)} volte · ${String(r.media_ms).padStart(8)} ms di media · ${String(r.totale_ms).padStart(8)} ms in totale\n          ${r.query}`,
+    );
+  }
+}
+
+console.log("\n=== Prestazioni: tabelle lette con scansione sequenziale ===");
+const r12 = await db.query(
+  `select relname as tabella, n_live_tup as righe, seq_scan as scansioni_seq, idx_scan as letture_indice
+     from pg_stat_user_tables
+    where n_live_tup > 0 and seq_scan > 0
+    order by seq_tup_read desc nulls last limit 8`,
+);
+for (const r of r12.rows) {
+  console.log(
+    `${r.tabella}: ${r.righe} righe · ${r.scansioni_seq} scansioni sequenziali · ${r.letture_indice} per indice`,
+  );
+}
+
+// Le policy con auth.uid() o con una funzione SENZA argomenti vengono
+// rivalutate per ogni riga: spostarle dentro (select …) le fa valutare una
+// volta sola. È il motivo per cui la lettura del Registro costava 20 ms su 272
+// righe (corretto in 0141). Qui si contano SOLO quelle rimaste fuori dalla
+// forma a valutazione singola: dopo `select auth.uid()` la chiamata c'è ancora,
+// quindi cercarla e basta darebbe sempre lo stesso numero.
+console.log("\n=== Prestazioni: policy ancora valutate riga per riga ===");
+const r13 = await db.query(
+  `select x.tabella, count(*)::int as policy
+     from (
+       select c.relname as tabella,
+              (
+                (coalesce(u.e, '') like '%auth.uid()%'
+                  and coalesce(u.e, '') !~* '\\([[:space:]]*select[[:space:]]+auth\\.uid\\(\\)')
+                or (coalesce(u.e, '') like '%is_admin()%'
+                  and coalesce(u.e, '') !~* '\\([[:space:]]*select[[:space:]]+(public\\.)?is_admin\\(\\)')
+                or (coalesce(u.e, '') like '%accesso_progetti()%'
+                  and coalesce(u.e, '') !~* '\\([[:space:]]*select[[:space:]]+(public\\.)?accesso_progetti\\(\\)')
+              ) as per_riga
+         from pg_policy p
+         join pg_class c on c.oid = p.polrelid
+         join pg_namespace n on n.oid = c.relnamespace
+         cross join lateral (
+           select coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+                  coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') as e
+         ) u
+        where n.nspname in ('public', 'storage')
+     ) x
+    where x.per_riga
+    group by 1 order by 2 desc, 1`,
+);
+if (r13.rows.length === 0) {
+  console.log("(nessuna: tutte a valutazione singola)");
+}
+for (const r of r13.rows) console.log(`${r.tabella}: ${r.policy} policy ancora per riga`);
+
+// Più policy PERMISSIVE per lo stesso comando si sommano in OR: ognuna viene
+// valutata per ogni riga. Fonderle in una sola espressione dà lo stesso
+// risultato con un eventuale ottavo del lavoro (storage.objects ne ha 8 di
+// lettura, 6 di inserimento, 5 di cancellazione).
+console.log("\n=== Prestazioni: policy permissive multiple per comando ===");
+const r14 = await db.query(
+  `select c.relname as tabella, p.polcmd as comando, count(*)::int as quante
+     from pg_policy p join pg_class c on c.oid = p.polrelid
+    where p.polpermissive
+    group by 1, 2 having count(*) > 1
+    order by 3 desc, 1 limit 8`,
+);
+const nomeComando = { r: "lettura", a: "inserimento", w: "modifica", d: "cancellazione", "*": "tutto" };
+for (const r of r14.rows) {
+  console.log(`${r.tabella} [${nomeComando[r.comando] ?? r.comando}]: ${r.quante} policy in OR`);
+}
+
 await db.end();
 
