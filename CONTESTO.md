@@ -217,7 +217,7 @@ policy di UPDATE, quindi un upsert verrebbe respinto.
 
 ## 10. Stato e cose aperte
 
-Aggiornato al 18 settembre 2026.
+Aggiornato al 19 settembre 2026.
 
 1. **PEC**: la casella è `toothtalk@pec.it` (Aruba). Dal 15 settembre 2026 Aruba
    rifiuta gli invii automatici del gestionale — `554 5.7.1 Indirizzo IP
@@ -399,16 +399,26 @@ Aggiornato al 18 settembre 2026.
       `memberships(polo_id, user_id)` e le 38 chiavi esterne senza indice (che a
       15 MB non si sentono: sono per quando l'archivio crescerà).
     Da sapere, perché è stato visto durante la misura: sulle pagine del Registro
-    il browser segnala **errore React #418** (idratazione: il testo disegnato dal
-    server non corrisponde a quello del client). È quasi certamente una data
-    formattata con `toLocaleString`/`toLocaleDateString`: il server sta su UTC e
-    il browser sull'ora italiana, quindi le due stringhe differiscono e React
-    ridisegna l'albero (`SezioneAudit`, righe con `at`). Da correggere
-    formattando la data una volta sola sul server e passando il testo già
-    pronto.
+    il browser segnalava **errore React #418** (idratazione) su 4 pagine su 8. La
+    causa era la formattazione delle date: il server sta su UTC e il browser
+    sull'ora italiana, quindi `toLocaleString("it-IT")` senza fuso dichiarato
+    produceva due testi diversi — React buttava via il disegno del server e
+    rifaceva l'albero. In locale non si vedeva (server e browser nello stesso
+    fuso), per questo era sfuggito. Corretto con un formattatore unico,
+    `src/lib/data-ora.ts`, che dichiara `timeZone: "Europe/Rome"`: **73
+    formattazioni in 31 file**. Non era solo una questione di velocità: email,
+    verbali PDF e pagine disegnate dal server scrivevano l'ora di Greenwich —
+    documenti con valore legale sbagliati di due ore. Verificato in produzione:
+    nessun errore in console.
+    Per calibrare i lavori futuri, la misura distingue due cose che sembrano la
+    stessa e non lo sono: aprire il gestionale **da zero** (o ricaricare con F5)
+    costa 500-1800 ms, mentre **cliccare dentro l'app** costa **15-54 ms** — è
+    l'esperienza normale, e non c'è niente da guadagnare lì.
     Prossimo passo (non fatto): il Registro carica **23 interrogazioni e disegna
     23 sezioni** per mostrarne una — la sezione scelta dovrebbe passare
     nell'indirizzo (`?sezione=`), così il server carica e disegna solo quella.
+    È l'unico posto dove restano centinaia di millisecondi da guadagnare
+    sull'apertura.
     Le policy dello storage restano da consolidare (8 di lettura, 6 di
     inserimento, 5 di cancellazione per lo stesso comando, tutte in OR): non si
     sente oggi con 63 file, e conviene farlo insieme alla fase sicurezza, che
