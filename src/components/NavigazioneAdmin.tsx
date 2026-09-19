@@ -1,14 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import PromemoriaSezione from "@/components/PromemoriaSezione";
 
 /**
  * Navigazione tra le sezioni del Registro globale (pagina admin).
  *
- * Mostra UNA sola sezione alla volta, scelta dalla tendina "Vai a:" — non
- * l'intera pagina con tutto scritto uno sotto l'altro. Finché non si
- * seleziona nulla, non c'è nessuna sezione a schermo.
+ * Mostra UNA sola sezione alla volta — non l'intera pagina con tutto scritto
+ * uno sotto l'altro.
+ *
+ * La sezione scelta sta nell'INDIRIZZO (`?sezione=…`) e non nello stato del
+ * browser: il server deve sapere cosa serve PRIMA di disegnare, altrimenti per
+ * mostrarne una ne disegna diciotto e le spedisce tutte — ed era esattamente
+ * questo il costo del Registro (misurato: 1,3-1,5 secondi per aprirlo, contro
+ * i 500-800 ms delle altre pagine).
+ *
+ * Il cambio passa da `router.push`: è una navigazione dentro l'app (decine di
+ * millisecondi, con la pagina già pronta in parte), non un ricaricamento. Il
+ * tasto indietro del browser torna alla sezione precedente, come ci si aspetta.
  */
 export type SezioneAdmin = {
   id: string;
@@ -20,9 +30,16 @@ export type SezioneAdmin = {
   contenuto: React.ReactNode;
 };
 
-export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] }) {
-  const [attiva, setAttiva] = useState<string>("");
-  const corrente = sezioni.find((s) => s.id === attiva) ?? null;
+export default function NavigazioneAdmin({
+  sezioni,
+  sezione,
+}: {
+  sezioni: SezioneAdmin[];
+  sezione: string;
+}) {
+  const router = useRouter();
+  const [inCorso, inizia] = useTransition();
+  const corrente = sezioni.find((s) => s.id === sezione) ?? null;
 
   return (
     <div className="space-y-6">
@@ -33,9 +50,16 @@ export default function NavigazioneAdmin({ sezioni }: { sezioni: SezioneAdmin[] 
         <div className="relative w-full md:w-auto">
           <select
             id="sezione-admin"
-            value={attiva}
-            onChange={(e) => setAttiva(e.target.value)}
-            className="w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm text-slate-700 focus:border-tt-blue focus:outline-none focus:ring-2 focus:ring-tt-blue/20 md:w-auto md:min-w-[220px]"
+            value={sezione}
+            onChange={(e) => {
+              const scelta = e.target.value;
+              inizia(() => {
+                router.push(scelta ? `/admin?sezione=${scelta}` : "/admin");
+              });
+            }}
+            className={`w-full appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-9 text-sm text-slate-700 focus:border-tt-blue focus:outline-none focus:ring-2 focus:ring-tt-blue/20 md:w-auto md:min-w-[220px] ${
+              inCorso ? "opacity-60" : ""
+            }`}
           >
             <option value="">Scegli una sezione…</option>
             {sezioni.map((s) => (

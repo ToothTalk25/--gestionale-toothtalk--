@@ -257,6 +257,29 @@ try {
   console.log(`\n=== Accesso globale — mediana di ${GIRI} giri ===`);
   console.table(righeAdmin);
 
+  // Il Registro: aprire il Registro "vuoto" e con una sezione scelta. Prima
+  // della correzione il server disegnava TUTTE le sezioni per mostrarne una;
+  // queste due misure dicono se la scelta nell'indirizzo ha funzionato.
+  const righeSezioni = [];
+  for (const percorso of ["/admin?sezione=log", "/admin?sezione=pec-in-coda"]) {
+    righeSezioni.push(await misura(pageAdmin, percorso));
+  }
+  console.log(`\n=== Accesso globale — Registro con una sezione scelta ===`);
+  console.table(righeSezioni);
+
+  // Il cambio di sezione con la tendina: deve cambiare l'indirizzo e fare
+  // comparire il contenuto, senza ricaricare la pagina.
+  await pageAdmin.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
+  await pageAdmin.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+  const t0Sezione = Date.now();
+  await pageAdmin.selectOption("#sezione-admin", "log");
+  await pageAdmin.waitForURL((u) => u.search.includes("sezione=log"), { timeout: 15000 }).catch(() => {});
+  await pageAdmin.waitForTimeout(800);
+  const testoSezione = (await pageAdmin.innerText("body")).slice(0, 120).replace(/\s+/g, " ");
+  console.log(
+    `\nCambio sezione dalla tendina: ${Date.now() - t0Sezione} ms · indirizzo = ${new URL(pageAdmin.url()).search} · ${testoSezione}`,
+  );
+
   const storte = [...righe, ...righeAdmin].filter((r) => r.esito !== 200 || r.atterra !== r.pagina);
   if (storte.length) {
     uscita = 1;
