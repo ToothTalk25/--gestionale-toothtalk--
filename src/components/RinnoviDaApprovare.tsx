@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { approvaRinnovoAccordo, rifiutaRinnovoAccordo, urlDocumentoRinnovo } from "@/app/actions-profilo";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 export type RigaRinnovoDaApprovare = {
   id: string;
@@ -114,20 +115,20 @@ export default function RinnoviDaApprovare({ rinnovi }: { rinnovi: RigaRinnovoDa
                 <p className="mt-1 text-xs text-slate-400">
                   Documento caricato il{" "}
                   {r.rinnovo_caricato_at
-                    ? new Date(r.rinnovo_caricato_at).toLocaleString("it-IT")
+                    ? dataOra(r.rinnovo_caricato_at)
                     : "—"}
                 </p>
                 {r.accordo_scadenza &&
                   (accordoScaduta(r.accordo_scadenza) ? (
                     <p className="mt-1 text-xs text-amber-700">
                       Accordo scaduto il{" "}
-                      {new Date(`${r.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")}: accesso ai
+                      {soloData(`${r.accordo_scadenza}T00:00:00`)}: accesso ai
                       progetti sospeso finché non approvi.
                     </p>
                   ) : (
                     <p className="mt-1 text-xs text-slate-500">
                       Scadenza attuale:{" "}
-                      {new Date(`${r.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")} — rinnovo
+                      {soloData(`${r.accordo_scadenza}T00:00:00`)} — rinnovo
                       caricato in anticipo, l&apos;accesso ai progetti resta regolare.
                     </p>
                   ))}

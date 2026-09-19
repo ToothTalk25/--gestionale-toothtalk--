@@ -13,6 +13,7 @@ import {
   chiediRicaricamentoAccordo,
   mettiInCodaPecDeposito,
 } from "@/app/actions-profilo";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 export type RigaAccordoDaApprovare = {
   id: string;
@@ -114,7 +115,7 @@ function StatoPecDeposito({
       <p className="mt-1 text-xs text-emerald-700">
         PEC del deposito spedita il{" "}
         {deposito.inviata_at
-          ? new Date(deposito.inviata_at).toLocaleString("it-IT")
+          ? dataOra(deposito.inviata_at)
           : "(data non registrata)"}
         .
       </p>
@@ -469,7 +470,7 @@ export default function AccordiDaApprovare({
                     <p className="mt-1 text-xs text-slate-400">
                       Caricato il{" "}
                       {a.accordo_caricato_at
-                        ? new Date(a.accordo_caricato_at).toLocaleDateString("it-IT")
+                        ? soloData(a.accordo_caricato_at)
                         : "—"}
                     </p>
                     <p className="mt-1 text-xs text-amber-800">
@@ -479,7 +480,7 @@ export default function AccordiDaApprovare({
                     {a.accordo_ricarica_richiesta_at && (
                       <p className="mt-1 text-xs text-slate-600">
                         Ricarica già chiesta il{" "}
-                        {new Date(a.accordo_ricarica_richiesta_at).toLocaleDateString("it-IT")}
+                        {soloData(a.accordo_ricarica_richiesta_at)}
                         {a.accordo_ricarica_motivo ? ` — «${a.accordo_ricarica_motivo}»` : ""}
                       </p>
                     )}
@@ -622,7 +623,7 @@ export default function AccordiDaApprovare({
                 <p className="mt-1 text-xs text-slate-400">
                   Caricato il{" "}
                   {a.accordo_caricato_at
-                    ? new Date(a.accordo_caricato_at).toLocaleDateString("it-IT")
+                    ? soloData(a.accordo_caricato_at)
                     : "—"}
                 </p>
                 {a.accordo_verificato && (
@@ -640,7 +641,7 @@ export default function AccordiDaApprovare({
                 {a.accordo_ricarica_richiesta_at && (
                   <p className="mt-1 text-xs text-slate-600">
                     Ricarica già chiesta il{" "}
-                    {new Date(a.accordo_ricarica_richiesta_at).toLocaleDateString("it-IT")}
+                    {soloData(a.accordo_ricarica_richiesta_at)}
                     {a.accordo_ricarica_motivo ? ` — «${a.accordo_ricarica_motivo}»` : ""}
                   </p>
                 )}

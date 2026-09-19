@@ -7,6 +7,7 @@ import { sha256File } from "@/lib/hash";
 import { urlFirmato, preparaUploadDocumento, registraDocumentoMagazzino, eliminaDocumentoMagazzino } from "@/app/actions";
 import { useConferma } from "@/components/ConfermaAzione";
 import type { DocumentoMagazzino } from "@/lib/types";
+import { soloData } from "@/lib/data-ora";
 
 /** Formati che ha senso trovare in un magazzino di materiali di servizio. */
 const ACCETTATI =
@@ -177,7 +178,7 @@ export default function MagazzinoDocumenti({
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{d.file_name}</span>
               <span className="text-xs text-slate-400">{peso(d.size_bytes)}</span>
               <span className="text-xs text-slate-400">
-                {new Date(d.creato_at).toLocaleDateString("it-IT")}
+                {soloData(d.creato_at)}
                 {d.caricato_da_nome ? ` · ${d.caricato_da_nome}` : ""}
               </span>
               <button

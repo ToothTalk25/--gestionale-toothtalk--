@@ -365,6 +365,55 @@ Aggiornato al 18 settembre 2026.
     silenzio. Nel gestionale non si nota (l'uscita di una persona anonimizza,
     non elimina), ma vale per `npm run utente` e per l'Admin API.
 
+11. **Velocità: misurata, non stimata** (19 settembre 2026). Prima di toccare
+    qualsiasi cosa si è misurato, perché «più veloce» senza un numero è
+    un'opinione. Tre strumenti, tutti in sola lettura:
+    — `npm run audit-rls` ha una sezione **Prestazioni**: query più pesanti
+      (`pg_stat_statements`), scansioni sequenziali, policy ancora valutate riga
+      per riga, policy permissive multiple;
+    — `scripts/_e2e_salute.mjs` è diventato un **cronometro**: crea due account
+      temporanei (Collaboratore con accesso completo + account di accesso
+      globale), misura per ogni pagina chiave primo byte, disegno, rete ferma e
+      risorse, e misura anche i **clic dentro l'app** (navigazione client, senza
+      ricaricamento). Poi cancella tutto;
+    — `scripts/_spiega_registro.mjs` spiega con `EXPLAIN ANALYZE` dove vanno i
+      millisecondi della lettura del Registro, **impersonando l'utente
+      collegato** (ruolo `authenticated` + claims del JWT): da amministratore di
+      database le policy non si applicano e la misura sarebbe falsa.
+    Cosa dicevano i numeri: il database era innocente (15 MB, query media
+    **1,67 ms**); l'unico spreco vero era la lettura del Registro, **20,79 ms su
+    272 righe** — non per i dati, ma perché la policy `(is_admin() OR
+    is_member_of(polo_id))` chiamava `is_admin()` **per ogni riga** (~540
+    chiamate a funzione per apertura). In tutta l'app il tempo se ne va altrove:
+    il rendering della pagina, non le interrogazioni (~4-6 per pagina; i 18 giri
+    di rete che si contano per apertura includono i *prefetch* dei link, che
+    Next fa in anticipo per rendere immediati i clic).
+    Fatto (migrazioni `0141`, `0142`):
+    — le policy si valutano **una volta** invece che per riga
+      (`is_admin()` → `(select is_admin())`, `accesso_progetti()` → `(select
+      accesso_progetti())`, `auth.uid()` → `(select auth.uid())`; le funzioni
+      che dipendono dalla riga restano intatte). Misurato: **20,79 → 3,45 ms
+      (−83%)**. La migrazione legge le espressioni dal database, applica la
+      sostituzione e le riscrive: nessun permesso cambia, ed è idempotente;
+      — `audit_log(at desc)` (il Registro non ordina più la tabella),
+      `memberships(polo_id, user_id)` e le 38 chiavi esterne senza indice (che a
+      15 MB non si sentono: sono per quando l'archivio crescerà).
+    Da sapere, perché è stato visto durante la misura: sulle pagine del Registro
+    il browser segnala **errore React #418** (idratazione: il testo disegnato dal
+    server non corrisponde a quello del client). È quasi certamente una data
+    formattata con `toLocaleString`/`toLocaleDateString`: il server sta su UTC e
+    il browser sull'ora italiana, quindi le due stringhe differiscono e React
+    ridisegna l'albero (`SezioneAudit`, righe con `at`). Da correggere
+    formattando la data una volta sola sul server e passando il testo già
+    pronto.
+    Prossimo passo (non fatto): il Registro carica **23 interrogazioni e disegna
+    23 sezioni** per mostrarne una — la sezione scelta dovrebbe passare
+    nell'indirizzo (`?sezione=`), così il server carica e disegna solo quella.
+    Le policy dello storage restano da consolidare (8 di lettura, 6 di
+    inserimento, 5 di cancellazione per lo stesso comando, tutte in OR): non si
+    sente oggi con 63 file, e conviene farlo insieme alla fase sicurezza, che
+    tocca le stesse righe.
+
 ## 11. Il limite dichiarato
 
 Chi possiede le credenziali del progetto Supabase è proprietario delle tabelle e

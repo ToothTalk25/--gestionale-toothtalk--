@@ -1,5 +1,6 @@
 import EliminaAccountAdmin from "@/components/EliminaAccountAdmin";
 import RiattivaCollaborazione from "@/components/RiattivaCollaborazione";
+import { soloData } from "@/lib/data-ora";
 
 type ProfiloUscente = {
   id: string;
@@ -64,17 +65,17 @@ export default function ProfiliUscenti({
             statoArt94 = confermata ? (
               <span className="text-emerald-700">
                 Conferma copie locali (Art. 9.4): ricevuta il{" "}
-                {new Date(confermata).toLocaleDateString("it-IT")}
+                {soloData(confermata)}
               </span>
             ) : scaduto ? (
               <span className="font-medium text-red-700">
                 Conferma copie locali (Art. 9.4): NON RICEVUTA — oltre le 48
-                ore dal {new Date(richiesta).toLocaleDateString("it-IT")}
+                ore dal {soloData(richiesta)}
               </span>
             ) : (
               <span className="text-amber-700">
                 Conferma copie locali (Art. 9.4): in attesa — termine entro il{" "}
-                {new Date(termine).toLocaleDateString("it-IT")}
+                {soloData(termine)}
               </span>
             );
           }
@@ -94,7 +95,7 @@ export default function ProfiliUscenti({
                       <span className="text-emerald-700">
                         caricato
                         {p.accordo_caricato_at
-                          ? ` il ${new Date(p.accordo_caricato_at).toLocaleDateString("it-IT")}`
+                          ? ` il ${soloData(p.accordo_caricato_at)}`
                           : ""}
                       </span>
                     ) : (

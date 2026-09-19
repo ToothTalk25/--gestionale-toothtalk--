@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { eseguiControlloIntegrita } from "@/app/actions-profilo";
+import { dataOra } from "@/lib/data-ora";
 
 export type RigaControlloIntegrita = {
   id: string;
@@ -123,7 +124,7 @@ export default function SezioneIntegrita({ controlli }: { controlli: RigaControl
               : "Ultimo controllo: problemi trovati"}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            {new Date(ultimo.eseguita_at).toLocaleString("it-IT")} ·{" "}
+            {dataOra(ultimo.eseguita_at)} ·{" "}
             {ORIGINI[ultimo.origine] ?? ultimo.origine} · ricontrollati {ultimo.versioni_controllate}{" "}
             depositi in {ultimo.deliverable_controllate} materiali e {ultimo.pacchetti_controllati}{" "}
             pacchetti sigillati
@@ -157,7 +158,7 @@ export default function SezioneIntegrita({ controlli }: { controlli: RigaControl
                 key={c.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-1.5 text-xs text-slate-500"
               >
-                <span>{new Date(c.eseguita_at).toLocaleString("it-IT")}</span>
+                <span>{dataOra(c.eseguita_at)}</span>
                 <span>{ORIGINI[c.origine] ?? c.origine}</span>
                 <span className={c.esito === "integro" ? "text-emerald-700" : "text-red-700"}>
                   {c.esito === "integro"

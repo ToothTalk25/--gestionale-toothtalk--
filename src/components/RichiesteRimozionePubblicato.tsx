@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { risolviRichiestaRimozione, type RigaRichiestaRimozione } from "@/app/actions-profilo";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 const ESITO_LABEL = {
   rimosso: "Rimosso",
@@ -79,9 +80,9 @@ export default function RichiesteRimozionePubblicato({
                   {nomi[r.user_id] ?? r.user_id.slice(0, 8)}
                 </p>
                 <p className="mt-1 text-xs text-amber-700">
-                  Richiesta il {new Date(r.richiesto_at).toLocaleString("it-IT")} — termine{" "}
+                  Richiesta il {dataOra(r.richiesto_at)} — termine{" "}
                   {scaduto ? "SCADUTO" : "entro"} il{" "}
-                  {new Date(r.termine_scadenza).toLocaleDateString("it-IT")}
+                  {soloData(r.termine_scadenza)}
                 </p>
 
                 {apertaId === r.id ? (
@@ -166,14 +167,14 @@ export default function RichiesteRimozionePubblicato({
                     {nomi[r.user_id] ?? r.user_id.slice(0, 8)}
                   </td>
                   <td className="py-2 pr-4 text-xs text-slate-500" data-label="Richiesta">
-                    {new Date(r.richiesto_at).toLocaleDateString("it-IT")}
+                    {soloData(r.richiesto_at)}
                   </td>
                   <td className="py-2 pr-4 text-xs" data-label="Esito">
                     {r.esito ? ESITO_LABEL[r.esito] : "—"}
                     {r.risolta_at && (
                       <span className="text-slate-400">
                         {" "}
-                        · {new Date(r.risolta_at).toLocaleDateString("it-IT")}
+                        · {soloData(r.risolta_at)}
                       </span>
                     )}
                   </td>

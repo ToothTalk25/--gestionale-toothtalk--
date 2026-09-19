@@ -6,6 +6,7 @@ import { eliminaVersione, urlFirmato } from "@/app/actions";
 import { formatBytes } from "@/lib/hash";
 import { IconaAnnulla, IconaConferma, IconaElimina, IconaScarica, IconaSpinner } from "@/components/icone-azioni";
 import type { DeliverableVersion } from "@/lib/types";
+import { dataOra } from "@/lib/data-ora";
 
 /**
  * Elenco dei file di uno spazio di lavoro.
@@ -76,7 +77,7 @@ function Riga({
       </p>
       <p className="mt-0.5 truncate text-[11px] text-slate-400">
         {formatBytes(v.size_bytes)} ·{" "}
-        {new Date(v.uploaded_at).toLocaleString("it-IT")} ·{" "}
+        {dataOra(v.uploaded_at)} ·{" "}
         {nomi[v.uploaded_by] ?? "—"}
       </p>
 

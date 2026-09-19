@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { caricaModelloAccordo, preparaUploadModelloAccordo } from "@/app/actions-profilo";
+import { dataOra } from "@/lib/data-ora";
 
 export type RigaModelloAccordo = {
   id: string;
@@ -96,7 +97,7 @@ export default function CaricaModelloAccordo({ modelli }: { modelli: RigaModello
         <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-sm">
           <p className="font-medium">Modello attivo</p>
           <p className="text-xs text-slate-600">
-            Caricato il {new Date(attivo.caricato_at).toLocaleString("it-IT")}
+            Caricato il {dataOra(attivo.caricato_at)}
             {attivo.caricato_da_nome ? ` · ${attivo.caricato_da_nome}` : ""}
           </p>
           <p className="mt-1 break-all font-mono text-[11px] text-slate-400">
@@ -117,7 +118,7 @@ export default function CaricaModelloAccordo({ modelli }: { modelli: RigaModello
           <ul className="mt-2 space-y-1 text-xs text-slate-500">
             {modelli.slice(1).map((m) => (
               <li key={m.id} className="border-b border-slate-50 py-1">
-                {new Date(m.caricato_at).toLocaleString("it-IT")}
+                {dataOra(m.caricato_at)}
                 {m.caricato_da_nome ? ` · ${m.caricato_da_nome}` : ""}
               </li>
             ))}

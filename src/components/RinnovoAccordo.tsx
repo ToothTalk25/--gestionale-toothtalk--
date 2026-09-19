@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { esci } from "@/app/actions-auth";
 import CaricaRinnovo from "@/components/CaricaRinnovo";
 import type { Profile } from "@/lib/types";
+import { soloData } from "@/lib/data-ora";
 
 /**
  * Pagina di rinnovo dell'Accordo Editoriale scaduto (Art. 9.1): chi è qui ha
@@ -15,7 +16,7 @@ export default function RinnovoAccordo({ profile }: { profile: Profile }) {
   const router = useRouter();
 
   const scadutoIl = profile.accordo_scadenza
-    ? new Date(`${profile.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")
+    ? soloData(`${profile.accordo_scadenza}T00:00:00`)
     : "—";
 
   async function esciEVai() {

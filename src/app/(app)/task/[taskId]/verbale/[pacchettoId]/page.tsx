@@ -7,6 +7,7 @@ import {
   type ManifestoPacchetto,
   type PacchettoVideoRow,
 } from "@/lib/types";
+import { dataOra } from "@/lib/data-ora";
 
 const ETICHETTA: Record<string, string> = {
   video: "Video montato",
@@ -66,7 +67,7 @@ export default async function VerbalePage({
         />
         <Voce
           t="PEC inviata il"
-          v={p.pec_inviata_at ? new Date(p.pec_inviata_at).toLocaleString("it-IT") : "—"}
+          v={p.pec_inviata_at ? dataOra(p.pec_inviata_at) : "—"}
         />
         <Voce t="Destinatari PEC" v={(p.pec_destinatari ?? []).join(", ") || "—"} />
       </dl>

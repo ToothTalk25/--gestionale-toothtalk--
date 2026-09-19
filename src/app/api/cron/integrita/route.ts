@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { richiestaAutorizzataCron } from "@/lib/api-auth";
 import { inviaEmailGmail } from "@/lib/mail";
 import { inviaPushAdmin } from "@/lib/push";
+import { dataOra } from "@/lib/data-ora";
 
 export const dynamic = "force-dynamic";
 
@@ -198,7 +199,7 @@ export async function GET(request: NextRequest) {
     const righe = [
       "Il controllo automatico dell'integrità ha trovato qualcosa che non torna.",
       "",
-      `Controllo del ${new Date(controllo.eseguita_at).toLocaleString("it-IT")}`,
+      `Controllo del ${dataOra(controllo.eseguita_at)}`,
       `  versioni ricontrollate: ${controllo.versioni_controllate}`,
       `  pacchetti sigillati ricontrollati: ${controllo.pacchetti_controllati}`,
       `  catene di impronte rotte: ${controllo.catene_rotte}`,

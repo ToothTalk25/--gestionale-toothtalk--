@@ -71,9 +71,11 @@ const adesso = new Date();
 const fraSeiMesi = new Date(adesso.getTime() + 182 * 24 * 3600 * 1000).toISOString();
 
 const { data: polo } = await db.from("poli").select("id, slug").limit(1).maybeSingle();
-const { data: task } = polo
-  ? await db.from("tasks").select("id").eq("polo_id", polo.id).limit(1).maybeSingle()
-  : { data: null };
+// La prova deve stare in un polo CON progetti: è lì che ci sono le schede da
+// cliccare, e un polo vuoto faceva fallire la misura dei clic (e nascondeva le
+// pagine dei progetti).
+const { data: task } = await db.from("tasks").select("id, polo_id").limit(1).maybeSingle();
+const poloId = task?.polo_id ?? polo?.id ?? null;
 
 // Collaboratore con accesso COMPLETO: tutte e cinque le condizioni di
 // accordoCompleto() (src/lib/accordo.ts) soddisfatte, altrimenti il proxy lo
@@ -98,7 +100,7 @@ await db
     accordo_scadenza: fraSeiMesi,
   })
   .eq("id", idMembro);
-if (polo) await db.from("memberships").insert({ user_id: idMembro, polo_id: polo.id });
+if (poloId) await db.from("memberships").insert({ user_id: idMembro, polo_id: poloId });
 
 const idTitolare = await creaUtente(EMAIL_ADMIN, "Prova Velocità Accesso Globale");
 await db
@@ -108,6 +110,19 @@ await db
 
 const browser = await chromium.launch();
 const errori = [];
+const lamentele = new Set();
+
+/** Raccoglie anche gli errori scritti in console: in locale React dice per
+ *  esteso QUALE elemento non combacia fra server e browser (idratazione), in
+ *  produzione il messaggio è ridotto a un numero (#418) e non basta. */
+function ascolta(page) {
+  page.on("pageerror", (e) => errori.push(e.message.slice(0, 120)));
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    const testo = m.text().replace(/\s+/g, " ").slice(0, 400);
+    lamentele.add(testo);
+  });
+}
 
 /** Entra con un account temporaneo e aspetta di uscire dal login. */
 async function entra(page, email) {
@@ -168,10 +183,27 @@ async function misura(page, percorso) {
   };
 }
 
+/** Il clic vero di una persona: da quando clicca a quando la pagina nuova è
+ *  disegnata. È la misura che si sente; quella di sopra è il caricamento
+ *  completo (il caso peggiore, quando si apre il gestionale da zero). */
+async function misuraClic(page, da, descrizione, tipo, nome) {
+  await page.goto(`${BASE}${da}`, { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+  if (tipo === "menuitem") {
+    await page.locator("header button").last().click();
+    await page.waitForTimeout(400);
+  }
+  const t0 = Date.now();
+  if (tipo === "selettore") await page.locator(nome).first().click();
+  else await page.getByRole(tipo, { name: nome }).first().click();
+  await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+  return { clic: descrizione, da, ms: Date.now() - t0, dove: new URL(page.url()).pathname };
+}
+
 let uscita = 0;
 try {
   const page = await browser.newPage();
-  page.on("pageerror", (e) => errori.push(e.message.slice(0, 120)));
+  ascolta(page);
   if (!(await entra(page, EMAIL))) throw new Error("accesso del Collaboratore non riuscito");
   console.log(`Collaboratore (accesso completo) — entra e atterra su ${new URL(page.url()).pathname}`);
 
@@ -179,13 +211,42 @@ try {
   if (task) pagineMembro.push(`/task/${task.id}`);
   const righe = [];
   for (const percorso of pagineMembro) righe.push(await misura(page, percorso));
-  console.log(`\n=== Collaboratore — mediana di ${GIRI} giri (locale: primo giro escluso) ===`);
+  console.log(`\n=== Collaboratore — caricamento pagina, mediana di ${GIRI} giri ===`);
   console.table(righe);
+
+  // I clic: navigazione dentro l'app, come fa una persona (nessun ricaricamento).
+  // Ognuno è protetto: se un link non c'è in quella pagina, si annota e si va
+  // avanti — un clic mancato non deve nascondere gli altri numeri.
+  const prove = [
+    ["/dashboard", "Progetti (menu)", "menuitem", "Progetti"],
+    ["/dashboard", "Risorse (menu)", "menuitem", "Risorse"],
+    ["/dashboard", "primo progetto", "selettore", 'a[href^="/task/"]'],
+    ["/dashboard", "Profilo (menu)", "menuitem", "Profilo"],
+  ];
+  const clic = [];
+  for (let giro = 0; giro < GIRI; giro++) {
+    for (const [da, descrizione, tipo, nome] of prove) {
+      try {
+        clic.push(await misuraClic(page, da, descrizione, tipo, nome));
+      } catch {
+        clic.push({ clic: descrizione, da, ms: -1, dove: "(clic non riuscito)" });
+      }
+    }
+  }
+  const perNome = {};
+  for (const c of clic) (perNome[c.clic] ??= []).push(c.ms);
+  console.log(`\n=== Collaboratore — clic dentro l'app (${GIRI} volte ciascuno, −1 = non riuscito) ===`);
+  console.table(
+    Object.entries(perNome).map(([nomeClic, tempi]) => {
+      const v = [...tempi].sort((a, b) => a - b);
+      return { clic: nomeClic, ms: v[Math.floor(v.length / 2)], minimo: v[0], massimo: v[v.length - 1] };
+    }),
+  );
 
   // L.accesso globale ha pagine sue (Registro) e in più le stesse: una nuova pagina
   // del browser è anche un contesto nuovo, quindi le sessioni non si mescolano.
   const pageAdmin = await browser.newPage();
-  pageAdmin.on("pageerror", (e) => errori.push(e.message.slice(0, 120)));
+  ascolta(pageAdmin);
   if (!(await entra(pageAdmin, EMAIL_ADMIN))) throw new Error("accesso globale non riuscito");
   console.log(`\nAccesso globale — entra e atterra su ${new URL(pageAdmin.url()).pathname}`);
 
@@ -205,6 +266,10 @@ try {
     console.log("\nTutte le pagine: 200 e nessun rimbalzo ✓");
   }
   console.log("errori JavaScript:", errori.length ? errori.join(" | ") : "nessuno");
+  if (lamentele.size) {
+    console.log("\nMessaggi di errore in console:");
+    for (const l of lamentele) console.log("  • " + l);
+  }
 } catch (e) {
   uscita = 1;
   console.log("ERRORE:", e.message);

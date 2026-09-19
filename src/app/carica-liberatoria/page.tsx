@@ -4,6 +4,7 @@ import { useState, useTransition, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { richiediOtpLiberatoria, firmaConOtpLiberatoria } from "@/app/actions-liberatoria";
 import { TITOLO_SEZIONE_1, TITOLO_SEZIONE_2, compilaParagrafi } from "@/lib/liberatoria-documento2";
+import { dataEstesa } from "@/lib/data-ora";
 
 /** Rende un paragrafo del Documento 2 interpretando i marker **grassetto**. */
 function Grassetto({ testo }: { testo: string }) {
@@ -85,7 +86,7 @@ function CaricaLiberatoriaForm() {
   const anteprima = compilaParagrafi({
     nome: nome.trim() || "…",
     recapito: "l'indirizzo email o PEC indicato",
-    data: new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" }),
+    data: dataEstesa(new Date()),
   });
   if (fatto) {
     return (

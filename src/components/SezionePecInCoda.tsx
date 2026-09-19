@@ -2,6 +2,8 @@
  * Un tipo per la riga di coda, condiviso fra la pagina del Registro e il
  * componente: le colonne restano snake_case, come in tutto il progetto.
  */
+import { dataOra } from "@/lib/data-ora";
+
 export type RigaPecInCoda = {
   id: string;
   creato_at: string;
@@ -78,7 +80,7 @@ export default function SezionePecInCoda({ righe }: { righe: RigaPecInCoda[] }) 
                 • {r.oggetto} → {r.destinatari.join(", ")}
                 <span className="text-slate-400">
                   {" "}
-                  · preparata {new Date(r.creato_at).toLocaleString("it-IT")}
+                  · preparata {dataOra(r.creato_at)}
                 </span>
               </li>
             ))}
@@ -129,7 +131,7 @@ export default function SezionePecInCoda({ righe }: { righe: RigaPecInCoda[] }) 
               >
                 <span>{r.oggetto}</span>
                 <span className="text-emerald-700">
-                  {r.inviata_at ? new Date(r.inviata_at).toLocaleString("it-IT") : ""}
+                  {r.inviata_at ? dataOra(r.inviata_at) : ""}
                 </span>
               </div>
             ))}

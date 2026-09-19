@@ -8,6 +8,7 @@ import AzioniProgettoRiga from "@/components/AzioniProgettoRiga";
 import TornaIndietro from "@/components/TornaIndietro";
 import MagazzinoDocumenti from "@/components/MagazzinoDocumenti";
 import type { DocumentoMagazzino, Formato, Polo, TaskStatus } from "@/lib/types";
+import { soloData } from "@/lib/data-ora";
 
 export default async function PoloPage({
   params,
@@ -143,7 +144,7 @@ export default async function PoloPage({
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{t.titolo}</span>
                   {t.scadenza && (
                     <span className="text-xs text-slate-400">
-                      scad. {new Date(t.scadenza).toLocaleDateString("it-IT")}
+                      scad. {soloData(t.scadenza)}
                     </span>
                   )}
                   {!!richiesteApertePerTask[t.id] && (

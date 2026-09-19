@@ -32,6 +32,7 @@ import {
   type PacchettoVideoRow,
   type RuoloElemento,
 } from "@/lib/types";
+import { dataOra } from "@/lib/data-ora";
 
 export type ElementoCaricato = {
   ruolo: RuoloElemento;
@@ -938,7 +939,7 @@ function DettaglioSigillo({
           <dt className="text-xs text-slate-400">Sigillato il</dt>
           <dd>
             {pacchetto.sigillato_at
-              ? new Date(pacchetto.sigillato_at).toLocaleString("it-IT")
+              ? dataOra(pacchetto.sigillato_at)
               : "—"}
           </dd>
         </div>
@@ -946,7 +947,7 @@ function DettaglioSigillo({
           <>
             <div>
               <dt className="text-xs text-slate-400">PEC inviata</dt>
-              <dd>{new Date(pacchetto.pec_inviata_at).toLocaleString("it-IT")}</dd>
+              <dd>{dataOra(pacchetto.pec_inviata_at)}</dd>
             </div>
             <div>
               <dt className="text-xs text-slate-400">Message-ID</dt>
@@ -1138,7 +1139,7 @@ function Slot({
           </p>
           <p className="text-xs text-slate-400">
             {formatBytes(elemento.size_bytes)} ·{" "}
-            {new Date(elemento.uploaded_at).toLocaleString("it-IT")}
+            {dataOra(elemento.uploaded_at)}
           </p>
 
           {isAdmin && elemento.bucket && elemento.storage_path && !senzaScaricaGenerico && (

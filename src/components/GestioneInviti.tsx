@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { aggiornaLimiteInvito, creaCodiceInvito, disattivaCodiceInvito } from "@/app/actions-invito";
 import { inviaInvitoGruppo } from "@/app/actions-onboarding";
 import type { Polo } from "@/lib/types";
+import { soloData } from "@/lib/data-ora";
 
 export type RigaInvito = {
   id: string;
@@ -194,7 +195,7 @@ export default function GestioneInviti({
                     {i.max_usi ? ` / ${i.max_usi}` : ""}
                   </td>
                   <td className="py-2 pr-4 text-xs" data-label="Scadenza">
-                    {i.scade_il ? new Date(i.scade_il).toLocaleDateString("it-IT") : "—"}
+                    {i.scade_il ? soloData(i.scade_il) : "—"}
                   </td>
                   <td className="py-2 text-right" data-label="Azioni">
                     <div className="flex flex-col items-start gap-1 md:flex-row md:items-center md:justify-end">

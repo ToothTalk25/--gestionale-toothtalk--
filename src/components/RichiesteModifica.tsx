@@ -9,6 +9,7 @@ import {
   type PacchettoStato,
   type RichiestaModifica,
 } from "@/lib/types";
+import { dataOra } from "@/lib/data-ora";
 
 const STATI_SENZA_CORREZIONI: PacchettoStato[] = [
   "sigillato",
@@ -83,7 +84,7 @@ export default function RichiesteModifica({
               <div className="flex flex-wrap items-center gap-2">
                 <AmbitoTag ambito={r.ambito} />
                 <span className="text-xs text-slate-500">
-                  {new Date(r.creata_at).toLocaleString("it-IT")}
+                  {dataOra(r.creata_at)}
                   {r.creata_da ? ` · ${nomi[r.creata_da] ?? ""}` : ""}
                 </span>
                 <button
@@ -118,7 +119,7 @@ export default function RichiesteModifica({
                 <AmbitoTag ambito={r.ambito} />
                 <span className="text-xs text-slate-500">
                   segnalata fatta{" "}
-                  {r.completata_at ? new Date(r.completata_at).toLocaleString("it-IT") : ""}
+                  {r.completata_at ? dataOra(r.completata_at) : ""}
                   {r.completata_da ? ` da ${nomi[r.completata_da] ?? ""}` : ""} · da confermare
                 </span>
                 {isAdmin && (
@@ -173,7 +174,7 @@ export default function RichiesteModifica({
                   <span>
                     risolta il{" "}
                     {r.risolta_at
-                      ? new Date(r.risolta_at).toLocaleString("it-IT")
+                      ? dataOra(r.risolta_at)
                       : "—"}
                     {r.risolta_da ? ` da ${nomi[r.risolta_da] ?? ""}` : ""}
                   </span>

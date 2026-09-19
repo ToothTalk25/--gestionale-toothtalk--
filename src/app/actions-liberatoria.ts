@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/auth";
 import { nettizzaDestinatario, validaEmail } from "@/lib/mail";
 import { accodaPec } from "@/lib/pec";
 import { renderDocumentoHTML } from "@/lib/liberatoria-documento2";
+import { dataEstesa } from "@/lib/data-ora";
 
 function errore(msg: string): { ok: false; errore: string } {
   return { ok: false, errore: msg };
@@ -590,7 +591,7 @@ export async function firmaConOtpLiberatoria(
   // Documento 2 INTEGRALE (Sezione 1 + Sezione 2) approvato dal Titolare,
   // non un riassunto di poche righe.
   const recapito = richiesta.contatto_email ?? "";
-  const data = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
+  const data = dataEstesa(new Date());
   const html = renderDocumentoHTML({ nome, recapito, data });
 
 

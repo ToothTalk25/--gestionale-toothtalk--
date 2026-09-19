@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { liberaCampoDichiarazione } from "@/app/actions-pacchetto";
+import { soloData } from "@/lib/data-ora";
 
 /** Riga del registro "richieste di ricaricamento video di dichiarazione". */
 export type RigaRicaricamentoDichiarazione = {
@@ -72,7 +73,7 @@ export default function RichiesteRicaricamentoDichiarazione({
               {r.ruolo === "dichiarazione_integrazione"
                 ? "Video di integrazione (domanda aggiuntiva) · "
                 : "Video di dichiarazione · "}
-              Segnalato il {new Date(r.creato_at).toLocaleDateString("it-IT")}
+              Segnalato il {soloData(r.creato_at)}
               {r.motivo ? ` — "${r.motivo}"` : ""}
             </p>
           </div>
@@ -95,7 +96,7 @@ export default function RichiesteRicaricamentoDichiarazione({
             {risolte.map((r) => (
               <li key={r.id}>
                 {nomi[r.user_id] ?? r.user_id.slice(0, 8)} — liberata il{" "}
-                {r.risolta_at ? new Date(r.risolta_at).toLocaleDateString("it-IT") : "?"}
+                {r.risolta_at ? soloData(r.risolta_at) : "?"}
               </li>
             ))}
           </ul>

@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import TornaIndietro from "@/components/TornaIndietro";
 import { KIND_LABEL, type DeliverableVersion, type DeliverableKind } from "@/lib/types";
+import { dataOra } from "@/lib/data-ora";
 
 /**
  * Attestazione di deposito stampabile.
@@ -73,7 +74,7 @@ export default async function CertificatoPage({
         <p className="text-xs uppercase tracking-widest text-slate-400">ToothTalk</p>
         <h1 className="mt-1 text-xl font-semibold">Attestazione di deposito</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Documento generato il {new Date().toLocaleString("it-IT")}
+          Documento generato il {dataOra(new Date())}
         </p>
       </header>
 
@@ -85,7 +86,7 @@ export default async function CertificatoPage({
         <Voce t="Depositato da" v={autore?.full_name ?? autore?.email ?? "—"} />
         <Voce
           t="Data e ora di sigillo"
-          v={v.sealed_at ? new Date(v.sealed_at).toLocaleString("it-IT") : "—"}
+          v={v.sealed_at ? dataOra(v.sealed_at) : "—"}
         />
         <Voce t="Versione" v={`v${v.version_no} · ${v.origin}`} />
         <Voce t="Dimensione" v={v.size_bytes ? `${v.size_bytes} byte` : "—"} />
@@ -122,7 +123,7 @@ export default async function CertificatoPage({
                   </td>
                   <td className="py-1 pr-3" data-label="File">{r.file_name}</td>
                   <td className="py-1 pr-3" data-label="Data">
-                    {new Date(r.uploaded_at).toLocaleString("it-IT")}
+                    {dataOra(r.uploaded_at)}
                   </td>
                   <td className={`py-1 ${r.integra ? "text-emerald-700" : "text-red-600"}`} data-label="Integrità">
                     {r.integra ? "verificata" : "ROTTA"}

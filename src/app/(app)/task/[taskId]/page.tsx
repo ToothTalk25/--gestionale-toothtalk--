@@ -24,6 +24,7 @@ import {
   type RuoloElemento,
   type Task,
 } from "@/lib/types";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 export default async function TaskPage({
   params,
@@ -201,10 +202,10 @@ export default async function TaskPage({
             />
             <p className="mt-1 text-xs text-slate-400">
               {task.scadenza
-                ? `Scadenza ${new Date(task.scadenza).toLocaleDateString("it-IT")} · `
+                ? `Scadenza ${soloData(task.scadenza)} · `
                 : ""}
               aggiornata il{" "}
-              {new Date(task.updated_at).toLocaleString("it-IT")}
+              {dataOra(task.updated_at)}
             </p>
           </div>
           <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
@@ -348,7 +349,7 @@ export default async function TaskPage({
           {(storico ?? []).map((s) => (
             <li key={s.id}>
               <span className="text-slate-400">
-                {new Date(s.at).toLocaleString("it-IT")}
+                {dataOra(s.at)}
               </span>{" "}
               — {s.da_status ? `${s.da_status} → ` : "creata come "}
               <strong>{s.a_status}</strong>

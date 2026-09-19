@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { notificaArt82, type RigaNotificaArt82 } from "@/app/actions-profilo";
+import { soloData } from "@/lib/data-ora";
 
 /**
  * Coda dell'obbligo, previsto dall'Art. 8.2 dell'Accordo Editoriale, di
@@ -64,9 +65,9 @@ export default function NotificheDovuteArt82({
                     {nomi[n.user_id] ?? n.user_id.slice(0, 8)}
                   </p>
                   <p className="text-xs text-amber-700">
-                    Revocato il {new Date(n.revocato_at).toLocaleDateString("it-IT")} — termine{" "}
+                    Revocato il {soloData(n.revocato_at)} — termine{" "}
                     {scaduto ? "SCADUTO" : "entro"} il{" "}
-                    {new Date(n.scade_at).toLocaleDateString("it-IT")}
+                    {soloData(n.scade_at)}
                   </p>
                 </div>
                 <button
@@ -91,7 +92,7 @@ export default function NotificheDovuteArt82({
             {evase.map((n) => (
               <li key={n.id}>
                 {nomi[n.user_id] ?? n.user_id.slice(0, 8)} — notificata il{" "}
-                {new Date(n.notificata_at!).toLocaleDateString("it-IT")}
+                {soloData(n.notificata_at!)}
               </li>
             ))}
           </ul>

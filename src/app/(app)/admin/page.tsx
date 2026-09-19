@@ -41,6 +41,7 @@ import RichiesteRicaricamentoDichiarazione, {
 } from "@/components/RichiesteRicaricamentoDichiarazione";
 import type { RigaEliminazioneGrezzo } from "@/app/actions-profilo";
 import type { RigaRichiestaRimozione, RigaNotificaArt82 } from "@/app/actions-profilo";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 /**
  * La rivalutazione IA dell'accordo manda al modello due PDF da confrontare: è
@@ -481,7 +482,7 @@ export default async function AdminPage() {
                       <span>{r.originale_file}</span>
                       <span className="text-xs text-slate-400">
                         {r.originale_sigillata_il
-                          ? new Date(r.originale_sigillata_il).toLocaleString("it-IT")
+                          ? dataOra(r.originale_sigillata_il)
                           : ""}
                       </span>
                     </div>
@@ -601,7 +602,7 @@ export default async function AdminPage() {
                         <span className="text-xs">
                           <span className="text-emerald-700">Caricato</span>
                           {p.accordo_caricato_at
-                            ? ` · ${new Date(p.accordo_caricato_at).toLocaleDateString("it-IT")}`
+                            ? ` · ${soloData(p.accordo_caricato_at)}`
                             : ""}
                           {p.accordo_verificato === "ok" && (
                             <span className="ml-1 rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-800">

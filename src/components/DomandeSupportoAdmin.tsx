@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { rispondiDomanda } from "@/app/actions-supporto";
 import type { RigaDomandaSupporto } from "@/app/actions-supporto";
+import { dataOra } from "@/lib/data-ora";
 
 /**
  * Coda delle domande dei collaboratori (widget chat lato utente). Le
@@ -81,7 +82,7 @@ export default function DomandeSupportoAdmin({
                   {d.risposta}
                 </p>
                 <p className="mt-1 text-slate-400">
-                  {d.risposto_at ? new Date(d.risposto_at).toLocaleString("it-IT") : ""}
+                  {d.risposto_at ? dataOra(d.risposto_at) : ""}
                 </p>
               </li>
             ))}
@@ -114,7 +115,7 @@ function RigaPendente({ domanda, nome }: { domanda: RigaDomandaSupporto; nome: s
     <div className="tt-card border border-amber-200 bg-amber-50/50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-slate-800">{nome}</p>
-        <span className="text-xs text-slate-400">{new Date(domanda.creato_at).toLocaleString("it-IT")}</span>
+        <span className="text-xs text-slate-400">{dataOra(domanda.creato_at)}</span>
       </div>
       <p className="mt-1 text-sm text-slate-700">{domanda.domanda}</p>
 

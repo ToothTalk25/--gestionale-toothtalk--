@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { eseguiEliminazioneGrezzo, type RigaEliminazioneGrezzo } from "@/app/actions-profilo";
+import { soloData } from "@/lib/data-ora";
 
 /** Candidato mostrato al Coordinatore per la revisione manuale. */
 export type CandidatoGrezzo = {
@@ -95,9 +96,9 @@ export default function RichiesteEliminazioneGrezzo({
               {nomi[r.user_id] ?? r.user_id.slice(0, 8)}
             </p>
             <p className="text-xs text-amber-700">
-              Revocato il {new Date(r.richiesto_at).toLocaleDateString("it-IT")} — termine{" "}
+              Revocato il {soloData(r.richiesto_at)} — termine{" "}
               {scaduto ? "SCADUTO" : "entro"} il{" "}
-              {new Date(r.termine_scadenza).toLocaleDateString("it-IT")}
+              {soloData(r.termine_scadenza)}
             </p>
             {files.length === 0 ? (
               <p className="mt-2 text-xs text-slate-500">
@@ -148,7 +149,7 @@ export default function RichiesteEliminazioneGrezzo({
             {risolte.map((r) => (
               <li key={r.id}>
                 {nomi[r.user_id] ?? r.user_id.slice(0, 8)} — risolta il{" "}
-                {r.risolta_at ? new Date(r.risolta_at).toLocaleDateString("it-IT") : "?"}
+                {r.risolta_at ? soloData(r.risolta_at) : "?"}
                 {r.versioni_eliminate?.length
                   ? ` (${r.versioni_eliminate.length} file eliminati)`
                   : " (nessun file eliminato)"}

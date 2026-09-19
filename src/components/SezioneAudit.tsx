@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { dataOra } from "@/lib/data-ora";
 
 export type RigaAudit = {
   id: number;
@@ -58,7 +59,7 @@ export default function SezioneAudit({
         {visibili.map((a) => (
           <li key={a.id} className="border-b border-slate-50 py-1">
             <span className="text-xs text-slate-400">
-              {new Date(a.at).toLocaleString("it-IT")}
+              {dataOra(a.at)}
             </span>{" "}
             <strong>{a.action}</strong>{" "}
             <span className="text-slate-500">

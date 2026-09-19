@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { rispondiDomandaTecnica } from "@/app/actions-domande-tecnico";
+import { dataOra } from "@/lib/data-ora";
 
 export type RigaDomandaTecnica = {
   id: string;
@@ -66,7 +67,7 @@ export default function PannelloDomandeTecniche({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium text-slate-700">{nomi[d.user_id] ?? "—"}</p>
                   <span className="text-slate-400">
-                    {new Date(d.risposto_at ?? d.creato_at).toLocaleString("it-IT")}
+                    {dataOra(d.risposto_at ?? d.creato_at)}
                   </span>
                 </div>
                 <p className="mt-1 text-slate-600">{d.domanda}</p>
@@ -107,7 +108,7 @@ function RigaAperta({ domanda, nome }: { domanda: RigaDomandaTecnica; nome: stri
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-slate-800">{nome}</p>
         <span className="text-xs text-slate-400">
-          {new Date(domanda.creato_at).toLocaleString("it-IT")}
+          {dataOra(domanda.creato_at)}
         </span>
       </div>
       <p className="mt-1 text-sm text-slate-700">{domanda.domanda}</p>

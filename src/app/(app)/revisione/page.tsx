@@ -10,6 +10,7 @@ import {
   type RichiestaModifica,
   type VideoDaRivedere,
 } from "@/lib/types";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 /**
  * Coda di revisione: pacchetti segnalati completi da rivedere prima del
@@ -113,7 +114,7 @@ export default async function RevisionePage() {
                   <span className="flex-1 text-sm font-medium">{v.progetto}</span>
                   <span className="text-xs text-slate-400">
                     {v.pronto_at
-                      ? `segnalato il ${new Date(v.pronto_at).toLocaleString("it-IT")}`
+                      ? `segnalato il ${dataOra(v.pronto_at)}`
                       : ""}
                   </span>
                   <span className="rounded-full bg-violet-100 px-[11px] py-[3px] text-xs font-semibold text-violet-800">
@@ -165,10 +166,10 @@ export default async function RevisionePage() {
                   <p className="mt-1 text-xs text-slate-400">
                     Sigillato il{" "}
                     {v.sigillato_at
-                      ? new Date(v.sigillato_at).toLocaleString("it-IT")
+                      ? dataOra(v.sigillato_at)
                       : "—"}
                     {v.pec_inviata_at
-                      ? ` · PEC inviata il ${new Date(v.pec_inviata_at).toLocaleString("it-IT")}`
+                      ? ` · PEC inviata il ${dataOra(v.pec_inviata_at)}`
                       : " · PEC non ancora inviata"}
                     {v.coinvolge_terzi ? " · con liberatoria" : ""}
                   </p>
@@ -227,7 +228,7 @@ export default async function RevisionePage() {
                     </Link>
                   </p>
                   <p className="text-xs text-slate-400">
-                    {p.gruppo} · sigillato il {p.sigillato_at ? new Date(p.sigillato_at).toLocaleDateString("it-IT") : "—"} · {p.file_da_archiviare} file
+                    {p.gruppo} · sigillato il {p.sigillato_at ? soloData(p.sigillato_at) : "—"} · {p.file_da_archiviare} file
                   </p>
                 </div>
                 <BottoneArchiviaTutto taskId={p.task_id} pacchettoId={p.pacchetto_id} />

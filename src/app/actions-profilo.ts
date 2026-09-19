@@ -13,6 +13,7 @@ import { verificaAccordoFirmato, type EsitoVerificaAccordo } from "@/lib/gemini"
 import { inviaEmailGmail } from "@/lib/mail";
 import { archiviaAccordoSuDrive } from "@/lib/google-doc";
 import { COOKIE_VERSION, PRIVACY_VERSION, type Profile } from "@/lib/types";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 type Esito<T = void> = { ok: true; dati: T } | { ok: false; errore: string };
 
@@ -2596,11 +2597,11 @@ async function generaModuloNomina(
   }
 
   const nome = c.full_name ?? c.email;
-  const dataNascitaIt = new Date(c.data_nascita).toLocaleDateString("it-IT");
+  const dataNascitaIt = soloData(c.data_nascita);
   const dataSottoscrizioneIt = c.accordo_caricato_at
-    ? new Date(c.accordo_caricato_at).toLocaleDateString("it-IT")
+    ? soloData(c.accordo_caricato_at)
     : "—";
-  const dataApprovazioneIt = new Date(approvatoAt).toLocaleString("it-IT");
+  const dataApprovazioneIt = dataOra(approvatoAt);
 
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
 <title>Modulo di nomina individuale — ${nome}</title>
@@ -2950,7 +2951,7 @@ export async function confermaControfirmaAccordo(): Promise<
   // Best-effort: la conferma resta comunque valida e tracciata in audit_log.
   try {
     const nomeConfermato = profile.full_name ?? profile.email;
-    const oraIt = new Date(ora).toLocaleString("it-IT");
+    const oraIt = dataOra(ora);
     await accodaPec({
       oggetto: `[ToothTalk] Controfirma confermata — ${nomeConfermato}`,
       testo: [

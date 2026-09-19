@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ScaricaRicevuta from "@/components/ScaricaRicevuta";
+import { dataOra } from "@/lib/data-ora";
 
 export type RigaConsenso = {
   id: string;
@@ -87,7 +88,7 @@ export default function SezioneConsensi({
                   </span>
                 </td>
                 <td className="py-2 pr-4 text-xs text-slate-500" data-label="Accettato il">
-                  {new Date(c.accettato_at).toLocaleString("it-IT")}
+                  {dataOra(c.accettato_at)}
                 </td>
                 {dettaglio === "esteso" && (
                   <>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 export type RigaLiberatoria = {
   id: string;
@@ -101,7 +102,7 @@ export default function SezioneLiberatorie({
                     <span className="rounded bg-red-100 px-1.5 py-0.5 font-medium text-red-700">
                       Revocato
                       {r.revocato_at
-                        ? ` · ${new Date(r.revocato_at).toLocaleDateString("it-IT")}`
+                        ? ` · ${soloData(r.revocato_at)}`
                         : ""}
                     </span>
                   ) : (
@@ -116,7 +117,7 @@ export default function SezioneLiberatorie({
                       {r.task_id ? r.task_id.slice(0, 8) : "—"}
                     </td>
                     <td className="py-2 pr-4 text-xs text-slate-500" data-label="Firma">
-                      {new Date(r.firmato_at).toLocaleString("it-IT")}
+                      {dataOra(r.firmato_at)}
                     </td>
                     <td className="py-2 font-mono text-xs text-slate-400" data-label="SHA-256">
                       {r.sha256.slice(0, 16)}…

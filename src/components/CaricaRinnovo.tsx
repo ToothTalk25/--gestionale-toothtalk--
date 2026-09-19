@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { caricaRinnovoAccordo, preparaUploadRinnovo } from "@/app/actions-profilo";
 import type { Profile } from "@/lib/types";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 /**
  * Card di caricamento del documento di rinnovo dell'Accordo (Art. 9.1),
@@ -22,10 +23,10 @@ export default function CaricaRinnovo({ profile }: { profile: Profile }) {
   const [errore, setErrore] = useState<string | null>(null);
 
   const scadenzaIt = profile.accordo_scadenza
-    ? new Date(`${profile.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")
+    ? soloData(`${profile.accordo_scadenza}T00:00:00`)
     : null;
   const rinnovoCaricatoIl = profile.rinnovo_caricato_at
-    ? new Date(profile.rinnovo_caricato_at).toLocaleString("it-IT")
+    ? dataOra(profile.rinnovo_caricato_at)
     : null;
 
   async function carica() {

@@ -23,6 +23,7 @@ import { controfirmaNonRichiesta as controfirmaDaTitolareNonRichiesta } from "@/
 import FotoProfilo from "@/components/FotoProfilo";
 import CaricaRinnovo from "@/components/CaricaRinnovo";
 import { useConferma } from "@/components/ConfermaAzione";
+import { dataOra, soloData } from "@/lib/data-ora";
 
 export default function ProfiloPersonale({
   profile,
@@ -65,7 +66,7 @@ export default function ProfiloPersonale({
   const [accordoStato, setAccordoStato] = useState<string | null>(
     profile.accordo_path
       ? profile.accordo_caricato_at
-        ? `Caricato il ${new Date(profile.accordo_caricato_at).toLocaleString("it-IT")}`
+        ? `Caricato il ${dataOra(profile.accordo_caricato_at)}`
         : "Caricato"
       : null,
   );
@@ -223,7 +224,7 @@ export default function ProfiloPersonale({
           setAccordoStato("Caricato, PEC non in coda");
           throw new Error(esito.errore);
         }
-        setAccordoStato(`Caricato il ${new Date().toLocaleString("it-IT")}`);
+        setAccordoStato(`Caricato il ${dataOra(new Date())}`);
         setPecStato("PEC in coda: partirà al prossimo invio dal computer");
         setVerificaStato({ esito: esito.dati.verifica.esito, note: esito.dati.verifica.note });
         setMessaggio(
@@ -551,7 +552,7 @@ export default function ProfiloPersonale({
                 <p className="mt-1 text-xs text-amber-800">{profile.accordo_ricarica_motivo}</p>
                 <p className="mt-2 text-xs text-amber-700">
                   Richiesto il{" "}
-                  {new Date(profile.accordo_ricarica_richiesta_at).toLocaleDateString("it-IT")}.
+                  {soloData(profile.accordo_ricarica_richiesta_at)}.
                   Quando carichi il documento corretto, questa richiesta si chiude da sola.
                 </p>
               </div>
@@ -668,7 +669,7 @@ export default function ProfiloPersonale({
               <p className="mt-2 text-slate-600">
                 Il tuo Accordo scade il{" "}
                 <strong>
-                  {new Date(`${profile.accordo_scadenza}T00:00:00`).toLocaleDateString("it-IT")}
+                  {soloData(`${profile.accordo_scadenza}T00:00:00`)}
                 </strong>
                 .
               </p>
@@ -698,7 +699,7 @@ export default function ProfiloPersonale({
               <p className="mt-1 text-amber-800">
                 Il Titolare ha caricato, il{" "}
                 {profile.accordo_controfirmato_caricato_at
-                  ? new Date(profile.accordo_controfirmato_caricato_at).toLocaleString("it-IT")
+                  ? dataOra(profile.accordo_controfirmato_caricato_at)
                   : "—"}
                 , la scansione della copia controfirmata a mano (entrambe le firme).
                 Scaricala e verifica che sia lo stesso documento che hai firmato tu
@@ -736,7 +737,7 @@ export default function ProfiloPersonale({
               <p className="mt-1 text-slate-500">
                 Generato automaticamente il{" "}
                 {profile.nomina_generata_at
-                  ? new Date(profile.nomina_generata_at).toLocaleString("it-IT")
+                  ? dataOra(profile.nomina_generata_at)
                   : "—"}
                 . Nessuna firma è richiesta da parte tua: è a tua disposizione
                 per conoscenza e conservazione.
