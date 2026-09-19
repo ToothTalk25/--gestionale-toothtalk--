@@ -544,6 +544,37 @@ Aggiornato al 19 settembre 2026.
     **13 account** (10 attivi), **64 file**, **23 MB** di storage e **16 MB** di
     database. Un salto in uno di questi numeri è la prima cosa da guardare.
 
+14. **Intelligenza artificiale e AI Act** (19 settembre 2026). Gli obblighi di
+    trasparenza dell'articolo 50 si applicano dal 2 agosto 2026. Il quadro
+    completo, con i riferimenti, è in **`IA-NEL-GESTIONALE.md`**; qui
+    l'essenziale:
+    — due soli usi dell'IA, entrambi in `src/lib/gemini.ts`: la verifica
+      dell'accordo caricato (di **sola segnalazione**: non blocca niente,
+      decidono l'approvazione manuale e la controfirma) e la classificazione
+      delle domande di supporto, che per le domande tecniche **scrive la
+      risposta** e la manda subito;
+    — l'etichetta di quella risposta diceva «Assistente», che si legge come una
+      persona: era l'unico punto non in regola. Ora dice «Assistente automatico
+      (IA)», con una riga che spiega che nessuno l'ha controllata prima, e resta
+      il modo di chiamare una persona;
+    — il progetto è **utilizzatore** (*deployer*) di un modello di IA per
+      finalità generali di Google, non fornitore: nessuna pratica vietata,
+      nessun sistema ad alto rischio dell'Allegato III. Il confine da non
+      superare: se l'IA cominciasse a **valutare persone** — ammetterle,
+      escluderle, giudicare il loro lavoro — cambierebbe categoria e servirebbe
+      una procedura tutta diversa. L'IA legge documenti, non giudica persone;
+    — l'informativa privacy era già a posto: dichiara il trattamento via IA, il
+      fornitore Google e la decisione umana (art. 22 GDPR), e il diritto di
+      chiedere una verifica solo manuale;
+    — la tabella `verifiche_riconoscimento` (confronto dei volti) è stata
+      rimossa con la `0150`: era vuota e non usata, residuo di una funzione
+      cancellata dal codice dopo l'audit GDPR;
+    — **resta aperto, e non dipende dal codice**: se la chiave Google è di
+      livello gratuito, i contenuti possono essere usati per migliorare i modelli
+      di Google. Va verificato prima di considerare chiuso il trattamento di
+      documenti che contengono codice fiscale e firma (vedi `IA-NEL-GESTIONALE.md`,
+      §3).
+
 ## 11. Il limite dichiarato
 
 Chi possiede le credenziali del progetto Supabase è proprietario delle tabelle e
