@@ -83,8 +83,16 @@ async function creaUtente(email, nome) {
 const idPersona = await creaUtente(EMAIL_PERSONA, "Prova PEC Deposito");
 const idAdmin = await creaUtente(EMAIL_ADMIN, "Prova Accesso Globale");
 
-// La persona di prova ha un accordo VERO caricato, con esito ok: finisce nella
-// lista principale ("Accordi da approvare"), dove sta Marianna.
+// La persona di prova punta all'accordo VERO di Marianna per il file (così lo
+// storage esiste e la riga è realistica), ma con un'IMPRONTA SUA, casuale: le
+// PEC vengono riconosciute per impronta del documento, quindi un'impronta
+// diversa a ogni giro rende la prova ripetibile. Con l'impronta vera della
+// persona, la riga di una PEC già spedita (per esempio quella inviata per
+// davvero) fa sparire il pulsante — comportamento giusto, ma la prova non
+// avrebbe più niente da cliccare.
+const improntaProva = [...crypto.getRandomValues(new Uint8Array(32))]
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("");
 await db
   .from("profiles")
   .update({
@@ -92,7 +100,7 @@ await db
     approvato_at: new Date().toISOString(),
     on_screen: false,
     accordo_path: rif.accordo_path,
-    accordo_sha256: rif.accordo_sha256,
+    accordo_sha256: improntaProva,
     accordo_caricato_at: new Date().toISOString(),
     accordo_letto_confermato: true,
     accordo_verificato: "ok",
@@ -104,6 +112,33 @@ await db
   .from("profiles")
   .update({ role: "admin", attivo: true, approvato_at: new Date().toISOString() })
   .eq("id", idAdmin);
+
+// I residui dei giri precedenti. Il pulsante "Metti in coda la PEC del deposito"
+// NON compare quando quel documento ha già la sua PEC (in coda o spedita): è il
+// comportamento voluto — è la ragione per cui esiste — e una riga di collaudo
+// rimasta da un giro precedente farebbe fallire questa prova senza che ci sia
+// niente di rotto. Qui si annullano SOLO le righe di collaudo: quelle il cui
+// profilo non esiste più nel database. Niente di vero viene toccato.
+const { data: profiliOra } = await db.from("profiles").select("id");
+const vivi = new Set((profiliOra ?? []).map((p) => p.id));
+const { data: coda } = await db
+  .from("pec_da_inviare")
+  .select("id, stato, contesto, allegati")
+  .filter("contesto->>tipo", "eq", "deposito");
+for (const r of coda ?? []) {
+  const proprietario = r.contesto?.profile_id;
+  if (proprietario && !vivi.has(proprietario) && r.stato !== "annullata") {
+    await db
+      .from("pec_da_inviare")
+      .update({
+        stato: "annullata",
+        ultimo_errore: "residuo di collaudo",
+        aggiornato_at: new Date().toISOString(),
+      })
+      .eq("id", r.id);
+    console.log(`residuo di collaudo annullato (era «${r.stato}»: il profilo non esiste più)`);
+  }
+}
 
 const browser = await chromium.launch();
 let uscita = 0;
@@ -182,7 +217,7 @@ try {
   console.log(`riga di registro: ${registro?.length ? "presente ✓" : "MANCANTE ✗"}`);
 
   const allegatoGiusto = righe.some((r) =>
-    (r.allegati ?? []).some((a) => a.sha256 === rif.accordo_sha256),
+    (r.allegati ?? []).some((a) => a.sha256 === improntaProva),
   );
   console.log(`allegato con l'impronta del documento caricato: ${allegatoGiusto ? "sì ✓" : "NO ✗"}`);
   const copiaAllaPersona = righe.some((r) => (r.copia_conoscenza ?? []).includes(EMAIL_PERSONA));

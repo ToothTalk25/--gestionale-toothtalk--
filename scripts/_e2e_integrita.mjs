@@ -73,7 +73,13 @@ try {
   while (Date.now() < fine && new URL(page.url()).pathname.startsWith("/login")) {
     await page.waitForTimeout(500);
   }
-  if (new URL(page.url()).pathname.startsWith("/login")) throw new Error("login non riuscito");
+  if (new URL(page.url()).pathname.startsWith("/login")) {
+    // Dire PERCHÉ: senza, questa prova ha detto solo «login non riuscito» e per
+    // capirlo bisognava indovinare (nel frattempo l'accesso funzionava altrove,
+    // quindi il problema era qui o era un limite di tentativi).
+    const testo = (await page.innerText("body")).replace(/\s+/g, " ").slice(0, 300);
+    throw new Error(`login non riuscito. Sulla pagina: ${testo}`);
+  }
 
   await page.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);

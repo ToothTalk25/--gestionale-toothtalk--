@@ -424,6 +424,58 @@ Aggiornato al 19 settembre 2026.
     sente oggi con 63 file, e conviene farlo insieme alla fase sicurezza, che
     tocca le stesse righe.
 
+12. **Sicurezza: il report di Supabase, tradotto in interventi** (19 settembre
+    2026). Il controllo di Supabase segnalava **136 voci, tutte di sicurezza**
+    (nessuna di velocità): 112 «questa funzione è eseguibile da chi non ha la
+    sessione / da chi ce l'ha», 20 «questa funzione non dichiara il percorso di
+    ricerca», 2 «questa policy accetta qualunque riga in scrittura», 1 «questo
+    bucket si può elencare», 1 «la protezione dalle password compromesse è
+    spenta».
+    Fatto:
+    — **`0143`**: 32 policy erano assegnate a `PUBLIC` — cioè a chiunque, anche
+      senza accesso (era il valore predefinito di `create policy`). Ora sono
+      solo per chi ha la sessione: le espressioni non cambiano, quindi nessuno
+      perde permessi. Tolta anche la policy che lasciava **elencare** il bucket
+      `branding` (un bucket pubblico serve gli oggetti senza policy, e il
+      gestionale non lo usa).
+    — **`0144` + `0145`**: i diritti delle funzioni. In PostgreSQL ogni funzione
+      nasce eseguibile da `PUBLIC`: **79 su 82** erano chiamabili con la sola
+      chiave pubblica (quella che sta nel browser di tutti). Ora: **5 senza
+      sessione** (i quattro percorsi pubblici: invito, liberatoria, benvenuto),
+      **61 con la sessione**, e **tutto** al server. Revocate anche le 16
+      funzioni di trigger — un trigger non ha bisogno che chi scrive la riga
+      possa eseguirne la funzione, e nessuna di quelle è chiamata da un'altra
+      funzione (verificato una per una) — e le due di manutenzione notturna.
+      In più `alter default privileges`: le funzioni NUOVE in `public` non
+      nasceranno più eseguibili da tutti.
+      La `0145` esiste perché la `0144`, scritta come «tutto tranne un elenco»,
+      aveva riaperto tre funzioni che erano di **solo-servizio**
+      (`consuma_invito`, `genera_codice_invito`, `registra_esito_pec`): il
+      controllo finale le ha contate (64 invece di 61). Da qui la regola: le
+      migrazioni di diritti si verificano da sole e **falliscono** se il
+      risultato non è quello scritto.
+    — **`0146`**: percorso di ricerca fissato su 20 funzioni (le altre lo
+      avevano dalla `0001`). `pg_temp` non entra: è lo schema del chiamante.
+    — **`0147`**: i due `WITH CHECK` mancanti (`pacchetto_elementi`,
+      `richieste_modifica`). Senza, una riga si poteva spostare in un pacchetto
+      di un altro polo, o su un altro progetto.
+    — **Password compromesse**: attivata via API (`password_hibp_enabled`).
+      Da sapere: la lunghezza minima della password è **6** — bassa, ma non era
+      nel report; alzarla è una riga di configurazione.
+    Verificato con: `npm run audit-rls`, la batteria end-to-end (salute,
+    registrazione, invito, tecnico, deposito PEC, integrità, varco accordo) e
+    `scripts/_diagnosi_permessi.mjs`, che mostra nero su bianco cosa si può fare
+    senza sessione — i quattro percorsi pubblici sì, tutto il resto «permission
+    denied».
+    **Non fatto, di proposito**: fondere le 28 policy dello storage in una per
+    comando. Con 63 file non si sente, e un errore lì significa rompere l'accesso
+    ai file: si farà quando ci sarà un motivo misurato.
+    Da sapere sulle prove: in una notte di collaudi si incontrano limiti di
+    tentativi di accesso di Supabase; quando succede, un test dice «login non
+    riuscito» senza spiegare niente. Ora `_e2e_integrita.mjs` scrive anche cosa
+    c'è sulla pagina, e `_e2e_salute.mjs` riprova da sola quando la rete
+    singhiozza.
+
 ## 11. Il limite dichiarato
 
 Chi possiede le credenziali del progetto Supabase è proprietario delle tabelle e
