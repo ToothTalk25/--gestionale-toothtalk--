@@ -475,6 +475,21 @@ Aggiornato al 19 settembre 2026.
     riuscito» senza spiegare niente. Ora `_e2e_integrita.mjs` scrive anche cosa
     c'è sulla pagina, e `_e2e_salute.mjs` riprova da sola quando la rete
     singhiozza.
+    **Il secondo report, il giorno dopo** (19 settembre 2026, 13:22). Le voci
+    `search_path`, `WITH CHECK`, bucket listabile e password compromesse sono
+    sparite: 136 → 45. Delle 45 rimaste, 5 sono i percorsi pubblici (devono
+    restare: chi non ha un accesso deve poter usare l'invito, la liberatoria e
+    il link di benvenuto) e le altre sono la superficie legittima del gestionale.
+    **Provato, non supposto**: togliendo il permesso su `is_admin()` a chi ha la
+    sessione e interrogando il registro da utente collegato, la risposta è
+    `permission denied for function is_admin` e la tabella diventa illeggibile.
+    Quindi le **funzioni citate dentro una policy devono restare eseguibili** da
+    chi interroga: sono 13, e toglierle romperebbe il prodotto invece di
+    renderlo più sicuro.
+    Chiuse invece, con la `0148`, le tre che non servivano a nessuno con la
+    sessione (`consenso_attivo` non la chiama nessuno; `consenso_task_valido` e
+    `pacchetto_completo` solo da funzioni di trigger `SECURITY DEFINER`, che
+    girano con i diritti del proprietario).
 
 ## 11. Il limite dichiarato
 

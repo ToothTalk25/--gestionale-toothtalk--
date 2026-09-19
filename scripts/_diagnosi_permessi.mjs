@@ -103,6 +103,52 @@ try {
     await admin.auth.admin.deleteUser(creato.data.user.id);
     console.log("  utente di prova cancellato");
   }
+
+  // 5. Le funzioni usate DENTRO le policy servono davvero a chi interroga?
+  // Prova in transazione ANNULLATA: si toglie il permesso su is_admin(), si
+  // impersona l'utente collegato e si interroga una tabella la cui policy la
+  // usa. Se la query riesce, quel permesso si può togliere (e il report di
+  // Supabase si accorcia di tutte le funzioni che stanno solo nelle policy).
+  const pg = (await import("pg")).default;
+  const sql = new pg.Client({ connectionString: env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } });
+  await sql.connect();
+  const { rows: chi } = await sql.query("select id from public.profiles where email = $1", [
+    "enricoguarino25@gmail.com",
+  ]);
+  if (chi.length === 0) {
+    console.log("\n(prova sulle policy saltata: utente di riferimento non trovato)");
+  } else {
+    await sql.query("begin");
+    try {
+      await sql.query("revoke execute on function public.is_admin() from authenticated");
+      await sql.query("set local role authenticated");
+      await sql.query(
+        "set local request.jwt.claims = " + "'" + JSON.stringify({ sub: chi[0].id, role: "authenticated" }) + "'",
+      );
+      const r = await sql.query("select count(*)::int as n from public.audit_log");
+      console.log(`\npolicy senza il permesso sulla funzione: la query RIESCE (${r.rows[0].n} righe)`);
+      console.log("  → il permesso NON serve: si può togliere alle funzioni che stanno solo dentro le policy");
+    } catch (e) {
+      console.log("\npolicy senza il permesso sulla funzione:", e.message);
+      console.log("  → il permesso SERVE: senza, la tabella diventa illeggibile per chi ha la sessione");
+    } finally {
+      await sql.query("rollback");
+    }
+  }
+
+  // 6. Le funzioni di solo controllo: le chiama qualcuno?
+  const nomi = ["consenso_attivo", "consenso_task_valido", "pacchetto_completo"];
+  const { rows: corpi } = await sql.query(
+    "select proname, pg_get_functiondef(oid) as corpo from pg_proc where pronamespace = 'public'::regnamespace",
+  );
+  console.log("\nFunzioni di solo controllo (lette dal rapportino come 'da rivedere'):");
+  for (const n of nomi) {
+    const chiamanti = corpi
+      .filter((c) => c.proname !== n && new RegExp("(^|[^a-z_])" + n + "[^a-z_0-9]*\\(", "i").test(c.corpo))
+      .map((c) => c.proname);
+    console.log(`  ${n}: ${chiamanti.length ? "chiamata da " + chiamanti.join(", ") : "non la chiama nessuno"}`);
+  }
+  await sql.end();
 } catch (e) {
   console.log("PROBLEMA:", e.message);
 }
