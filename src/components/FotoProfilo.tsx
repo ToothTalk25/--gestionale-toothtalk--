@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { urlFotoProfilo } from "@/app/actions-profilo";
 
 /**
- * Mostra una foto dal bucket privato 'profili' usando un URL firmato
- * (valido un'ora). Nel bucket privato l'URL pubblico non basta: serve
- * l'autenticazione.
+ * Mostra una foto dal bucket privato 'profili' usando un URL firmato (valido
+ * un'ora). La firma la chiede al SERVER: i cookie di sessione sono HttpOnly,
+ * quindi dal browser il client Supabase non vede la sessione, createSignedUrl
+ * falliva sempre e la foto compariva come «—». Stesso motivo per cui non
+ * appariva il banner di consenso (CONTESTO.md, voce 15).
  */
 export default function FotoProfilo({
   path,
@@ -21,12 +23,9 @@ export default function FotoProfilo({
 
   useEffect(() => {
     let attivo = true;
-    supabaseBrowser()
-      .storage.from("profili")
-      .createSignedUrl(path, 3600)
-      .then(({ data, error }) => {
-        if (attivo && !error && data) setUrl(data.signedUrl);
-      });
+    urlFotoProfilo(path).then((r) => {
+      if (attivo && r.ok) setUrl(r.url);
+    });
     return () => {
       attivo = false;
     };

@@ -957,6 +957,28 @@ export async function caricaFoto(storagePath: string): Promise<Esito> {
   return { ok: true, dati: undefined };
 }
 
+/**
+ * URL firmato (valido un'ora) per una foto dal bucket privato 'profili'.
+ *
+ * La firma la chiede il server, non il browser: i cookie di sessione sono
+ * HttpOnly (il token non è leggibile da JavaScript), quindi dal browser il
+ * client Supabase non vede la sessione e createSignedUrl falliva sempre — le
+ * foto comparivano come «—». Era lo stesso motivo per cui non appariva il
+ * banner di consenso (CONTESTO.md, voce 15).
+ *
+ * Il permesso resta quello dell'utente: la firma si chiede con la sua sessione,
+ * quindi valgono esattamente le policy dello storage di prima.
+ */
+export async function urlFotoProfilo(
+  path: string,
+): Promise<{ ok: true; url: string } | { ok: false }> {
+  await requireSession();
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.storage.from("profili").createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) return { ok: false };
+  return { ok: true, url: data.signedUrl };
+}
+
 /** Registra il consenso GDPR (privacy o cookie) per l'utente corrente. */
 export async function registraConsenso(tipo: "privacy" | "cookie"): Promise<Esito> {
   const { profile } = await requireSession();
