@@ -63,18 +63,9 @@ type Confronto = {
   modificata_da_admin: boolean;
 };
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ sezione?: string }>;
-}) {
+export default async function AdminPage() {
   await requireAdmin();
   const supabase = await supabaseServer();
-
-  // La sezione scelta sta nell'INDIRIZZO, non nello stato del browser: così il
-  // server sa cosa serve prima di disegnare (e di spedire al browser) e non
-  // manda le altre diciassette sezioni — e il tasto indietro funziona.
-  const sezione = (await searchParams)?.sezione ?? "";
 
   const [
     { data: audit },
@@ -439,9 +430,7 @@ export default async function AdminPage({
       </section>
 
       <NavigazioneAdmin
-        sezione={sezione}
-        sezioni={soloLaScelta(
-          [
+        sezioni={[
           {
             id: "inviti",
             etichetta: "Inviti",
@@ -791,26 +780,10 @@ export default async function AdminPage({
             },
             contenuto: <SezionePecInCoda righe={pecInCoda ?? []} />,
           },
-          ],
-          sezione,
-        )}
+        ]}
       />
     </div>
   );
-}
-
-/**
- * Tiene i contatori di TUTTE le voci (servono a sapere dove c'è lavoro da fare)
- * ma lascia il contenuto della sola sezione scelta: le altre non vengono
- * disegnate dal server né spedite al browser. È la differenza fra aprire il
- * Registro e scaricare diciotto sezioni per guardarne una.
- *
- * Il contenuto delle altre diventa `null`: quell'elemento React non entra nel
- * pacchetto che va al browser. Le interrogazioni restano (girano in parallelo e
- * costano poco) perché i contatori accanto alle voci le usano.
- */
-function soloLaScelta(sezioni: SezioneAdmin[], scelta: string): SezioneAdmin[] {
-  return sezioni.map((s) => (s.id === scelta ? s : { ...s, contenuto: null }));
 }
 
 /** Stesso riquadro di sintesi con icona tinta usato in dashboard e revisione. */

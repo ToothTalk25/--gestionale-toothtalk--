@@ -126,7 +126,7 @@ function ascolta(page) {
 
 /** Entra con un account temporaneo e aspetta di uscire dal login. */
 async function entra(page, email) {
-  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+  await naviga(page, "/login", { valore: 0, disattivo: false });
   for (let tentativo = 1; tentativo <= 3; tentativo++) {
     await page.waitForTimeout(2000);
     await page.locator('input[type="email"]').fill(email);
@@ -143,15 +143,35 @@ async function entra(page, email) {
   return false;
 }
 
+/** Naviga con qualche tentativo in più. La rete di casa ogni tanto singhiozza
+ *  (`ERR_NETWORK_CHANGED`, `ERR_NETWORK_IO_SUSPENDED`): un guasto di rete non
+ *  deve invalidare una misura — e non deve far credere che l'app abbia un
+ *  problema. Perché il tempo contato parta dal tentativo riuscito, il
+ *  cronometro si avvia DENTRO questa funzione. */
+async function naviga(page, percorso, t0) {
+  let ultimo;
+  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+    if (t0.disattivo) t0.valore = Date.now();
+    try {
+      return await page.goto(`${BASE}${percorso}`, { waitUntil: "domcontentloaded" });
+    } catch (e) {
+      ultimo = e;
+      t0.disattivo = true;
+      await page.waitForTimeout(2000);
+    }
+  }
+  throw ultimo;
+}
+
 /** Cronometra una pagina. Il primo giro è di riscaldamento e non si conta (in
  *  locale la prima visita compila la pagina: sarebbe un numero falso). */
 async function misura(page, percorso) {
   const campioni = [];
   for (let giro = 0; giro <= GIRI; giro++) {
-    const t0 = Date.now();
-    const risposta = await page.goto(`${BASE}${percorso}`, { waitUntil: "domcontentloaded" });
+    const orologio = { valore: Date.now(), disattivo: false };
+    const risposta = await naviga(page, percorso, orologio);
     await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
-    const aFermo = Date.now() - t0;
+    const aFermo = Date.now() - orologio.valore;
     const battito = await page.evaluate(() => {
       const n = performance.getEntriesByType("navigation")[0];
       return {
@@ -187,7 +207,8 @@ async function misura(page, percorso) {
  *  disegnata. È la misura che si sente; quella di sopra è il caricamento
  *  completo (il caso peggiore, quando si apre il gestionale da zero). */
 async function misuraClic(page, da, descrizione, tipo, nome) {
-  await page.goto(`${BASE}${da}`, { waitUntil: "domcontentloaded" });
+  const orologio = { valore: 0, disattivo: false };
+  await naviga(page, da, orologio);
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
   if (tipo === "menuitem") {
     await page.locator("header button").last().click();
@@ -257,28 +278,30 @@ try {
   console.log(`\n=== Accesso globale — mediana di ${GIRI} giri ===`);
   console.table(righeAdmin);
 
-  // Il Registro: aprire il Registro "vuoto" e con una sezione scelta. Prima
-  // della correzione il server disegnava TUTTE le sezioni per mostrarne una;
-  // queste due misure dicono se la scelta nell'indirizzo ha funzionato.
-  const righeSezioni = [];
-  for (const percorso of ["/admin?sezione=log", "/admin?sezione=pec-in-coda"]) {
-    righeSezioni.push(await misura(pageAdmin, percorso));
+  // Il cambio di sezione nel Registro: è l'azione che si fa davvero lì dentro —
+  // aprire il Registro è raro, passare da una sezione all'altra è la norma.
+  // (Provato a mettere la scelta nell'indirizzo: apertura identica, cambio a
+  // 1,9 secondi invece che istantaneo. Annullato: qui la misura serve a non
+  // riprovarci.)
+  await naviga(pageAdmin, "/admin", { valore: 0, disattivo: false });
+  await pageAdmin.waitForTimeout(1500);
+  const cambi = [];
+  for (const [sezione, titolo] of [
+    ["log", "Log delle operazioni"],
+    ["pec-in-coda", "PEC da spedire"],
+    ["inviti", "Inviti ai gruppi"],
+  ]) {
+    const t0 = Date.now();
+    await pageAdmin.selectOption("#sezione-admin", sezione);
+    await pageAdmin
+      .getByText(titolo, { exact: true })
+      .first()
+      .waitFor({ timeout: 15000 })
+      .catch(() => {});
+    cambi.push({ sezione, ms: Date.now() - t0 });
   }
-  console.log(`\n=== Accesso globale — Registro con una sezione scelta ===`);
-  console.table(righeSezioni);
-
-  // Il cambio di sezione con la tendina: deve cambiare l'indirizzo e fare
-  // comparire il contenuto, senza ricaricare la pagina.
-  await pageAdmin.goto(`${BASE}/admin`, { waitUntil: "domcontentloaded" });
-  await pageAdmin.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
-  const t0Sezione = Date.now();
-  await pageAdmin.selectOption("#sezione-admin", "log");
-  await pageAdmin.waitForURL((u) => u.search.includes("sezione=log"), { timeout: 15000 }).catch(() => {});
-  await pageAdmin.waitForTimeout(800);
-  const testoSezione = (await pageAdmin.innerText("body")).slice(0, 120).replace(/\s+/g, " ");
-  console.log(
-    `\nCambio sezione dalla tendina: ${Date.now() - t0Sezione} ms · indirizzo = ${new URL(pageAdmin.url()).search} · ${testoSezione}`,
-  );
+  console.log(`\n=== Registro — cambio di sezione dalla tendina ===`);
+  console.table(cambi);
 
   const storte = [...righe, ...righeAdmin].filter((r) => r.esito !== 200 || r.atterra !== r.pagina);
   if (storte.length) {
