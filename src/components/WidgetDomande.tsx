@@ -254,9 +254,18 @@ function MessaggioDomanda({
         <div className="flex flex-col items-start gap-1">
           <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-2 text-sm text-slate-700">
             <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">
-              Assistente
+              Assistente automatico (IA)
             </span>
             {domanda.bozza_risposta_ia}
+          </p>
+          {/* Dire chi ha scritto la risposta non è una formalità: è il punto 1
+              dell'articolo 50 del regolamento europeo sull'intelligenza
+              artificiale — chi parla con un sistema automatico deve saperlo.
+              Prima l'etichetta diceva solo «Assistente», che si legge come una
+              persona. */}
+          <p className="ml-1 text-[11px] text-slate-400">
+            Risposta scritta da un sistema automatico, senza che nessuno l&apos;abbia
+            controllata prima.
           </p>
           {puoChiamareCoordinatore && (
             <button
