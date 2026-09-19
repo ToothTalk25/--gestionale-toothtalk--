@@ -491,6 +491,59 @@ Aggiornato al 19 settembre 2026.
     `pacchetto_completo` solo da funzioni di trigger `SECURITY DEFINER`, che
     girano con i diritti del proprietario).
 
+13. **Spesa e abuso: cosa protegge davvero il progetto** (19 settembre 2026).
+    Nasce da una domanda legittima: «e se qualcuno usa le mie chiavi e mi fa
+    arrivare a una fattura enorme?». Tutto quello che si poteva verificare è
+    stato verificato dal vivo, invece di dedurlo.
+    **Quello che era già a posto (provato):**
+    — nel repository non c'è nessun segreto: scansione dei file tracciati per
+      chiavi RSA (`MIIE…`), token JWT (`eyJ…`), chiavi Google (`AIza…`) e campi
+      `private_key` con valore — zero. `.env.local` è in `.gitignore` e non è
+      mai stato committato (nessun commit lo ha toccato);
+    — le chiavi pericolose stanno solo sul server: `SUPABASE_SERVICE_ROLE_KEY`,
+      `MAIL_PASS`, `GEMINI_API_KEY`, `VAPID_PRIVATE_KEY`, `BRIEFING_API_KEY`
+      compaiono soltanto in file server. Nel browser finiscono la chiave
+      pubblica (pubblica per progetto), l'indirizzo del progetto, la chiave
+      pubblica delle notifiche e l'URL del sito;
+    — le route dei cron sono protette: `richiestaAutorizzataCron` confronta il
+      segreto a tempo costante, e **provato dal vivo: `/api/cron/*` risponde
+      401 senza il segreto**;
+    — `supabase/functions/_shared/google-service-account.ts` sembra contenere
+      una chiave (`PRIVATE KEY` compare nel testo) ma **non la contiene**: è un
+      `.replace()` che ripulisce un PEM ricevuto come argomento. Verificato
+      leggendo il file. (Segnato qui per non farlo verificare una seconda
+      volta.)
+    **Quello che mancava, e ora è chiuso:**
+    — le **iscrizioni pubbliche erano aperte** (`disable_signup: false`): con la
+      chiave pubblica — che sta nel browser per necessità — chiunque poteva
+      creare account a raffica. Ora sono chiuse, e la registrazione del
+      gestionale funziona lo stesso, perché passa dall'API di servizio:
+      verificato con la prova end-to-end della registrazione. Nota: questo
+      chiude anche l'indovinare i codici invito, perché senza iscrizioni
+      pubbliche un codice indovinato non porta a niente;
+    — i tre bucket dei video accettavano file fino a **5 GB** e nessun bucket
+      dichiarava i tipi ammessi. Con la `0149` il tetto è **500 MB** (nel
+      progetto il file più grande è di pochi MB: ci sta dieci volte). I tipi
+      restano liberi di proposito: un elenco sbagliato rompe un caricamento
+      vero, e rompere un caricamento è peggio di accettare uno `.zip` inutile.
+    **Quello che può fare solo il titolare dell'account:**
+    — il **tetto di spesa di Supabase** (dashboard → Organization → Billing →
+      Cost Control). Con il tetto attivo, superata la quota inclusa i servizi
+      vengono limitati invece di emettere una fattura: è la risposta alla
+      domanda «e se arrivano 20.000 euro». Non è leggibile né impostabile
+      dall'API di gestione (provato: gli endpoint di billing non esistono):
+      si vede solo in dashboard;
+    — il **limite di spesa di Vercel** (Settings → Spend Management);
+    — una **sveglia di budget** su Google Cloud per la chiave dell'IA: le chiavi
+      di AI Studio non hanno un tetto rigido, ed è l'unico costo che non passa
+      da Supabase né da Vercel;
+    — il repository GitHub è **pubblico**: dentro non c'è nessun segreto (vedi
+      sopra), ma ogni errore futuro sarebbe pubblico nello stesso istante. Se
+      non serve pubblico, conviene privato.
+    Metro per accorgersi di un abuso: al 19 settembre 2026 il progetto ha
+    **13 account** (10 attivi), **64 file**, **23 MB** di storage e **16 MB** di
+    database. Un salto in uno di questi numeri è la prima cosa da guardare.
+
 ## 11. Il limite dichiarato
 
 Chi possiede le credenziali del progetto Supabase è proprietario delle tabelle e
