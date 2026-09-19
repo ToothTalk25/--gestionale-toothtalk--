@@ -4,6 +4,13 @@
  * viene intervistato: qui il soggetto è chi usa il gestionale come
  * Collaboratore, non un terzo intervistato da altri. Unico punto dove
  * cambiare il testo se l'informativa viene aggiornata di nuovo.
+ *
+ * ATTENZIONE — questo è il testo della pagina /privacy DEL GESTIONALE, non
+ * l'informativa contenuta nell'accordo editoriale (il «Documento 2»): sono due
+ * documenti distinti, con lo stesso impianto ma ambiti diversi, e l'informativa
+ * dell'accordo vive fuori dal codice (dentro il PDF che le persone hanno già
+ * firmato). Modificare questo file aggiorna solo la pagina del gestionale e non
+ * tocca nulla di ciò che è già stato firmato.
  */
 
 export type Blocco =
@@ -31,6 +38,7 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
     "Modulo di nomina a persona autorizzata al trattamento (Documento 4), generato automaticamente dal gestionale all'approvazione dell'accordo;",
     "Immagine, voce e dichiarazioni contenute nei video, script e materiali depositati nel gestionale;",
     "Esito e note della verifica automatica (IA) sull'accordo caricato;",
+    "Testo delle domande scritte nello spazio di supporto del gestionale, e risposta ricevuta;",
     "Indicazione se il Collaboratore appare nei contenuti pubblicati o lavora dietro le quinte;",
     "Riferimento a chi, tra gli account del Titolare, ha approvato la registrazione e l'accordo;",
     "Dati tecnici di connessione (indirizzo IP, dispositivo, data e ora) e log delle operazioni.",
@@ -49,10 +57,12 @@ export const INFORMATIVA_PRIVACY: Blocco[] = [
 
   p("La verifica automatica (IA) dell'accordo caricato, di cui sopra, non è mai l'unico elemento che decide l'accesso al gestionale: l'esito IA è solo un supporto, e la decisione finale è sempre e comunque umana — l'approvazione manuale del Titolare, ulteriormente rafforzata dalla controfirma tracciata del Titolare stesso e dalla conferma del Collaboratore. Nessuna decisione basata unicamente su un trattamento automatizzato produce quindi effetti nei tuoi confronti (art. 22 GDPR). Hai inoltre diritto di chiedere, in qualsiasi momento, che il tuo accordo sia verificato solo manualmente, senza il supporto della verifica IA: basta scrivere al Titolare ai recapiti indicati sopra."),
 
+  p("Anche le domande scritte nello spazio di supporto del gestionale sono ordinate da un sistema automatico (Google, API Gemini), che ne legge il testo soltanto per capire a chi indirizzarle: se riguardano il funzionamento dell'app vanno al Collaboratore Tecnico, altrimenti al Coordinatore. La risposta è in ogni caso scritta da una persona: nessun testo di risposta è generato o inviato automaticamente da un sistema di intelligenza artificiale. Ti chiediamo di non scrivere in quello spazio dati relativi alla tua salute o documenti personali: non servono per ricevere assistenza."),
+
   h2("Destinatari dei dati e trasferimento extra-UE"),
   p("I dati personali potranno essere comunicati ad altri Collaboratori e volontari del Progetto che partecipano alla realizzazione dei contenuti editoriali (in qualità di persone autorizzate, art. 29 GDPR) e a fornitori di servizi tecnici e piattaforme digitali (hosting, cloud storage), in qualità di responsabili del trattamento."),
   p("Il documento dell'accordo editoriale caricato (contenente nome, indirizzo, codice fiscale e firma) viene inoltre inviato a Google (API Gemini) per la verifica automatica di corrispondenza con il modello ufficiale — un trattamento specifico e distinto dal semplice hosting, limitato a questa finalità."),
-  p("Trasferimento extra-UE: i contenuti pubblicati sono diffusi anche su piattaforme social le cui società madri hanno sede negli Stati Uniti (Meta, Google), che operano come titolari autonomi del trattamento per i dati elaborati sulle rispettive piattaforme. Tali trasferimenti si basano sulle garanzie adeguate previste dal GDPR, incluso il Data Privacy Framework UE-USA e/o le clausole contrattuali standard (SCC)."),
+  p("Trasferimento extra-UE: i contenuti pubblicati sono diffusi anche su piattaforme social le cui società madri hanno sede negli Stati Uniti (Meta, Google), che operano come titolari autonomi del trattamento per i dati elaborati sulle rispettive piattaforme. Anche i trattamenti effettuati tramite Google (API Gemini) descritti sopra — la verifica automatica dell'accordo caricato e l'ordinamento delle domande di supporto — comportano un trasferimento verso gli Stati Uniti, dove Google opera come fornitore di servizi tecnici e quindi come responsabile del trattamento. Tali trasferimenti si basano sulle garanzie adeguate previste dal GDPR, incluso il Data Privacy Framework UE-USA e/o le clausole contrattuali standard (SCC)."),
 
   h2("Conservazione"),
   p("I file (video, foto, materiali) restano sulla piattaforma solo il tempo necessario a scaricarli e pubblicarli, e possono essere eliminati dopo l'invio della PEC. I metadati, le impronte e i verbali PEC restano come registro append-only (un registro a cui si può solo aggiungere, mai modificare o cancellare righe già scritte) per esigenze di tutela legale, insieme alla copia già presente nella casella PEC e nelle caselle dei partecipanti. Una copia dei materiali sigillati e del relativo verbale viene inoltre archiviata su Google Drive, in una cartella riservata al progetto e accessibile solo al Coordinatore."),

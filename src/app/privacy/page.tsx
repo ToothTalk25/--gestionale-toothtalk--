@@ -40,7 +40,7 @@ export default async function PrivacyPage({
         <img src="/logo-toothtalk.svg" alt="ToothTalk" className="h-9 w-auto" />
         <h1 className="mt-6 text-2xl font-semibold text-tt-ink">Informativa privacy</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 21 agosto 2026
+          Ai sensi del Regolamento (UE) 2016/679 (GDPR) — aggiornata al 19 settembre 2026
         </p>
 
       <section className="mt-6 tt-card space-y-6 p-6 text-sm leading-relaxed text-slate-700 sm:p-8">
@@ -65,7 +65,7 @@ export default async function PrivacyPage({
         </div>
 
         <p className="pt-4 text-xs text-slate-400">
-          Ultimo aggiornamento: 21 agosto 2026 ·{" "}
+          Ultimo aggiornamento: 19 settembre 2026 ·{" "}
           {dallGestionale ? (
             <Link href="/dashboard" className="underline">
               Torna al gestionale

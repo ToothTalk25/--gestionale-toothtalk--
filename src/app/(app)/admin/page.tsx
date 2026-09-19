@@ -256,12 +256,12 @@ export default async function AdminPage() {
       .order("creato_at", { ascending: false })
       .returns<RigaRicaricamentoDichiarazione[]>(),
     // Domande dei collaboratori (widget chat lato utente): processo
-    // editoriale o malfunzionamenti, con eventuale risposta IA automatica
-    // per le tecniche.
+    // editoriale o malfunzionamenti. L'IA le smista soltanto; la risposta la
+    // scrive una persona (Collaboratore Tecnico o Coordinatore).
     supabase
       .from("domande_supporto")
       .select(
-        "id, user_id, domanda, creato_at, categoria_ia, bozza_risposta_ia, richiede_coordinatore, risposta, risposto_da, risposto_at",
+        "id, user_id, domanda, creato_at, categoria_ia, richiede_coordinatore, risposta, risposto_da, risposto_at",
       )
       .order("creato_at", { ascending: false })
       .returns<RigaDomandaSupporto[]>(),
@@ -373,14 +373,10 @@ export default async function AdminPage() {
   const richiesteRegistrazioneAperte = (richieste ?? []).length;
   const richiesteRimozioneAperte = (richiesteRimozione ?? []).filter((r) => r.stato === "aperta").length;
   const notificheArt82Pendenti = (notificheArt82 ?? []).filter((n) => !n.notificata_at).length;
-  // Le domande "tecniche" non ricevono più una risposta autonoma dell'IA
-  // (vanno ai Collaboratori Tecnici via email, vedi actions-supporto.ts):
-  // contano come pendenti come tutte le altre. Restano escluse solo le
-  // righe storiche da prima di questo cambio, che hanno già una bozza
-  // dell'IA salvata — quelle erano già state "risposte" al collaboratore.
-  const domandePendenti = (domande ?? []).filter(
-    (d) => !d.risposta && !(d.categoria_ia === "tecnica" && !!d.bozza_risposta_ia && !d.richiede_coordinatore),
-  ).length;
+  // Conta come pendente ogni domanda senza risposta: le "tecniche" non hanno
+  // mai ricevuto una risposta automatica (la bozza dell'IA non veniva mai
+  // salvata), quindi non c'è nessun caso da escludere.
+  const domandePendenti = (domande ?? []).filter((d) => !d.risposta).length;
 
   return (
     <div className="space-y-8">

@@ -25,11 +25,11 @@ export default function DomandeSupportoAdmin({
   domande: RigaDomandaSupporto[];
   nomi: Record<string, string>;
 }) {
-  const rispostaAutomaticaStorica = (d: RigaDomandaSupporto) =>
-    d.categoria_ia === "tecnica" && !!d.bozza_risposta_ia && !d.richiede_coordinatore;
-
-  const daGestire = domande.filter((d) => !d.risposta && !rispostaAutomaticaStorica(d));
-  const risposteAutomatiche = domande.filter((d) => !d.risposta && rispostaAutomaticaStorica(d));
+  // Le domande tecniche non ricevono una risposta dell'IA: le vede e risponde
+  // il Collaboratore Tecnico dalla sua pagina /tecnico (e il Coordinatore può
+  // sempre rispondere anche da qui). Restano quindi due gruppi: da gestire e
+  // già risposte.
+  const daGestire = domande.filter((d) => !d.risposta);
   const risposteCoordinatore = domande.filter((d) => !!d.risposta);
 
   if (domande.length === 0) return <p className="text-sm text-slate-500">Nessuna domanda finora.</p>;
@@ -46,23 +46,6 @@ export default function DomandeSupportoAdmin({
         <p className="text-sm text-slate-500">Nessuna domanda da gestire.</p>
       )}
 
-      {risposteAutomatiche.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-slate-500">
-            Risposte automatiche dell&apos;IA (nessuna richiesta di intervento)
-          </p>
-          <ul className="mt-2 space-y-2">
-            {risposteAutomatiche.map((d) => (
-              <li key={d.id} className="tt-card p-3 text-xs">
-                <p className="font-medium text-slate-700">{nomi[d.user_id] ?? d.user_id.slice(0, 8)}</p>
-                <p className="mt-1 text-slate-600">{d.domanda}</p>
-                <p className="mt-2 rounded bg-tt-blue-50 p-2 text-slate-600">{d.bozza_risposta_ia}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {risposteCoordinatore.length > 0 && (
         <div>
           <p className="text-xs font-medium text-slate-500">Già risposte da te</p>
@@ -71,12 +54,6 @@ export default function DomandeSupportoAdmin({
               <li key={d.id} className="tt-card p-3 text-xs">
                 <p className="font-medium text-slate-700">{nomi[d.user_id] ?? d.user_id.slice(0, 8)}</p>
                 <p className="mt-1 text-slate-600">{d.domanda}</p>
-                {d.bozza_risposta_ia && (
-                  <p className="mt-2 rounded bg-tt-blue-50 p-2 text-slate-500">
-                    <span className="font-medium">IA: </span>
-                    {d.bozza_risposta_ia}
-                  </p>
-                )}
                 <p className="mt-2 rounded bg-slate-50 p-2 text-slate-600">
                   <span className="font-medium">Tu: </span>
                   {d.risposta}
@@ -124,17 +101,11 @@ function RigaPendente({ domanda, nome }: { domanda: RigaDomandaSupporto; nome: s
           Il collaboratore ha chiesto esplicitamente di parlare con te.
         </p>
       )}
-      {domanda.categoria_ia === "tecnica" && !domanda.bozza_risposta_ia && (
+      {domanda.categoria_ia === "tecnica" && (
         <p className="mt-1 text-xs text-slate-500">
           Domanda tecnica: la vede e risponde direttamente il Collaboratore
           Tecnico dalla sua pagina (/tecnico) — puoi rispondere anche tu, se
           ti serve.
-        </p>
-      )}
-      {domanda.bozza_risposta_ia && (
-        <p className="mt-2 rounded bg-tt-blue-50 p-2 text-xs text-slate-600">
-          <span className="font-medium">L&apos;IA ha già risposto: </span>
-          {domanda.bozza_risposta_ia}
         </p>
       )}
 

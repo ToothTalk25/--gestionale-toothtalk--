@@ -11,18 +11,19 @@ import {
 const CHIAVE_POSIZIONE = "tt_widget_domande_pos";
 const CHIAVE_VISTO = "tt_widget_domande_visto_at";
 
-/** Riga ancora senza nessuna risposta (né IA né Coordinatore): serve per il polling e per il pallino "nuovo". */
+/** Riga ancora senza risposta: serve per il polling e per il pallino "nuovo". */
 function inAttesa(d: RigaDomandaSupporto): boolean {
-  return !d.risposta && !d.bozza_risposta_ia;
+  return !d.risposta;
 }
 
 /**
  * Bottone flottante "?" (spostabile) presente su ogni pagina dell'app:
- * apre una chat di supporto. L'IA risponde subito alle domande che
- * classifica come tecniche (nessuna revisione prima dell'invio, per
- * scelta esplicita — il Coordinatore vede comunque tutto e il
- * collaboratore può sempre chiamarlo dentro la chat); per tutto il resto
- * resta in attesa di una risposta scritta da lui.
+ * apre una chat di supporto. La domanda viene ordinata da un sistema
+ * automatico (IA) e smistata: quelle sul funzionamento dell'app vanno al
+ * Collaboratore Tecnico, tutte le altre al Coordinatore. A rispondere è sempre
+ * una persona — nessun testo scritto dall'IA arriva qui — e chi scrive lo legge
+ * sotto il campo, con il modo di chiamare direttamente il Coordinatore se non
+ * vuole aspettare.
  */
 export default function WidgetDomande() {
   const [aperto, setAperto] = useState(false);
@@ -200,7 +201,7 @@ export default function WidgetDomande() {
 
           <form
             onSubmit={invia}
-            className="flex items-end gap-2 border-t border-slate-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3"
+            className="flex flex-wrap items-end gap-2 border-t border-slate-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3"
           >
             <textarea
               value={testo}
@@ -226,6 +227,16 @@ export default function WidgetDomande() {
                 <path d="M3 11l18-8-8 18-2-8-8-2z" />
               </svg>
             </button>
+
+            {/* Trasparenza: chi scrive deve sapere che la domanda viene ordinata
+                da un sistema automatico, e chi scrive la risposta. Il secondo
+                periodo tiene fuori dal trattamento le categorie particolari
+                dell'art. 9 GDPR, che in un campo di testo libero possono finire
+                senza che nessuno lo voglia. */}
+            <p className="w-full text-[11px] leading-snug text-slate-400">
+              La tua domanda viene ordinata da un sistema automatico; a risponderti è
+              sempre una persona. Non scrivere dati di salute o documenti.
+            </p>
           </form>
         </div>
       )}
@@ -240,7 +251,11 @@ function MessaggioDomanda({
   domanda: RigaDomandaSupporto;
   onChiamaCoordinatore: () => void;
 }) {
-  const puoChiamareCoordinatore = !!domanda.bozza_risposta_ia && !domanda.risposta && !domanda.richiede_coordinatore;
+  // Il tasto per chiamare il Coordinatore c'è finché la domanda è senza risposta
+  // e non gli è già stata inoltrata. Prima viveva dentro la bolla dell'IA, che è
+  // stata tolta: l'IA non scrive risposte, quindi quella bolla non poteva
+  // accendersi — e il tasto, che invece serve, resta qui.
+  const puoChiamareCoordinatore = !domanda.risposta && !domanda.richiede_coordinatore;
 
   return (
     <div className="space-y-2">
@@ -250,43 +265,23 @@ function MessaggioDomanda({
         </p>
       </div>
 
-      {domanda.bozza_risposta_ia && (
-        <div className="flex flex-col items-start gap-1">
-          <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-2 text-sm text-slate-700">
-            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-slate-400">
-              Assistente automatico (IA)
-            </span>
-            {domanda.bozza_risposta_ia}
-          </p>
-          {/* Dire chi ha scritto la risposta non è una formalità: è il punto 1
-              dell'articolo 50 del regolamento europeo sull'intelligenza
-              artificiale — chi parla con un sistema automatico deve saperlo.
-              Prima l'etichetta diceva solo «Assistente», che si legge come una
-              persona. */}
-          <p className="ml-1 text-[11px] text-slate-400">
-            Risposta scritta da un sistema automatico, senza che nessuno l&apos;abbia
-            controllata prima.
-          </p>
-          {puoChiamareCoordinatore && (
-            <button
-              onClick={onChiamaCoordinatore}
-              className="ml-1 text-xs font-medium text-tt-blue-600 hover:underline"
-            >
-              Non mi basta, parla col Coordinatore →
-            </button>
-          )}
-        </div>
-      )}
-
       {!domanda.risposta && (
         <>
           {domanda.richiede_coordinatore ? (
             <p className="ml-1 text-xs text-amber-700">Il Coordinatore è stato avvisato.</p>
           ) : domanda.categoria_ia === null ? (
             <p className="ml-1 text-xs text-slate-400">Sto pensando…</p>
-          ) : domanda.categoria_ia === "altro" || domanda.categoria_ia === "tecnica" ? (
+          ) : (
             <p className="ml-1 text-xs text-slate-400">In attesa di una risposta…</p>
-          ) : null}
+          )}
+          {puoChiamareCoordinatore && (
+            <button
+              onClick={onChiamaCoordinatore}
+              className="ml-1 block text-xs font-medium text-tt-blue-600 hover:underline"
+            >
+              Non mi basta, parla col Coordinatore →
+            </button>
+          )}
         </>
       )}
 

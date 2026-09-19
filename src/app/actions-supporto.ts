@@ -20,15 +20,17 @@ export type RigaDomandaSupporto = {
   domanda: string;
   creato_at: string;
   categoria_ia: "tecnica" | "altro" | null;
-  bozza_risposta_ia: string | null;
   richiede_coordinatore: boolean;
   risposta: string | null;
   risposto_da: string | null;
   risposto_at: string | null;
 };
 
+// bozza_risposta_ia resta nella tabella (la cita il trigger della 0134, che
+// protegge la riga dalle modifiche del Collaboratore Tecnico) ma non viene più
+// letta né scritta: l'IA non produce testo destinato alle persone.
 const COLONNE_DOMANDA =
-  "id, user_id, domanda, creato_at, categoria_ia, bozza_risposta_ia, richiede_coordinatore, risposta, risposto_da, risposto_at";
+  "id, user_id, domanda, creato_at, categoria_ia, richiede_coordinatore, risposta, risposto_da, risposto_at";
 
 /** Scrive una nuova domanda (qualsiasi collaboratore). Avvia in background classificazione IA e, se serve, notifica push al Coordinatore. */
 export async function inviaDomanda(testoGrezzo: string): Promise<Esito> {
@@ -71,11 +73,12 @@ async function arricchisciEDinotifica(id: string, domanda: string, nomeMittente:
     // migrazioni 0133-0134), e la sua risposta arriva subito a chi ha chiesto.
     // Il Coordinatore non riceve più né email né notifica per queste domande:
     // le ritrova comunque in /admin, dove può sempre rispondere lui stesso.
+    // bozza_generata_at continua a segnare QUANDO l'IA ha classificato: è la
+    // traccia dello smistamento, e non contiene nessun testo scritto dall'IA.
     await admin
       .from("domande_supporto")
       .update({
         categoria_ia: "tecnica",
-        bozza_risposta_ia: null,
         bozza_generata_at: new Date().toISOString(),
       })
       .eq("id", id);
@@ -87,7 +90,6 @@ async function arricchisciEDinotifica(id: string, domanda: string, nomeMittente:
     .from("domande_supporto")
     .update({
       categoria_ia: esito.categoria,
-      bozza_risposta_ia: esito.bozza,
       bozza_generata_at: new Date().toISOString(),
     })
     .eq("id", id);

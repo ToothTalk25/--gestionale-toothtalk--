@@ -544,19 +544,22 @@ Aggiornato al 19 settembre 2026.
     **13 account** (10 attivi), **64 file**, **23 MB** di storage e **16 MB** di
     database. Un salto in uno di questi numeri è la prima cosa da guardare.
 
-14. **Intelligenza artificiale e AI Act** (19 settembre 2026). Gli obblighi di
-    trasparenza dell'articolo 50 si applicano dal 2 agosto 2026. Il quadro
-    completo, con i riferimenti, è in **`IA-NEL-GESTIONALE.md`**; qui
-    l'essenziale:
+14. **Intelligenza artificiale e AI Act** (19 settembre 2026). Gli obblighi
+    principali dell'AI Act sono in vigore dal 2 agosto 2026 (la trasparenza
+    dell'art. 50 non riguarda questo caso: vedi sotto). Il quadro completo, con i
+    riferimenti, è in **`IA-NEL-GESTIONALE.md`**; qui l'essenziale:
     — due soli usi dell'IA, entrambi in `src/lib/gemini.ts`: la verifica
       dell'accordo caricato (di **sola segnalazione**: non blocca niente,
       decidono l'approvazione manuale e la controfirma) e la classificazione
-      delle domande di supporto, che per le domande tecniche **scrive la
-      risposta** e la manda subito;
-    — l'etichetta di quella risposta diceva «Assistente», che si legge come una
-      persona: era l'unico punto non in regola. Ora dice «Assistente automatico
-      (IA)», con una riga che spiega che nessuno l'ha controllata prima, e resta
-      il modo di chiamare una persona;
+      delle domande di supporto, che **smista e basta**: tecnica → Collaboratore
+      Tecnico, altro → Coordinatore. **Nessun testo scritto dall'IA arriva a una
+      persona** e nessuna bozza viene mai salvata (`bozza_risposta_ia` non si
+      popola: verificato nel punto di chiamata, non nel commento che la
+      descriveva — quel commento diceva il contrario, ed è stato corretto);
+    — perciò gli obblighi di trasparenza dell'art. 50 **non scattano**: l'IA non
+      interagisce con nessuno. Resta comunque la nota nel widget, dove la persona
+      scrive: «La tua domanda viene ordinata da un sistema automatico; a
+      risponderti è sempre una persona»;
     — il progetto è **utilizzatore** (*deployer*) di un modello di IA per
       finalità generali di Google, non fornitore: nessuna pratica vietata,
       nessun sistema ad alto rischio dell'Allegato III. Il confine da non
@@ -569,11 +572,21 @@ Aggiornato al 19 settembre 2026.
     — la tabella `verifiche_riconoscimento` (confronto dei volti) è stata
       rimossa con la `0150`: era vuota e non usata, residuo di una funzione
       cancellata dal codice dopo l'audit GDPR;
-    — **resta aperto, e non dipende dal codice**: se la chiave Google è di
-      livello gratuito, i contenuti possono essere usati per migliorare i modelli
-      di Google. Va verificato prima di considerare chiuso il trattamento di
-      documenti che contengono codice fiscale e firma (vedi `IA-NEL-GESTIONALE.md`,
-      §3).
+    — **resta aperto, e non dipende dal codice**: il livello della chiave Google.
+      Se è gratuito, i contenuti possono essere usati per migliorare i modelli di
+      Google. Al 19 settembre 2026 **6 accordi su 6** (caricati fra il 6 e il 18
+      settembre) sono già passati dalla verifica IA, e sono documenti con nome,
+      codice fiscale e firma: l'informativa dichiara quell'invio a Google dal 21
+      agosto, quindi nessuno è passato in silenzio, ma il livello va verificato
+      e — se gratuito — portato a pagamento o a Vertex AI, con la chiave
+      ristretta a una sola API;
+    — i dati dell'accordo (nome, indirizzo, codice fiscale, firma) sono dati
+      personali **comuni**, non categorie particolari dell'art. 9 GDPR: il
+      confine da non superare mai è usare un modello per **identificare** una
+      persona (firma, volto, voce). «C'è una firma manoscritta?» è un controllo
+      sul documento; «è la firma di Tizio?» sarebbe identificazione biometrica;
+    — l'informativa dichiara anche lo smistamento delle domande di supporto via
+      Google e invita a non scriverci dati di salute o documenti.
 
 ## 11. Il limite dichiarato
 
